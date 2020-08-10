@@ -1,4 +1,4 @@
-module github.com/openstack-k8s-operators/mariadb-operator
+module github.com/openstack-k8s-operators/glance-operator
 
 go 1.13
 
