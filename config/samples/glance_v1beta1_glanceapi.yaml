@@ -1,0 +1,7 @@
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glanceapi-sample
+spec:
+  # Add fields here
+  foo: bar

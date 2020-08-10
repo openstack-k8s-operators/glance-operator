@@ -1,0 +1,20 @@
+# permissions for end users to view glanceapis.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: glanceapi-viewer-role
+rules:
+- apiGroups:
+  - glance.openstack.org
+  resources:
+  - glanceapis
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - glance.openstack.org
+  resources:
+  - glanceapis/status
+  verbs:
+  - get
