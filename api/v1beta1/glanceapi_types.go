@@ -25,11 +25,18 @@ import (
 
 // GlanceAPISpec defines the desired state of GlanceAPI
 type GlanceAPISpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of GlanceAPI. Edit GlanceAPI_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Glance Database Password String
+	DatabasePassword string `json:"databasePassword,omitempty"`
+	// Glance Database Hostname String
+	DatabaseHostname string `json:"databaseHostname,omitempty"`
+	// Glance Container Image URL
+	ContainerImage string `json:"containerImage,omitempty"`
+	// Replicas
+	Replicas int32 `json:"replicas"`
+	// StorageClass
+	StorageClass string `json:"storageClass,omitempty"`
+	// StorageRequest
+	StorageRequest string `json:"storageRequest,omitempty"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI
