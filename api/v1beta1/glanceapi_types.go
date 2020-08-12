@@ -37,12 +37,16 @@ type GlanceAPISpec struct {
 	StorageClass string `json:"storageClass,omitempty"`
 	// StorageRequest
 	StorageRequest string `json:"storageRequest,omitempty"`
+	// Secrets related to the GlanceAPI (DBPassword, TransportURL)
+	//Secrets string `json:"secrets,omitempty"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI
 type GlanceAPIStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// DbSyncHash db sync hash
+	DbSyncHash string `json:"dbSyncHash"`
+	// DeploymentHash deployment hash
+	DeploymentHash string `json:"deploymentHash"`
 }
 
 // +kubebuilder:object:root=true

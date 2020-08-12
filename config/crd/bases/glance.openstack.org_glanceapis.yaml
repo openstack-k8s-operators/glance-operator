@@ -60,6 +60,16 @@ spec:
           type: object
         status:
           description: GlanceAPIStatus defines the observed state of GlanceAPI
+          properties:
+            dbSyncHash:
+              description: DbSyncHash db sync hash
+              type: string
+            deploymentHash:
+              description: DeploymentHash deployment hash
+              type: string
+          required:
+          - dbSyncHash
+          - deploymentHash
           type: object
       type: object
   version: v1beta1

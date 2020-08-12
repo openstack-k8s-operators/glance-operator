@@ -55,12 +55,19 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
+	namespace, found := os.LookupEnv("WATCH_NAMESPACE")
+	if !found {
+		setupLog.Info("Failed to get watch namespace")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "7c2a6c6b.openstack.org",
+		Namespace:          namespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
