@@ -10,3 +10,4 @@ spec:
   storageClass: host-nfs-storageclass
   storageRequest: 10G
   containerImage: docker.io/tripleomaster/centos-binary-glance-api:current-tripleo
+  secrets: glance-secrets

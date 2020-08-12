@@ -14,6 +14,7 @@ type glanceConfigOptions struct {
 }
 
 func ConfigMap(api *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *corev1.ConfigMap {
+	//FIXME: remove DatabasePassword
 	opts := glanceConfigOptions{api.Spec.DatabasePassword}
 
 	cm := &corev1.ConfigMap{
@@ -27,9 +28,10 @@ func ConfigMap(api *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *corev1.Con
 			Labels:    GetLabels(api.Name),
 		},
 		Data: map[string]string{
-			"glance-api.conf": util.ExecuteTemplateFile("glance-api.conf", opts),
-			"config.json":     util.ExecuteTemplateFile("config.json", nil),
-			"logging.conf":    util.ExecuteTemplateFile("logging.conf", nil),
+			"glance-api.conf":     util.ExecuteTemplateFile("glance-api.conf", opts),
+			"config.json":         util.ExecuteTemplateFile("config.json", nil),
+			"db-sync-config.json": util.ExecuteTemplateFile("db-sync-config.json", nil),
+			"logging.conf":        util.ExecuteTemplateFile("logging.conf", nil),
 		},
 	}
 	controllerutil.SetControllerReference(api, cm, scheme)

@@ -1,0 +1,11 @@
+{
+  "command": "/bin/true",
+  "config_files": [
+    {
+      "source": "/var/lib/emptydir/glance-passwords.conf",
+      "dest": "/etc/glance/glance-api.conf",
+      "owner": "glance",
+      "perm": "0600"
+    }
+  ]
+}

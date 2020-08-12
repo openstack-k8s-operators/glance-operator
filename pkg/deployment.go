@@ -2,6 +2,7 @@ package glance
 
 import (
 	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	util "github.com/openstack-k8s-operators/lib-common/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +35,8 @@ func Deployment(cr *glancev1beta1.GlanceAPI, configHash string, scheme *runtime.
 					ServiceAccountName: "glance",
 					Containers: []corev1.Container{
 						{
-							Name:  "glance-api",
+							Name: "glance-api",
+							//Command: []string{"/bin/sleep", "7000"},
 							Image: cr.Spec.ContainerImage,
 							SecurityContext: &corev1.SecurityContext{
 								RunAsUser: &runAsUser,
@@ -52,11 +54,38 @@ func Deployment(cr *glancev1beta1.GlanceAPI, configHash string, scheme *runtime.
 							VolumeMounts: getVolumeMounts(),
 						},
 					},
+					InitContainers: []corev1.Container{
+						{
+							Name:    "glance-secrets",
+							Image:   cr.Spec.ContainerImage,
+							Command: []string{"/bin/sh", "-c", util.ExecuteTemplateFile("password_init.sh", nil)},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "DatabaseHost",
+									Value: cr.Spec.DatabaseHostname,
+								},
+								// FIXME: wire in transport host (AMQP)
+								{
+									Name:  "TransportHost",
+									Value: "foo.bar",
+								},
+								{
+									Name:  "DatabaseUser",
+									Value: cr.Name,
+								},
+								{
+									Name:  "DatabaseSchema",
+									Value: cr.Name,
+								},
+							},
+							VolumeMounts: getInitVolumeMounts(),
+						},
+					},
 				},
 			},
 		},
 	}
-	deployment.Spec.Template.Spec.Volumes = getVolumes(cr.Name)
+	deployment.Spec.Template.Spec.Volumes = getVolumes(cr.Name, cr.Spec.Secrets)
 	controllerutil.SetControllerReference(cr, deployment, scheme)
 	return deployment
 }

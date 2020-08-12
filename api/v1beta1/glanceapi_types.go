@@ -37,8 +37,8 @@ type GlanceAPISpec struct {
 	StorageClass string `json:"storageClass,omitempty"`
 	// StorageRequest
 	StorageRequest string `json:"storageRequest,omitempty"`
-	// Secrets related to the GlanceAPI (DBPassword, TransportURL)
-	//Secrets string `json:"secrets,omitempty"`
+	// Secrets related to the GlanceAPI (GlancePassword, TransportURL)
+	Secrets string `json:"secrets,omitempty"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI

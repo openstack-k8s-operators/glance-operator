@@ -49,6 +49,9 @@ spec:
               description: Replicas
               format: int32
               type: integer
+            secrets:
+              description: Secrets related to the GlanceAPI (GlancePassword, TransportURL)
+              type: string
             storageClass:
               description: StorageClass
               type: string

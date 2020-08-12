@@ -49,6 +49,8 @@ type GlanceAPIReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;create;update;delete;
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;create;update;delete;
 // +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;create;update;delete;
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;create;update;delete;
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;create;update;delete;
 func (r *GlanceAPIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("glanceapi", req.NamespacedName)
@@ -199,7 +201,7 @@ func (r *GlanceAPIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{RequeueAfter: time.Second * 5}, err
+		return ctrl.Result{RequeueAfter: time.Second * 10}, err
 
 	} else if err != nil {
 		return ctrl.Result{}, err

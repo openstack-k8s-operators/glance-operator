@@ -1,5 +1,5 @@
 {
-  "command": "/usr/bin/glance-api --config-file /etc/glance/glance-api.conf --config-file /etc/glance/glance-image-import.conf",
+  "command": "/usr/bin/glance-api --config-file /etc/glance/glance-api.conf --config-file /etc/glance/glance-image-import.conf --config-file /etc/glance/glance-passwords.conf",
   "config_files": [
     {
       "source": "/var/lib/config-data/glance-api.conf",
@@ -10,6 +10,12 @@
     {
       "source": "/var/lib/config-data/logging.conf",
       "dest": "/etc/glance/logging.conf",
+      "owner": "glance",
+      "perm": "0600"
+    },
+    {
+      "source": "/var/lib/emptydir/glance-passwords.conf",
+      "dest": "/etc/glance/glance-passwords.conf",
       "owner": "glance",
       "perm": "0600"
     }
