@@ -81,7 +81,7 @@ func DbSyncJob(cr *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *batchv1.Job
 			},
 		},
 	}
-	job.Spec.Template.Spec.Volumes = getVolumes(cr.Name, cr.Spec.Secrets)
+	job.Spec.Template.Spec.Volumes = getVolumes(cr.Name, cr.Spec.Secret)
 	controllerutil.SetControllerReference(cr, job, scheme)
 	return job
 }

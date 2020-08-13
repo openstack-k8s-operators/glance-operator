@@ -42,15 +42,12 @@ spec:
             databaseHostname:
               description: Glance Database Hostname String
               type: string
-            databasePassword:
-              description: Glance Database Password String
-              type: string
             replicas:
               description: Replicas
               format: int32
               type: integer
-            secrets:
-              description: Secrets related to the GlanceAPI (GlancePassword, TransportURL)
+            secret:
+              description: 'Secret containing: GlancePassword, TransportURL'
               type: string
             storageClass:
               description: StorageClass

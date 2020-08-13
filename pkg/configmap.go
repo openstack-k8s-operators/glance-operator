@@ -10,12 +10,11 @@ import (
 )
 
 type glanceConfigOptions struct {
-	DatabasePassword string
+	KeystoneEndpoint string
 }
 
 func ConfigMap(api *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *corev1.ConfigMap {
-	//FIXME: remove DatabasePassword
-	opts := glanceConfigOptions{api.Spec.DatabasePassword}
+	opts := glanceConfigOptions{"FIXME"}
 
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{

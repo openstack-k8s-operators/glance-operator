@@ -85,7 +85,7 @@ func Deployment(cr *glancev1beta1.GlanceAPI, configHash string, scheme *runtime.
 			},
 		},
 	}
-	deployment.Spec.Template.Spec.Volumes = getVolumes(cr.Name, cr.Spec.Secrets)
+	deployment.Spec.Template.Spec.Volumes = getVolumes(cr.Name, cr.Spec.Secret)
 	controllerutil.SetControllerReference(cr, deployment, scheme)
 	return deployment
 }

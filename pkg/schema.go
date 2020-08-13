@@ -12,12 +12,12 @@ import (
 type schemaOptions struct {
 	DatabaseHostname string
 	SchemaName       string
-	SchemaPassword   string
+	Secret           string
 }
 
 // SchemaObject func
 func SchemaObject(cr *glancev1beta1.GlanceAPI) (unstructured.Unstructured, error) {
-	opts := schemaOptions{cr.Spec.DatabaseHostname, cr.Name, cr.Spec.DatabasePassword}
+	opts := schemaOptions{cr.Spec.DatabaseHostname, cr.Name, cr.Spec.Secret}
 
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(util.ExecuteTemplateFile("mariadb_schema.yaml", &opts)), 4096)
 	u := unstructured.Unstructured{}

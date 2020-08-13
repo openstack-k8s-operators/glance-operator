@@ -25,8 +25,6 @@ import (
 
 // GlanceAPISpec defines the desired state of GlanceAPI
 type GlanceAPISpec struct {
-	// Glance Database Password String
-	DatabasePassword string `json:"databasePassword,omitempty"`
 	// Glance Database Hostname String
 	DatabaseHostname string `json:"databaseHostname,omitempty"`
 	// Glance Container Image URL
@@ -37,8 +35,8 @@ type GlanceAPISpec struct {
 	StorageClass string `json:"storageClass,omitempty"`
 	// StorageRequest
 	StorageRequest string `json:"storageRequest,omitempty"`
-	// Secrets related to the GlanceAPI (GlancePassword, TransportURL)
-	Secrets string `json:"secrets,omitempty"`
+	// Secret containing: GlancePassword, TransportURL
+	Secret string `json:"secret,omitempty"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI

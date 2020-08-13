@@ -5,7 +5,6 @@ metadata:
 spec:
   # Add fields here
   databaseHostname: mariadb
-  databasePassword: openstack
   replicas: 1
   storageClass: host-nfs-storageclass
   storageRequest: 10G
