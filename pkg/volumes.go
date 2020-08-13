@@ -5,15 +5,9 @@ import (
 )
 
 // common Glance API Volumes
-func getVolumes(name string, secretsName string) []corev1.Volume {
+func getVolumes(name string) []corev1.Volume {
 
 	return []corev1.Volume{
-		{
-			Name: "secrets",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: secretsName},
-			},
-		},
 		{
 			Name: "emptydir",
 			VolumeSource: corev1.VolumeSource{
@@ -87,11 +81,6 @@ func getVolumes(name string, secretsName string) []corev1.Volume {
 // common Glance API VolumeMounts for init/secrets container
 func getInitVolumeMounts() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
-		{
-			MountPath: "/var/lib/secrets/",
-			ReadOnly:  false,
-			Name:      "secrets",
-		},
 		{
 			MountPath: "/var/lib/emptydir",
 			ReadOnly:  false,

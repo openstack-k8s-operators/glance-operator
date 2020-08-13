@@ -77,6 +77,28 @@ func Deployment(cr *glancev1beta1.GlanceAPI, configHash string, scheme *runtime.
 									Name:  "DatabaseSchema",
 									Value: cr.Name,
 								},
+								{
+									Name: "DatabasePassword",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: cr.Spec.Secret,
+											},
+											Key: "DatabasePassword",
+										},
+									},
+								},
+								{
+									Name: "TransportPassword",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: cr.Spec.Secret,
+											},
+											Key: "TransportPassword",
+										},
+									},
+								},
 							},
 							VolumeMounts: getInitVolumeMounts(),
 						},
@@ -85,7 +107,7 @@ func Deployment(cr *glancev1beta1.GlanceAPI, configHash string, scheme *runtime.
 			},
 		},
 	}
-	deployment.Spec.Template.Spec.Volumes = getVolumes(cr.Name, cr.Spec.Secret)
+	deployment.Spec.Template.Spec.Volumes = getVolumes(cr.Name)
 	controllerutil.SetControllerReference(cr, deployment, scheme)
 	return deployment
 }

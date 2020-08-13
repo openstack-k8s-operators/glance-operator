@@ -3,20 +3,10 @@ set -e
 # This script generates the glance-passwords.conf file and copies the result
 # to the ephemeral /var/lib/emptydir volume (mounted by your init container).
 # 
-# Secrets are obtained from the /var/lib/secrets/ volume (also mounted by the
-# init container.
+# Secrets are obtained from ENV variables.
 # ENV variables specify the TransportPassword along with the Database host.
-
-for X in DatabasePassword TransportPassword; do
-  if [[ ! -f "/var/lib/secrets/$X" ]] ; then
-     echo "Missing secret for $X. Please specify this secret and try again."
-     exit 1
-  fi
-done
-
-export DatabasePassword="$(cat /var/lib/secrets/DatabasePassword)"
-export TransportPassword="$(cat /var/lib/secrets/TransportPassword)"
-
+export DatabasePassword=${DatabasePassword:?"Please specify a DatabasePassword variable."}
+export TransportPassword=${TransportPassword:?"Please specify a TransportPassword variable."}
 export DatabaseHost=${DatabaseHost:?"Please specify a DatabaseHost variable."}
 export TransportHost=${TransportHost:?"Please specify a TransportHost variable."}
 export DatabaseUser=${DatabaseUser:-"glance"}
