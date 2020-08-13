@@ -45,6 +45,8 @@ type GlanceAPIStatus struct {
 	DbSyncHash string `json:"dbSyncHash"`
 	// DeploymentHash deployment hash
 	DeploymentHash string `json:"deploymentHash"`
+	// API endpoint
+	APIEndpoint string `json:"apiEndpoint"`
 }
 
 // +kubebuilder:object:root=true

@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	routev1 "github.com/openshift/api/route/v1"
 	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	glance "github.com/openstack-k8s-operators/glance-operator/pkg"
 	util "github.com/openstack-k8s-operators/lib-common/pkg/util"
@@ -34,6 +35,7 @@ import (
 
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -228,6 +230,32 @@ func (r *GlanceAPIReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
+	// Create the route if none exists
+	route := glance.Route(instance, r.Scheme)
+
+	// Check if this Route already exists
+	foundRoute := &routev1.Route{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: route.Name, Namespace: route.Namespace}, foundRoute)
+	if err != nil && k8s_errors.IsNotFound(err) {
+		r.Log.Info("Creating a new Route", "Route.Namespace", route.Namespace, "Route.Name", route.Name)
+		err = r.Client.Create(context.TODO(), route)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{RequeueAfter: time.Second * 5}, err
+	} else if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	var apiEndpoint string
+	if !strings.HasPrefix(foundRoute.Spec.Host, "http") {
+		apiEndpoint = fmt.Sprintf("http://%s", foundRoute.Spec.Host)
+	} else {
+		apiEndpoint = foundRoute.Spec.Host
+	}
+	r.setAPIEndpoint(instance, apiEndpoint)
+
 	return ctrl.Result{}, nil
 }
 
@@ -238,6 +266,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&routev1.Route{}).
 		Complete(r)
 }
 
@@ -256,6 +285,18 @@ func (r *GlanceAPIReconciler) setDeploymentHash(instance *glancev1beta1.GlanceAP
 
 	if hashStr != instance.Status.DeploymentHash {
 		instance.Status.DeploymentHash = hashStr
+		if err := r.Client.Status().Update(context.TODO(), instance); err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
+func (r *GlanceAPIReconciler) setAPIEndpoint(instance *glancev1beta1.GlanceAPI, endpoint string) error {
+
+	if endpoint != instance.Status.APIEndpoint {
+		instance.Status.APIEndpoint = endpoint
 		if err := r.Client.Status().Update(context.TODO(), instance); err != nil {
 			return err
 		}
