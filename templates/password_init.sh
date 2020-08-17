@@ -7,6 +7,7 @@ set -e
 # ENV variables specify the TransportPassword along with the Database host.
 export DatabasePassword=${DatabasePassword:?"Please specify a DatabasePassword variable."}
 export TransportPassword=${TransportPassword:?"Please specify a TransportPassword variable."}
+export GlanceKeystoneAuthPassword=${GlanceKeystoneAuthPassword:?"Please specify a GlanceKeystoneAuthPassword variable."}
 export DatabaseHost=${DatabaseHost:?"Please specify a DatabaseHost variable."}
 export TransportHost=${TransportHost:?"Please specify a TransportHost variable."}
 export DatabaseUser=${DatabaseUser:-"glance"}
@@ -20,7 +21,7 @@ transport_url=rabbit://guest:$TransportPassword@$TransportHost:5672/?ssl=0
 connection=mysql+pymysql://$DatabaseUser:$DatabasePassword@$DatabaseHost/$DatabaseSchema
 
 [keystone_authtoken]
-password=$DatabasePassword
+password=$GlanceKeystoneAuthPassword
 
 [oslo_messaging_notifications]
 transport_url=rabbit://guest:$TransportPassword@$TransportHost:5672/?ssl=0
