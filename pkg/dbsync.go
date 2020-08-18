@@ -60,11 +60,6 @@ func DbSyncJob(cr *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *batchv1.Job
 									Name:  "DatabaseHost",
 									Value: cr.Spec.DatabaseHostname,
 								},
-								// FIXME: wire in transport host (AMQP)
-								{
-									Name:  "TransportHost",
-									Value: "foo.bar",
-								},
 								{
 									Name:  "DatabaseUser",
 									Value: cr.Name,
@@ -96,13 +91,13 @@ func DbSyncJob(cr *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *batchv1.Job
 									},
 								},
 								{
-									Name: "TransportPassword",
+									Name: "TransportUrl",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: cr.Spec.Secret,
 											},
-											Key: "TransportPassword",
+											Key: "TransportUrl",
 										},
 									},
 								},
