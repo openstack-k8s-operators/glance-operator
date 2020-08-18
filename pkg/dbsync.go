@@ -85,6 +85,17 @@ func DbSyncJob(cr *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *batchv1.Job
 									},
 								},
 								{
+									Name: "GlanceKeystoneAuthPassword",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: cr.Spec.Secret,
+											},
+											Key: "GlanceKeystoneAuthPassword",
+										},
+									},
+								},
+								{
 									Name: "TransportPassword",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
