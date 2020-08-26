@@ -10,12 +10,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+const AppLabel = "glance-api"
+
 // Deployment func
 func Deployment(cr *glancev1beta1.GlanceAPI, configHash string, scheme *runtime.Scheme) *appsv1.Deployment {
 	runAsUser := int64(0)
 
 	labels := map[string]string{
-		"app": "glance-api",
+		"app": AppLabel,
 	}
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{

@@ -18,7 +18,7 @@ func Service(api *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *corev1.Servi
 			Labels:    GetLabels(api.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{"app": "glance"},
+			Selector: map[string]string{"app": AppLabel},
 			Ports: []corev1.ServicePort{
 				{Name: "api", Port: 9292, Protocol: corev1.ProtocolTCP},
 			},
