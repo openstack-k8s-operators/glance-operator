@@ -17,7 +17,7 @@ func Route(cr *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *routev1.Route {
 	}
 	serviceRef := routev1.RouteTargetReference{
 		Kind: "Service",
-		Name: "glance",
+		Name: cr.Name,
 	}
 	routePort := &routev1.RoutePort{
 		TargetPort: intstr.FromString("api"),
