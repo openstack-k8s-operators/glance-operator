@@ -2,7 +2,6 @@ package glance
 
 import (
 	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
-	util "github.com/openstack-k8s-operators/lib-common/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,6 +38,10 @@ func DbSyncJob(cr *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *batchv1.Job
 							},
 							Env: []corev1.EnvVar{
 								{
+									Name:  "KOLLA_CONFIG_FILE",
+									Value: "/var/lib/config-data/merged/db-sync-config.json",
+								},
+								{
 									Name:  "KOLLA_CONFIG_STRATEGY",
 									Value: "COPY_ALWAYS",
 								},
@@ -52,9 +55,14 @@ func DbSyncJob(cr *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *batchv1.Job
 					},
 					InitContainers: []corev1.Container{
 						{
-							Name:    "glance-secrets",
-							Image:   cr.Spec.ContainerImage,
-							Command: []string{"/bin/sh", "-c", util.ExecuteTemplateFile("password_init.sh", nil)},
+							Name:  "init",
+							Image: cr.Spec.ContainerImage,
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser: &runAsUser,
+							},
+							Command: []string{
+								"/bin/bash", "-c", "/usr/local/bin/container-scripts/init.sh",
+							},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "DatabaseHost",
