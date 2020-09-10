@@ -6,26 +6,17 @@ import (
 
 // common Glance API Volumes
 func getVolumes(name string) []corev1.Volume {
+	var scriptsVolumeDefaultMode int32 = 0755
+	var config0640AccessMode int32 = 0640
 
 	return []corev1.Volume{
 		{
-			Name: "emptydir",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{Medium: ""},
-			},
-		},
-		{
-			Name: "kolla-config",
+			Name: "scripts",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
+					DefaultMode: &scriptsVolumeDefaultMode,
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: name,
-					},
-					Items: []corev1.KeyToPath{
-						{
-							Key:  "config.json",
-							Path: "config.json",
-						},
+						Name: name + "-scripts",
 					},
 				},
 			},
@@ -34,20 +25,27 @@ func getVolumes(name string) []corev1.Volume {
 			Name: "config-data",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
+					DefaultMode: &config0640AccessMode,
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: name,
-					},
-					Items: []corev1.KeyToPath{
-						{
-							Key:  "glance-api.conf",
-							Path: "glance-api.conf",
-						},
-						{
-							Key:  "logging.conf",
-							Path: "logging.conf",
-						},
+						Name: name + "-config-data",
 					},
 				},
+			},
+		},
+		{
+			Name: "config-data-custom",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: name + "-config-data-custom",
+					},
+				},
+			},
+		},
+		{
+			Name: "config-data-merged",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{Medium: ""},
 			},
 		},
 		{
@@ -55,22 +53,6 @@ func getVolumes(name string) []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: name,
-				},
-			},
-		},
-		{
-			Name: "db-kolla-config",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: name,
-					},
-					Items: []corev1.KeyToPath{
-						{
-							Key:  "db-sync-config.json",
-							Path: "config.json",
-						},
-					},
 				},
 			},
 		},
@@ -82,9 +64,24 @@ func getVolumes(name string) []corev1.Volume {
 func getInitVolumeMounts() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
-			MountPath: "/var/lib/emptydir",
+			Name:      "scripts",
+			MountPath: "/usr/local/bin/container-scripts",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/var/lib/config-data/default",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data-custom",
+			MountPath: "/var/lib/config-data/custom",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data-merged",
+			MountPath: "/var/lib/config-data/merged",
 			ReadOnly:  false,
-			Name:      "emptydir",
 		},
 	}
 
@@ -94,19 +91,9 @@ func getInitVolumeMounts() []corev1.VolumeMount {
 func getDbVolumeMounts() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
-			MountPath: "/var/lib/config-data",
-			ReadOnly:  true,
-			Name:      "config-data",
-		},
-		{
-			MountPath: "/var/lib/kolla/config_files",
-			ReadOnly:  true,
-			Name:      "db-kolla-config",
-		},
-		{
-			MountPath: "/var/lib/emptydir",
+			Name:      "config-data-merged",
+			MountPath: "/var/lib/config-data/merged",
 			ReadOnly:  false,
-			Name:      "emptydir",
 		},
 	}
 
@@ -116,24 +103,14 @@ func getDbVolumeMounts() []corev1.VolumeMount {
 func getVolumeMounts() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
-			MountPath: "/var/lib/config-data",
-			ReadOnly:  true,
-			Name:      "config-data",
+			Name:      "config-data-merged",
+			MountPath: "/var/lib/config-data/merged",
+			ReadOnly:  false,
 		},
 		{
-			MountPath: "/var/lib/kolla/config_files",
-			ReadOnly:  true,
-			Name:      "kolla-config",
-		},
-		{
+			Name:      "lib-data",
 			MountPath: "/var/lib/glance",
 			ReadOnly:  false,
-			Name:      "lib-data",
-		},
-		{
-			MountPath: "/var/lib/emptydir",
-			ReadOnly:  false,
-			Name:      "emptydir",
 		},
 	}
 
