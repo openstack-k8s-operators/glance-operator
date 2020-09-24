@@ -20,7 +20,7 @@ func Pvc(api *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *corev1.Persisten
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: &api.Spec.StorageClass,
 			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
+				corev1.ReadWriteMany,
 			},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
