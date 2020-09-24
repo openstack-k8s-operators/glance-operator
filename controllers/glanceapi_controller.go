@@ -50,6 +50,7 @@ type GlanceAPIReconciler struct {
 	Scheme  *runtime.Scheme
 }
 
+//Reconcile function
 // +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;create;update;delete;
