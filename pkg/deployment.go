@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// AppLabel -
 const AppLabel = "glance-api"
 
 // Deployment func
