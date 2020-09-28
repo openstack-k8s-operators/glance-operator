@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-//Returns the deployment object for the Database
+// Pvc - returns the deployment object for the Database
 func Pvc(api *glancev1beta1.GlanceAPI, scheme *runtime.Scheme) *corev1.PersistentVolumeClaim {
 	pv := &corev1.PersistentVolumeClaim{
 		ObjectMeta: v1.ObjectMeta{
