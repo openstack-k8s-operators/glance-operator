@@ -5,8 +5,8 @@ import (
 
 	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	util "github.com/openstack-k8s-operators/lib-common/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -29,5 +29,8 @@ func DatabaseObject(cr *glancev1beta1.GlanceAPI) (unstructured.Unstructured, err
 	u := unstructured.Unstructured{}
 	err := decoder.Decode(&u)
 	u.SetNamespace(cr.Namespace)
+	// set owner reference
+	oref := metav1.NewControllerRef(cr, cr.GroupVersionKind())
+	u.SetOwnerReferences([]metav1.OwnerReference{*oref})
 	return u, err
 }
