@@ -1,12 +1,19 @@
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
 metadata:
-  name: glanceapi
+  name: glance
 spec:
-  # Add fields here
-  databaseHostname: mariadb
+  serviceUser: glance
+  containerImage: quay.io/tripleotraincentos8/centos-binary-glance-api:current-tripleo
+  customServiceConfig: |
+    [DEFAULT]
+    debug = true
+  databaseInstance: openstack
+  databaseUser: glance
+  debug:
+    dbSync: false
+    service: false
+  preserveJobs: false
   replicas: 1
-  storageClass: host-nfs-storageclass
   storageRequest: 10G
-  containerImage: docker.io/tripleomaster/centos-binary-glance-api:current-tripleo
   secret: glance-secret
