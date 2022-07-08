@@ -1,5 +1,4 @@
 /*
-Copyright 2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,3 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+package glance
+
+const (
+	// ServiceName -
+	ServiceName = "glance"
+	// ServiceAccount -
+	ServiceAccount = "glance-operator-glance"
+	// ServiceType -
+	ServiceType = "image"
+	// DatabaseName -
+	DatabaseName = "glance"
+
+	// GlanceAdminPort -
+	GlanceAdminPort int32 = 9292
+	// GlancePublicPort -
+	GlancePublicPort int32 = 9292
+	// GlanceInternalPort -
+	GlanceInternalPort int32 = 9292
+
+	// KollaConfig -
+	KollaConfig = "/var/lib/config-data/merged/glance-api-config.json"
+)

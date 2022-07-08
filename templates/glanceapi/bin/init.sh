@@ -19,43 +19,34 @@ set -ex
 # copies the result to the ephemeral /var/lib/config-data/merged volume.
 #
 # Secrets are obtained from ENV variables.
-export DatabasePassword=${DatabasePassword:?"Please specify a DatabasePassword variable."}
-export TransportUrl=${TransportUrl:?"Please specify a TransportUrl variable."}
-export GlanceKeystoneAuthPassword=${GlanceKeystoneAuthPassword:?"Please specify a GlanceKeystoneAuthPassword variable."}
-export DatabaseHost=${DatabaseHost:?"Please specify a DatabaseHost variable."}
-export DatabaseUser=${DatabaseUser:-"glance"}
-export DatabaseSchema=${DatabaseSchema:-"glance"}
+export DBPASSWORD=${DatabasePassword:?"Please specify a DatabasePassword variable."}
+# TODO
+#export TRANSPORTURL=${TransportUrl:?"Please specify a TransportUrl variable."}
+export GLANCEPASSWORD=${GlancePassword:?"Please specify a GlanceKeystoneAuthPassword variable."}
+export DBHOST=${DatabaseHost:?"Please specify a DatabaseHost variable."}
+export DBUSER=${DatabaseUser:-"glance"}
+export DB=${DatabaseName:-"glance"}
 
-function merge_config_dir {
-  echo merge config dir $1
-  for conf in $(find $1 -type f)
-  do
-    conf_base=$(basename $conf)
+SVC_CFG=/etc/glance/glance-api.conf
+SVC_CFG_MERGED=/var/lib/config-data/merged/glance-api.conf
 
-    # If CFG already exist in ../merged and is not a json file,
-    # we expect for now it can be merged using crudini.
-    # Else, just copy the full file.
-    if [[ -f /var/lib/config-data/merged/${conf_base} && ${conf_base} != *.json ]]; then
-      echo merging ${conf} into /var/lib/config-data/merged/${conf_base}
-      crudini --merge /var/lib/config-data/merged/${conf_base} < ${conf}
-    else
-      echo copy ${conf} to /var/lib/config-data/merged/
-      cp -f ${conf} /var/lib/config-data/merged/
-    fi
-  done
-}
+# expect that the common.sh is in the same dir as the calling script
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+. ${SCRIPTPATH}/common.sh --source-only
 
-# Copy default glance config from container image as base
-cp -a /etc/glance/glance-api.conf /var/lib/config-data/merged/glance-api.conf
+# Copy default service config from container image as base
+cp -a ${SVC_CFG} ${SVC_CFG_MERGED}
 
-# Merge all templates from config-data and config-data-custom CMs
-for dir in /var/lib/config-data/default /var/lib/config-data/custom
+# Merge all templates from config-data
+for dir in /var/lib/config-data/default
 do
   merge_config_dir ${dir}
 done
 
 # set secrets
-crudini --set /var/lib/config-data/merged/glance-api.conf DEFAULT transport_url $TransportUrl
-crudini --set /var/lib/config-data/merged/glance-api.conf database connection mysql+pymysql://$DatabaseUser:$DatabasePassword@$DatabaseHost/$DatabaseSchema
-crudini --set /var/lib/config-data/merged/glance-api.conf keystone_authtoken password $GlanceKeystoneAuthPassword
-crudini --set /var/lib/config-data/merged/glance-api.conf oslo_messaging_notifications transport_url $TransportUrl
+# TODO: transportUrl (either set here or elsewhere)
+#crudini --set ${SVC_CFG_MERGED} DEFAULT transport_url $TRANSPORTURL
+crudini --set ${SVC_CFG_MERGED} database connection mysql+pymysql://${DBUSER}:${DBPASSWORD}@${DBHOST}/${DB}
+crudini --set ${SVC_CFG_MERGED} keystone_authtoken password $GLANCEPASSWORD
+# TODO: transportUrl (either set here or elsewhere)
+#crudini --set ${SVC_CFG_MERGED} oslo_messaging_notifications transport_url $TRANSPORTURL
