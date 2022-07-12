@@ -192,18 +192,27 @@ func (r *GlanceAPIReconciler) reconcileInit(
 ) (ctrl.Result, error) {
 	r.Log.Info("Reconciling Service init")
 
-	// PVC
-	// TODO: "lib-commonalize" this
-	pvc, err := glance.Pvc(ctx, r, instance, serviceLabels)
+	// Define a new PVC object
+	// TODO: Once conditions added to PVC lib-common logic, handle
+	//       the returned condition here
+	pvc := common.NewPvc(
+		glance.Pvc(instance, serviceLabels),
+		5,
+	)
+
+	ctrlResult, err := pvc.CreateOrPatch(ctx, helper)
 
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrlResult, err
+	} else if (ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
 	}
 
-	if pvc.Status.Phase != corev1.ClaimBound {
+	if pvc.GetPvc().Status.Phase != corev1.ClaimBound {
 		r.Log.Info("Waiting for GlanceAPI PVC to bind")
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
+	// End PVC creation/patch
 
 	//
 	// create service DB instance
