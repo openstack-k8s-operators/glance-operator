@@ -41,7 +41,7 @@ const (
 // GlanceAPISpec defines the desired state of GlanceAPI
 type GlanceAPISpec struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=placement
+	// +kubebuilder:default=glance
 	// ServiceUser - optional username used for this service to register in glance
 	ServiceUser string `json:"serviceUser"`
 
@@ -52,9 +52,9 @@ type GlanceAPISpec struct {
 	DatabaseInstance string `json:"databaseInstance,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=placement
-	// DatabaseUser - optional username used for placement DB, defaults to placement
-	// TODO: -> implement needs work in mariadb-operator, right now only placement
+	// +kubebuilder:default=glance
+	// DatabaseUser - optional username used for glance DB, defaults to glance
+	// TODO: -> implement needs work in mariadb-operator, right now only glance
 	DatabaseUser string `json:"databaseUser"`
 
 	// +kubebuilder:validation:Required
@@ -65,11 +65,11 @@ type GlanceAPISpec struct {
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Maximum=32
 	// +kubebuilder:validation:Minimum=0
-	// Replicas of placement API to run
+	// Replicas of glance API to run
 	Replicas int32 `json:"replicas"`
 
 	// +kubebuilder:validation:Required
-	// Secret containing OpenStack password information for placement GlanceDatabasePassword, AdminPassword
+	// Secret containing OpenStack password information for glance GlanceDatabasePassword, AdminPassword
 	Secret string `json:"secret,omitempty"`
 
 	// +kubebuilder:validation:Optional
