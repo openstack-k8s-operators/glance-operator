@@ -17,29 +17,21 @@ limitations under the License.
 package controllers
 
 import (
-	"path/filepath"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	//+kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
+// var cfg *rest.Config
+// var err error
+// var k8sClient client.Client
+// var testEnv *envtest.Environment
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -49,33 +41,32 @@ func TestAPIs(t *testing.T) {
 		[]Reporter{printer.NewlineReporter{}})
 }
 
-var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+// var _ = BeforeSuite(func() {
+// 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: true,
-	}
-	var err error
-	// cfg is defined in this file globally.
-	cfg, err = testEnv.Start()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(cfg).NotTo(BeNil())
+// 	By("bootstrapping test environment")
+// 	testEnv = &envtest.Environment{
+// 		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
+// 		ErrorIfCRDPathMissing: true,
+// 	}
 
-	err = glancev1beta1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
+// 	cfg, err = testEnv.Start()
+// 	Expect(err).NotTo(HaveOccurred())
+// 	Expect(cfg).NotTo(BeNil())
 
-	//+kubebuilder:scaffold:scheme
+// 	err = glancev1beta1.AddToScheme(scheme.Scheme)
+// 	Expect(err).NotTo(HaveOccurred())
 
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(k8sClient).NotTo(BeNil())
+// 	//+kubebuilder:scaffold:scheme
 
-}, 60)
+// 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
+// 	Expect(err).NotTo(HaveOccurred())
+// 	Expect(k8sClient).NotTo(BeNil())
 
-var _ = AfterSuite(func() {
-	By("tearing down the test environment")
-	err := testEnv.Stop()
-	Expect(err).NotTo(HaveOccurred())
-})
+// }, 60)
+
+// var _ = AfterSuite(func() {
+// 	By("tearing down the test environment")
+// 	err := testEnv.Stop()
+// 	Expect(err).NotTo(HaveOccurred())
+// })

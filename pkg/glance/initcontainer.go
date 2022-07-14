@@ -27,7 +27,7 @@ type APIDetails struct {
 	DatabaseHost         string
 	DatabaseUser         string
 	DatabaseName         string
-	TransportUrl         string
+	TransportURL         string
 	OSPSecret            string
 	DBPasswordSelector   string
 	UserPasswordSelector string
