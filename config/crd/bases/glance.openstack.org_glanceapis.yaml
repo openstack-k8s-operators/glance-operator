@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
   name: glanceapis.glance.openstack.org
 spec:
@@ -52,10 +52,10 @@ spec:
                   not be required in future
                 type: string
               databaseUser:
-                default: placement
-                description: 'DatabaseUser - optional username used for placement
-                  DB, defaults to placement TODO: -> implement needs work in mariadb-operator,
-                  right now only placement'
+                default: glance
+                description: 'DatabaseUser - optional username used for glance DB,
+                  defaults to glance TODO: -> implement needs work in mariadb-operator,
+                  right now only glance'
                 type: string
               debug:
                 description: Debug - enable debug for different deploy stages. If
@@ -111,7 +111,7 @@ spec:
                 type: boolean
               replicas:
                 default: 1
-                description: Replicas of placement API to run
+                description: Replicas of glance API to run
                 format: int32
                 maximum: 32
                 minimum: 0
@@ -145,10 +145,10 @@ spec:
                 type: object
               secret:
                 description: Secret containing OpenStack password information for
-                  placement GlanceDatabasePassword, AdminPassword
+                  glance GlanceDatabasePassword, AdminPassword
                 type: string
               serviceUser:
-                default: placement
+                default: glance
                 description: ServiceUser - optional username used for this service
                   to register in glance
                 type: string
@@ -207,15 +207,12 @@ spec:
                 description: ReadyCount of glance API instances
                 format: int32
                 type: integer
+              serviceID:
+                description: ServiceID
+                type: string
             type: object
         type: object
     served: true
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

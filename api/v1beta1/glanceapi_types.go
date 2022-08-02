@@ -19,8 +19,8 @@ package v1beta1
 import (
 	"fmt"
 
-	common "github.com/openstack-k8s-operators/lib-common/pkg/common"
-	condition "github.com/openstack-k8s-operators/lib-common/pkg/condition"
+	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,6 +157,9 @@ type GlanceAPIStatus struct {
 	// API endpoint
 	APIEndpoints map[string]string `json:"apiEndpoint,omitempty"`
 
+	// ServiceID
+	ServiceID string `json:"serviceID,omitempty"`
+
 	// Conditions
 	Conditions condition.List `json:"conditions,omitempty" optional:"true"`
 
@@ -190,7 +193,7 @@ func init() {
 }
 
 // GetEndpoint - returns OpenStack endpoint url for type
-func (instance GlanceAPI) GetEndpoint(endpointType common.Endpoint) (string, error) {
+func (instance GlanceAPI) GetEndpoint(endpointType endpoint.Endpoint) (string, error) {
 	if url, found := instance.Status.APIEndpoints[string(endpointType)]; found {
 		return url, nil
 	}
