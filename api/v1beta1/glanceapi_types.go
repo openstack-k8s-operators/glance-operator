@@ -161,7 +161,7 @@ type GlanceAPIStatus struct {
 	ServiceID string `json:"serviceID,omitempty"`
 
 	// Conditions
-	Conditions condition.List `json:"conditions,omitempty" optional:"true"`
+	Conditions condition.Conditions `json:"conditions,omitempty" optional:"true"`
 
 	// Glance Database Hostname
 	DatabaseHostname string `json:"databaseHostname,omitempty"`
@@ -169,6 +169,8 @@ type GlanceAPIStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[0].status",description="Status"
+//+kubebuilder:printcolumn:name="Message",type="string",JSONPath=".status.conditions[0].message",description="Message"
 
 // GlanceAPI is the Schema for the glanceapis API
 type GlanceAPI struct {
@@ -202,5 +204,9 @@ func (instance GlanceAPI) GetEndpoint(endpointType endpoint.Endpoint) (string, e
 
 // IsReady - returns true if service is ready to server requests
 func (instance GlanceAPI) IsReady() bool {
-	return instance.Status.ReadyCount >= 1
+	// Ready when:
+	// the service is registered in keystone
+	// AND
+	// there is at least a single pod to serve the glance service
+	return instance.Status.ServiceID != "" && instance.Status.ReadyCount >= 1
 }

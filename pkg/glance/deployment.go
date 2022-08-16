@@ -17,7 +17,9 @@ package glance
 
 import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
-	common "github.com/openstack-k8s-operators/lib-common/pkg/common"
+	common "github.com/openstack-k8s-operators/lib-common/modules/common"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -80,10 +82,10 @@ func Deployment(
 		}
 	}
 
-	envVars := map[string]common.EnvSetter{}
-	envVars["KOLLA_CONFIG_FILE"] = common.EnvValue(KollaConfig)
-	envVars["KOLLA_CONFIG_STRATEGY"] = common.EnvValue("COPY_ALWAYS")
-	envVars["CONFIG_HASH"] = common.EnvValue(configHash)
+	envVars := map[string]env.Setter{}
+	envVars["KOLLA_CONFIG_FILE"] = env.SetValue(KollaConfig)
+	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
+	envVars["CONFIG_HASH"] = env.SetValue(configHash)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -112,7 +114,7 @@ func Deployment(
 							SecurityContext: &corev1.SecurityContext{
 								RunAsUser: &runAsUser,
 							},
-							Env:            common.MergeEnvs([]corev1.EnvVar{}, envVars),
+							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts:   getVolumeMounts(),
 							Resources:      instance.Spec.Resources,
 							ReadinessProbe: readinessProbe,
@@ -127,7 +129,7 @@ func Deployment(
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
 	// the get still created on the same worker node.
-	deployment.Spec.Template.Spec.Affinity = common.DistributePods(
+	deployment.Spec.Template.Spec.Affinity = affinity.DistributePods(
 		common.AppSelector,
 		[]string{
 			ServiceName,
