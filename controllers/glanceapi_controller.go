@@ -119,7 +119,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// initialize status
 	//
 	if instance.Status.Conditions == nil {
-		instance.Status.Conditions = condition.List{}
+		instance.Status.Conditions = condition.Conditions{}
 	}
 	if instance.Status.Hash == nil {
 		instance.Status.Hash = map[string]string{}
@@ -141,6 +141,11 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Always patch the instance status when exiting this function so we can persist any changes.
 	defer func() {
+		// update the overall status condition if service is ready
+		if instance.IsReady() {
+			instance.Status.Conditions.MarkTrue(condition.ReadyCondition, condition.ReadyMessage)
+		}
+
 		if err := helper.SetAfter(instance); err != nil {
 			util.LogErrorForObject(helper, err, "Set after and calc patch/diff", instance)
 		}
@@ -234,37 +239,55 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		},
 	)
 	// create or patch the DB
-	cond, ctrlResult, err := db.CreateOrPatchDB(
+	ctrlResult, err = db.CreateOrPatchDB(
 		ctx,
 		helper,
 	)
-	instance.Status.Conditions.UpdateCurrentCondition(cond)
-
 	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DBReadyErrorMessage,
+			err.Error()))
 		return ctrl.Result{}, err
 	}
 	if (ctrlResult != ctrl.Result{}) {
-		r.Log.Info(cond.Message)
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.DBReadyRunningMessage))
 		return ctrlResult, nil
 	}
 	// wait for the DB to be setup
-	cond, ctrlResult, err = db.WaitForDBCreated(ctx, helper)
-	instance.Status.Conditions.UpdateCurrentCondition(cond)
+	ctrlResult, err = db.WaitForDBCreated(ctx, helper)
 	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DBReadyErrorMessage,
+			err.Error()))
 		return ctrlResult, err
 	}
 	if (ctrlResult != ctrl.Result{}) {
-		r.Log.Info(cond.Message)
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.DBReadyRunningMessage))
 		return ctrlResult, nil
 	}
-	// update Status.DatabaseHostname, used to config the service
+	// update Status.DatabaseHostname, used to bootstrap/config the service
 	instance.Status.DatabaseHostname = db.GetDatabaseHostname()
+	instance.Status.Conditions.MarkTrue(condition.DBReadyCondition, condition.DBReadyMessage)
 	// create service DB - end
 
 	//
 	// expose the service (create service, route and return the created endpoint URLs)
 	//
-	var ports = map[endpoint.Endpoint]endpoint.EndpointData{
+	var ports = map[endpoint.Endpoint]endpoint.Data{
 		endpoint.EndpointAdmin: {
 			Port: glance.GlanceAdminPort,
 		},
@@ -284,8 +307,19 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		ports,
 	)
 	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ExposeServiceReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.ExposeServiceReadyErrorMessage,
+			err.Error()))
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ExposeServiceReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.ExposeServiceReadyRunningMessage))
 		return ctrlResult, nil
 	}
 
@@ -324,6 +358,8 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	}
 
 	ksSvc := keystone.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, 10)
+	// TODO mirror keystoneservice condition when https://github.com/openstack-k8s-operators/lib-common/pull/43
+	// and condition for keystoneservice got added
 	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err
@@ -350,9 +386,20 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		helper,
 	)
 	if (ctrlResult != ctrl.Result{}) {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBSyncReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.DBSyncReadyRunningMessage))
 		return ctrlResult, nil
 	}
 	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBSyncReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DBSyncReadyErrorMessage,
+			err.Error()))
 		return ctrl.Result{}, err
 	}
 	if dbSyncjob.HasChanged() {
@@ -362,6 +409,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		}
 		r.Log.Info(fmt.Sprintf("Job %s hash added - %s", jobDef.Name, instance.Status.Hash[glancev1beta1.DbSyncHash]))
 	}
+	instance.Status.Conditions.MarkTrue(condition.DBSyncReadyCondition, condition.DBSyncReadyMessage)
 
 	// run Glance db sync - end
 
@@ -485,9 +533,24 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 
 	ctrlResult, err = depl.CreateOrPatch(ctx, helper)
 	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DeploymentReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DeploymentReadyErrorMessage,
+			err.Error()))
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DeploymentReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.DeploymentReadyRunningMessage))
 		return ctrlResult, nil
+	}
+	instance.Status.ReadyCount = depl.GetDeployment().Status.ReadyReplicas
+	if instance.Status.ReadyCount > 0 {
+		instance.Status.Conditions.MarkTrue(condition.DeploymentReadyCondition, condition.DeploymentReadyMessage)
 	}
 	// create Deployment - end
 
