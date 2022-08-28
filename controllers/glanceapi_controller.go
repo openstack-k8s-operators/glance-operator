@@ -638,16 +638,32 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	}
 
 	keystoneAPI, err := keystone.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
+	// KeystoneAPI not available we should not aggregate the error and continue
 	if err != nil {
 		return err
 	}
 	authURL, err := keystoneAPI.GetEndpoint(endpoint.EndpointPublic)
+	// authURL not available, we should not aggregate the error and continue
 	if err != nil {
 		return err
 	}
 	templateParameters := make(map[string]interface{})
 	templateParameters["ServiceUser"] = instance.Spec.ServiceUser
 	templateParameters["KeystonePublicURL"] = authURL
+
+	// Select CephBackend (otherwise "file" is the default)
+	gb := glance.SetGlanceBackend(instance)
+	templateParameters["GlanceBackend"] = gb
+
+	/** If the Glance Backend is Ceph, populate the required templateParameters
+	to make sure Glance is able to interact with an external Ceph cluster
+	using the Client Key provisioned on the Ceph cluster
+	**/
+	if gb == "rbd" {
+		templateParameters["CephClusterFSID"] = instance.Spec.CephBackend.CephClusterFSID
+		templateParameters["CephClusterMonHosts"] = instance.Spec.CephBackend.CephClusterMonHosts
+		templateParameters["CephClientKey"] = instance.Spec.CephBackend.CephClientKey
+	}
 
 	cms := []util.Template{
 		// ScriptsConfigMap
@@ -671,6 +687,7 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 		},
 	}
 	err = configmap.EnsureConfigMaps(ctx, h, instance, cms, envVars)
+
 	if err != nil {
 		return nil
 	}
