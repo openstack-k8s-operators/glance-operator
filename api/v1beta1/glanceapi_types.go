@@ -86,6 +86,11 @@ type GlanceAPISpec struct {
 	Debug GlanceAPIDebug `json:"debug,omitempty"`
 
 	// +kubebuilder:validation:Optional
+	// CephBackend - The ceph Backend structure with all the parameters
+	// TODO: -> implement a backend wrapper in a generic structure
+	CephBackend GlanceAPICephBackend `json:"cephBackend,omitempty"`
+
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// PreserveJobs - do not delete jobs after they finished e.g. to check logs
 	PreserveJobs bool `json:"preserveJobs,omitempty"`
@@ -115,6 +120,7 @@ type GlanceAPISpec struct {
 	// +kubebuilder:validation:Optional
 	// StorageRequest
 	StorageRequest string `json:"storageRequest,omitempty"`
+
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret
@@ -144,6 +150,22 @@ type GlanceAPIDebug struct {
 	// +kubebuilder:default=false
 	// Service enable debug
 	Service bool `json:"service,omitempty"`
+}
+
+// GlanceAPICephBackend defines the Ceph client parameters
+type GlanceAPICephBackend struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="CephClusterFSID"
+	// CephClusterFSID defines the fsid
+	CephClusterFSID string `json:"cephFsid,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="CephClusterMonHosts"
+	// CephClusterMons defines the commma separated mon list
+	CephClusterMonHosts string `json:"cephMons,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="CephClientKey"
+	// CephClientKey set the Ceph cluster key used by Glance
+	CephClientKey string `json:"cephClientKey,omitempty"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI

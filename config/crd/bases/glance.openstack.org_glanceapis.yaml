@@ -44,6 +44,24 @@ spec:
           spec:
             description: GlanceAPISpec defines the desired state of GlanceAPI
             properties:
+              cephBackend:
+                description: 'CephBackend - The ceph Backend structure with all the
+                  parameters TODO: -> implement a backend wrapper in a generic structure'
+                properties:
+                  cephClientKey:
+                    default: CephClientKey
+                    description: CephClientKey set the Ceph cluster key used by Glance
+                    type: string
+                  cephFsid:
+                    default: CephClusterFSID
+                    description: CephClusterFSID defines the fsid
+                    type: string
+                  cephMons:
+                    default: CephClusterMonHosts
+                    description: CephClusterMons defines the commma separated mon
+                      list
+                    type: string
+                type: object
               containerImage:
                 description: GlanceAPI Container Image URL
                 type: string
