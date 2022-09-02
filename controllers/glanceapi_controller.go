@@ -238,11 +238,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	} else if (ctrlResult != ctrl.Result{}) {
 		return ctrlResult, nil
 	}
-
-	if pvc.GetPvc().Status.Phase != corev1.ClaimBound {
-		r.Log.Info("Waiting for GlanceAPI PVC to bind")
-		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
-	}
 	// End PVC creation/patch
 
 	//
