@@ -166,6 +166,21 @@ type GlanceAPICephBackend struct {
 	// +kubebuilder:default="CephClientKey"
 	// CephClientKey set the Ceph cluster key used by Glance
 	CephClientKey string `json:"cephClientKey,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="CephUser"
+	// CephUser set the Ceph cluster pool used by Glance
+	CephUser string `json:"cephUser,omitempty"`
+	// +kubebuilder:validation:Optional
+	// CephPools - Map of chosen names to spec definitions for the Ceph cluster
+	// pools used by Glance
+	CephPools map[string]CephPoolSpec `json:"cephPools,omitempty"`
+}
+
+// CephPoolSpec defines the Ceph pool Spec parameters
+type CephPoolSpec struct {
+	// +kubebuilder:validation:Required
+	// CephPoolName defines the name of the pool
+	CephPoolName string `json:"name"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI

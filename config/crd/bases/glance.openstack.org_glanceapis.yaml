@@ -61,6 +61,23 @@ spec:
                     description: CephClusterMons defines the commma separated mon
                       list
                     type: string
+                  cephPools:
+                    additionalProperties:
+                      description: CephPoolSpec defines the Ceph pool Spec parameters
+                      properties:
+                        name:
+                          description: CephPoolName defines the name of the pool
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    description: CephPools - Map of chosen names to spec definitions
+                      for the Ceph cluster pools used by Glance
+                    type: object
+                  cephUser:
+                    default: CephUser
+                    description: CephUser set the Ceph cluster pool used by Glance
+                    type: string
                 type: object
               containerImage:
                 description: GlanceAPI Container Image URL

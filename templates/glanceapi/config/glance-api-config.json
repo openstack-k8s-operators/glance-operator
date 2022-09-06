@@ -27,7 +27,7 @@
       },
       {
         "source": "/var/lib/config-data/merged/ceph.client.openstack.keyring",
-        "dest": "/etc/ceph/ceph.client.openstack.keyring",
+        "dest": "/etc/ceph/ceph.client.{{ .CephUser }}.keyring",
         "owner": "glance",
         "perm": "0600"
       }
