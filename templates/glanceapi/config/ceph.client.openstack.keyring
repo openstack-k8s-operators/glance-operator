@@ -1,5 +1,5 @@
-[client.openstack]
+[client.{{ .CephUser }}]
         key = {{ .CephClientKey }}
         caps mgr = "allow *"
         caps mon = "profile rbd"
-        caps osd = "profile rbd pool=volumes, profile rbd pool=vms, profile rbd pool=images, profile rbd pool=backups, profile rbd pool=metrics"
+        caps osd = "{{ .CephOsdCaps }}"

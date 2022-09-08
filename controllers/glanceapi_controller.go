@@ -658,6 +658,12 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 		templateParameters["CephClusterFSID"] = instance.Spec.CephBackend.CephClusterFSID
 		templateParameters["CephClusterMonHosts"] = instance.Spec.CephBackend.CephClusterMonHosts
 		templateParameters["CephClientKey"] = instance.Spec.CephBackend.CephClientKey
+		// The pool we write in glance-api.conf
+		templateParameters["CephPool"] = glance.GetCephGlancePool(instance)
+		// The ceph user used by the glance service and defined in the client key
+		templateParameters["CephUser"] = glance.GetCephRbdUser(instance)
+		// The OSD caps required in the client keyring
+		templateParameters["CephOsdCaps"] = glance.GetCephOsdCaps(instance)
 	}
 
 	cms := []util.Template{
