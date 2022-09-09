@@ -1,5 +1,5 @@
-[client.{{ .CephUser }}]
-        key = {{ .CephClientKey }}
+[client.{{ .User }}]
+        key = {{ .ClientKey }}
         caps mgr = "allow *"
         caps mon = "profile rbd"
-        caps osd = "{{ .CephOsdCaps }}"
+        caps osd = "{{ .OsdCaps }}"
