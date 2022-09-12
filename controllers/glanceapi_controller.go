@@ -207,12 +207,16 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 
 	// It's possible to get here before the endpoints have been set in the status, so check for this
 	if instance.Status.APIEndpoints != nil {
-		ks, _ := keystone.GetKeystoneServiceWithName(ctx, helper, glance.ServiceName, instance.Namespace)
-		//Ensure the service exists
-		ksSvc := keystone.NewKeystoneService(ks.Spec, instance.Namespace, map[string]string{}, 10)
-		err := ksSvc.Delete(ctx, helper)
-		if err != nil {
+		ks, err := keystone.GetKeystoneServiceWithName(ctx, helper, glance.ServiceName, instance.Namespace)
+		if err != nil && !k8s_errors.IsNotFound(err) {
 			return ctrl.Result{}, err
+		}
+		if !k8s_errors.IsNotFound(err) {
+			ksSvc := keystone.NewKeystoneService(ks.Spec, instance.Namespace, map[string]string{}, 10)
+			err = ksSvc.Delete(ctx, helper)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 	// Service is deleted so remove the finalizer.
