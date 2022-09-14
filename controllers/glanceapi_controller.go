@@ -32,8 +32,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
-	keystonev1beta1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
-	keystone "github.com/openstack-k8s-operators/keystone-operator/pkg/external"
+	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/configmap"
@@ -191,7 +190,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1beta1.GlanceAPI{}).
 		Owns(&mariadbv1beta1.MariaDBDatabase{}).
-		Owns(&keystonev1beta1.KeystoneService{}).
+		Owns(&keystonev1.KeystoneService{}).
 		Owns(&batchv1.Job{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
@@ -207,12 +206,12 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 
 	// It's possible to get here before the endpoints have been set in the status, so check for this
 	if instance.Status.APIEndpoints != nil {
-		ks, err := keystone.GetKeystoneServiceWithName(ctx, helper, glance.ServiceName, instance.Namespace)
+		ks, err := keystonev1.GetKeystoneServiceWithName(ctx, helper, glance.ServiceName, instance.Namespace)
 		if err != nil && !k8s_errors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
 		if !k8s_errors.IsNotFound(err) {
-			ksSvc := keystone.NewKeystoneService(ks.Spec, instance.Namespace, map[string]string{}, 10)
+			ksSvc := keystonev1.NewKeystoneService(ks.Spec, instance.Namespace, map[string]string{}, 10)
 			err = ksSvc.Delete(ctx, helper)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -374,7 +373,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		return ctrl.Result{}, err
 	}
 
-	ksSvcSpec := keystonev1beta1.KeystoneServiceSpec{
+	ksSvcSpec := keystonev1.KeystoneServiceSpec{
 		ServiceType:        glance.ServiceType,
 		ServiceName:        glance.ServiceName,
 		ServiceDescription: "Glance Service",
@@ -385,7 +384,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		PasswordSelector:   instance.Spec.PasswordSelectors.Service,
 	}
 
-	ksSvc := keystone.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, 10)
+	ksSvc := keystonev1.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, 10)
 	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err
@@ -646,7 +645,7 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 		customData[key] = data
 	}
 
-	keystoneAPI, err := keystone.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
+	keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
 	// KeystoneAPI not available we should not aggregate the error and continue
 	if err != nil {
 		return err
