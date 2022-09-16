@@ -18,10 +18,9 @@ package v1beta1
 
 import (
 	"fmt"
-
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
-
+	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -87,8 +86,7 @@ type GlanceAPISpec struct {
 
 	// +kubebuilder:validation:Optional
 	// CephBackend - The ceph Backend structure with all the parameters
-	// TODO: -> implement a backend wrapper in a generic structure
-	CephBackend GlanceAPICephBackend `json:"cephBackend,omitempty"`
+	CephBackend ceph.Backend `json:"cephBackend,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
@@ -150,37 +148,6 @@ type GlanceAPIDebug struct {
 	// +kubebuilder:default=false
 	// Service enable debug
 	Service bool `json:"service,omitempty"`
-}
-
-// GlanceAPICephBackend defines the Ceph client parameters
-type GlanceAPICephBackend struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="CephClusterFSID"
-	// CephClusterFSID defines the fsid
-	CephClusterFSID string `json:"cephFsid,omitempty"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="CephClusterMonHosts"
-	// CephClusterMons defines the commma separated mon list
-	CephClusterMonHosts string `json:"cephMons,omitempty"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="CephClientKey"
-	// CephClientKey set the Ceph cluster key used by Glance
-	CephClientKey string `json:"cephClientKey,omitempty"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="CephUser"
-	// CephUser set the Ceph cluster pool used by Glance
-	CephUser string `json:"cephUser,omitempty"`
-	// +kubebuilder:validation:Optional
-	// CephPools - Map of chosen names to spec definitions for the Ceph cluster
-	// pools used by Glance
-	CephPools map[string]CephPoolSpec `json:"cephPools,omitempty"`
-}
-
-// CephPoolSpec defines the Ceph pool Spec parameters
-type CephPoolSpec struct {
-	// +kubebuilder:validation:Required
-	// CephPoolName defines the name of the pool
-	CephPoolName string `json:"name"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI

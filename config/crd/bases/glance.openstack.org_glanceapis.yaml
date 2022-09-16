@@ -49,29 +49,29 @@ spec:
                   parameters TODO: -> implement a backend wrapper in a generic structure'
                 properties:
                   cephClientKey:
-                    default: CephClientKey
-                    description: CephClientKey set the Ceph cluster key used by Glance
+                    default: ClientKey
+                    description: ClientKey sets the Ceph cluster key used by Glance
                     type: string
                   cephFsid:
-                    default: CephClusterFSID
-                    description: CephClusterFSID defines the fsid
+                    default: ClusterFSID
+                    description: ClusterFSID defines the fsid
                     type: string
                   cephMons:
-                    default: CephClusterMonHosts
-                    description: CephClusterMons defines the commma separated mon
+                    default: ClusterMons
+                    description: ClusterMons defines the commma separated mon
                       list
                     type: string
                   cephPools:
                     additionalProperties:
-                      description: CephPoolSpec defines the Ceph pool Spec parameters
+                      description: PoolSpec defines the Ceph pool Spec parameters
                       properties:
                         name:
-                          description: CephPoolName defines the name of the pool
+                          description: PoolName defines the name of the pool
                           type: string
                       required:
                       - name
                       type: object
-                    description: CephPools - Map of chosen names to spec definitions
+                    description: Pools - Map of chosen names to spec definitions
                       for the Ceph cluster pools used by Glance
                     type: object
                   cephUser:

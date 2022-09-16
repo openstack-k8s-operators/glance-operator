@@ -46,6 +46,7 @@ import (
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	"github.com/openstack-k8s-operators/lib-common/modules/database"
+	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
 	mariadbv1beta1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -668,15 +669,15 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	using the Client Key provisioned on the Ceph cluster
 	**/
 	if gb == "rbd" {
-		templateParameters["CephClusterFSID"] = instance.Spec.CephBackend.CephClusterFSID
-		templateParameters["CephClusterMonHosts"] = instance.Spec.CephBackend.CephClusterMonHosts
-		templateParameters["CephClientKey"] = instance.Spec.CephBackend.CephClientKey
+		templateParameters["ClusterFSID"] = instance.Spec.CephBackend.ClusterFSID
+		templateParameters["ClusterMonHosts"] = instance.Spec.CephBackend.ClusterMonHosts
+		templateParameters["ClientKey"] = instance.Spec.CephBackend.ClientKey
 		// The pool we write in glance-api.conf
-		templateParameters["CephPool"] = glance.GetCephGlancePool(instance)
+		templateParameters["Pool"], _ = ceph.GetPool(instance.Spec.CephBackend.Pools, "glance")
 		// The ceph user used by the glance service and defined in the client key
-		templateParameters["CephUser"] = glance.GetCephRbdUser(instance)
+		templateParameters["User"] = ceph.GetRbdUser(instance.Spec.CephBackend.User)
 		// The OSD caps required in the client keyring
-		templateParameters["CephOsdCaps"] = glance.GetCephOsdCaps(instance)
+		templateParameters["OsdCaps"] = ceph.GetOsdCaps(instance.Spec.CephBackend.Pools)
 	}
 
 	cms := []util.Template{
