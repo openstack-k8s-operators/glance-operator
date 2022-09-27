@@ -1,4 +1,5 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
 - glance_v1beta1_glanceapi.yaml
+- glance_v1beta1_glance.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

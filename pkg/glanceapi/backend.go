@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package glance
+package glanceapi
 
 import (
-	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
 )
 
@@ -24,7 +24,7 @@ import (
 // GlanceBackend is set to file by default. However, if Ceph parameters are
 // provided it means we want to use it as backend. This function checks the Ceph
 // related parameters and returns the right backend.
-func SetGlanceBackend(instance *glancev1beta1.GlanceAPI) string {
+func SetGlanceBackend(instance *glancev1.GlanceAPI) string {
 	// Validate parameters to enable CephBackend
 	if instance.Spec.CephBackend.ClusterFSID != "" &&
 		ceph.ValidateMons(instance.Spec.CephBackend.ClusterMonHosts) &&

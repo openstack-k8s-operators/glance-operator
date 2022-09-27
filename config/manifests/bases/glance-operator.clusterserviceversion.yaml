@@ -15,6 +15,11 @@ spec:
       kind: GlanceAPI
       name: glanceapis.glance.openstack.org
       version: v1beta1
+    - description: Glance is the Schema for the glances API
+      displayName: Glance
+      kind: Glance
+      name: glances.glance.openstack.org
+      version: v1beta1
   description: Glance Operator
   displayName: Glance Operator
   icon:

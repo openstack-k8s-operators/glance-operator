@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"fmt"
+
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
@@ -26,13 +27,6 @@ import (
 )
 
 const (
-	// GlanceFinalizer allows GlanceAPIReconciler to clean up resources associated with GlanceAPI before
-	// removing it from the apiserver.
-	GlanceFinalizer = "glanceapi.osp-director.openstack.org"
-
-	// DbSyncHash hash
-	DbSyncHash = "dbsync"
-
 	// DeploymentHash hash used to detect changes
 	DeploymentHash = "deployment"
 )
@@ -45,20 +39,13 @@ type GlanceAPISpec struct {
 	ServiceUser string `json:"serviceUser"`
 
 	// +kubebuilder:validation:Required
-	// MariaDB instance name
-	// Right now required by the maridb-operator to get the credentials from the instance to create the DB
-	// Might not be required in future
-	DatabaseInstance string `json:"databaseInstance,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=glance
-	// DatabaseUser - optional username used for glance DB, defaults to glance
-	// TODO: -> implement needs work in mariadb-operator, right now only glance
-	DatabaseUser string `json:"databaseUser"`
-
-	// +kubebuilder:validation:Required
 	// GlanceAPI Container Image URL
 	ContainerImage string `json:"containerImage,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=internal;external
+	// +kubebuilder:default=external
+	APIType string `json:"apiType,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=1
@@ -67,12 +54,22 @@ type GlanceAPISpec struct {
 	// Replicas of glance API to run
 	Replicas int32 `json:"replicas"`
 
-	// +kubebuilder:validation:Required
-	// Secret containing OpenStack password information for glance GlanceDatabasePassword, AdminPassword
-	Secret string `json:"secret,omitempty"`
+	// +kubebuilder:validation:Optional
+	// DatabaseHostname - Glance Database Hostname
+	DatabaseHostname string `json:"databaseHostname"`
 
 	// +kubebuilder:validation:Optional
-	// PasswordSelectors - Selectors to identify the DB and AdminUser password from the Secret
+	// +kubebuilder:default=glance
+	// DatabaseUser - optional username used for glance DB, defaults to glance
+	// TODO: -> implement needs work in mariadb-operator, right now only glance
+	DatabaseUser string `json:"databaseUser"`
+
+	// +kubebuilder:validation:Optional
+	// Secret containing OpenStack password information for glance AdminPassword
+	Secret string `json:"secret"`
+
+	// +kubebuilder:validation:Optional
+	// PasswordSelectors - Selectors to identify the AdminUser password from the Secret
 	PasswordSelectors PasswordSelector `json:"passwordSelectors,omitempty"`
 
 	// +kubebuilder:validation:Optional
@@ -89,9 +86,8 @@ type GlanceAPISpec struct {
 	CephBackend ceph.Backend `json:"cephBackend,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// PreserveJobs - do not delete jobs after they finished e.g. to check logs
-	PreserveJobs bool `json:"preserveJobs,omitempty"`
+	// Pvc - Storage claim for file-backed Glance
+	Pvc string `json:"pvc,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default="# add your customization here"
@@ -110,40 +106,10 @@ type GlanceAPISpec struct {
 	// Resources - Compute Resources required by this service (Limits/Requests).
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// StorageClass
-	StorageClass string `json:"storageClass,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// StorageRequest
-	StorageRequest string `json:"storageRequest,omitempty"`
-
-}
-
-// PasswordSelector to identify the DB and AdminUser password from the Secret
-type PasswordSelector struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="GlanceDatabasePassword"
-	// Database - Selector to get the glance database user password from the Secret
-	// TODO: not used, need change in mariadb-operator
-	Database string `json:"database,omitempty"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="GlancePassword"
-	// Database - Selector to get the glance service password from the Secret
-	Service string `json:"admin,omitempty"`
 }
 
 // GlanceAPIDebug defines the observed state of GlanceAPIDebug
 type GlanceAPIDebug struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// DBSync enable debug
-	DBSync bool `json:"dbSync,omitempty"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Bootstrap enable debug
-	Bootstrap bool `json:"bootstrap,omitempty"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// Service enable debug
@@ -161,14 +127,8 @@ type GlanceAPIStatus struct {
 	// API endpoint
 	APIEndpoints map[string]string `json:"apiEndpoint,omitempty"`
 
-	// ServiceID
-	ServiceID string `json:"serviceID,omitempty"`
-
 	// Conditions
 	Conditions condition.Conditions `json:"conditions,omitempty" optional:"true"`
-
-	// Glance Database Hostname
-	DatabaseHostname string `json:"databaseHostname,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -209,8 +169,6 @@ func (instance GlanceAPI) GetEndpoint(endpointType endpoint.Endpoint) (string, e
 // IsReady - returns true if service is ready to server requests
 func (instance GlanceAPI) IsReady() bool {
 	// Ready when:
-	// the service is registered in keystone
-	// AND
 	// there is at least a single pod to serve the glance service
-	return instance.Status.ServiceID != "" && instance.Status.ReadyCount >= 1
+	return instance.Status.ReadyCount >= 1
 }

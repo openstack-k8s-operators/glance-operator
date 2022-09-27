@@ -34,10 +34,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
+	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
+
+	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/controllers"
-	keystonev1beta1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
-	mariadbv1beta1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -49,9 +50,9 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(glancev1beta1.AddToScheme(scheme))
-	utilruntime.Must(mariadbv1beta1.AddToScheme(scheme))
-	utilruntime.Must(keystonev1beta1.AddToScheme(scheme))
+	utilruntime.Must(glancev1.AddToScheme(scheme))
+	utilruntime.Must(mariadbv1.AddToScheme(scheme))
+	utilruntime.Must(keystonev1.AddToScheme(scheme))
 	utilruntime.Must(routev1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
@@ -104,6 +105,15 @@ func main() {
 		Log:     ctrl.Log.WithName("controllers").WithName("GlanceAPI"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GlanceAPI")
+		os.Exit(1)
+	}
+	if err = (&controllers.GlanceReconciler{
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Kclient: kclient,
+		Log:     ctrl.Log.WithName("controllers").WithName("Glance"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Glance")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

@@ -32,7 +32,7 @@ const (
 
 // DbSyncJob func
 func DbSyncJob(
-	instance *glancev1.GlanceAPI,
+	instance *glancev1.Glance,
 	labels map[string]string,
 ) *batchv1.Job {
 	runAsUser := int64(0)
@@ -72,7 +72,7 @@ func DbSyncJob(
 								RunAsUser: &runAsUser,
 							},
 							Env:          env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts: getVolumeMounts(),
+							VolumeMounts: GetVolumeMounts(),
 						},
 					},
 				},
@@ -80,7 +80,7 @@ func DbSyncJob(
 		},
 	}
 
-	job.Spec.Template.Spec.Volumes = getVolumes(ServiceName)
+	job.Spec.Template.Spec.Volumes = GetVolumes(instance.Name, ServiceName)
 
 	initContainerDetails := APIDetails{
 		ContainerImage:       instance.Spec.ContainerImage,
@@ -92,7 +92,7 @@ func DbSyncJob(
 		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
 		VolumeMounts:         getInitVolumeMounts(),
 	}
-	job.Spec.Template.Spec.InitContainers = initContainer(initContainerDetails)
+	job.Spec.Template.Spec.InitContainers = InitContainer(initContainerDetails)
 
 	return job
 }
