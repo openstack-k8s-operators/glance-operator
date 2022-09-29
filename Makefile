@@ -58,6 +58,18 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# Project is OpenShift centered, so we use oc instead of kubectl, but the
+# operator-sdk uses kubectl.
+# To avoid errors try to create a kubectl symlink to oc when there's no kubectl.
+# Won't create it if oc is in a dir requiring sudo to write.
+ifeq ($(shell which kubectl 2>/dev/null),)
+       ifeq ($(shell which oc 2>/dev/null),)
+               res := $(warning Command "oc" and "kubectl" missing, some targets may fail)
+       else
+               res := $(shell ln -s oc `dirname \`which oc\``/kubectl)
+       endif
+endif
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
