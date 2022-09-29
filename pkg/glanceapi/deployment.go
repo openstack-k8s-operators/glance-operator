@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package glance
+package glanceapi
 
 import (
+	"fmt"
+
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
@@ -72,24 +75,31 @@ func Deployment(
 		//
 		// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 		//
+
+		port := int32(glance.GlancePublicPort)
+
+		if instance.Spec.APIType == glancev1.APIInternal {
+			port = int32(glance.GlanceInternalPort)
+		}
+
 		livenessProbe.HTTPGet = &corev1.HTTPGetAction{
 			Path: "/healthcheck",
-			Port: intstr.IntOrString{Type: intstr.Int, IntVal: int32(GlancePublicPort)},
+			Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
 		}
 		readinessProbe.HTTPGet = &corev1.HTTPGetAction{
 			Path: "/healthcheck",
-			Port: intstr.IntOrString{Type: intstr.Int, IntVal: int32(GlancePublicPort)},
+			Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
 		}
 	}
 
 	envVars := map[string]env.Setter{}
-	envVars["KOLLA_CONFIG_FILE"] = env.SetValue(KollaConfig)
+	envVars["KOLLA_CONFIG_FILE"] = env.SetValue(glance.KollaConfig)
 	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServiceName,
+			Name:      fmt.Sprintf("%s-api", instance.Name),
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -102,10 +112,10 @@ func Deployment(
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: ServiceAccount,
+					ServiceAccountName: glance.ServiceAccount,
 					Containers: []corev1.Container{
 						{
-							Name: ServiceName + "-api",
+							Name: glance.ServiceName + "-api",
 							Command: []string{
 								"/bin/bash",
 							},
@@ -115,7 +125,7 @@ func Deployment(
 								RunAsUser: &runAsUser,
 							},
 							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts:   getVolumeMounts(),
+							VolumeMounts:   glance.GetVolumeMounts(),
 							Resources:      instance.Spec.Resources,
 							ReadinessProbe: readinessProbe,
 							LivenessProbe:  livenessProbe,
@@ -125,14 +135,14 @@ func Deployment(
 			},
 		},
 	}
-	deployment.Spec.Template.Spec.Volumes = getVolumes(instance.Name)
+	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(instance.Name, glance.ServiceName)
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
 	// the get still created on the same worker node.
 	deployment.Spec.Template.Spec.Affinity = affinity.DistributePods(
 		common.AppSelector,
 		[]string{
-			ServiceName,
+			glance.ServiceName,
 		},
 		corev1.LabelHostname,
 	)
@@ -140,17 +150,17 @@ func Deployment(
 		deployment.Spec.Template.Spec.NodeSelector = instance.Spec.NodeSelector
 	}
 
-	initContainerDetails := APIDetails{
+	initContainerDetails := glance.APIDetails{
 		ContainerImage:       instance.Spec.ContainerImage,
-		DatabaseHost:         instance.Status.DatabaseHostname,
+		DatabaseHost:         instance.Spec.DatabaseHostname,
 		DatabaseUser:         instance.Spec.DatabaseUser,
-		DatabaseName:         DatabaseName,
+		DatabaseName:         glance.DatabaseName,
 		OSPSecret:            instance.Spec.Secret,
 		DBPasswordSelector:   instance.Spec.PasswordSelectors.Database,
 		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
 		VolumeMounts:         getInitVolumeMounts(),
 	}
-	deployment.Spec.Template.Spec.InitContainers = initContainer(initContainerDetails)
+	deployment.Spec.Template.Spec.InitContainers = glance.InitContainer(initContainerDetails)
 
 	return deployment
 }

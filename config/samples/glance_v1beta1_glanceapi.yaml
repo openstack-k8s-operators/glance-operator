@@ -1,15 +1,15 @@
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
 metadata:
-  name: glance
+  name: glanceapi
 spec:
   serviceUser: glance
   containerImage: quay.io/tripleotraincentos8/centos-binary-glance-api:current-tripleo
   customServiceConfig: |
     [DEFAULT]
     debug = true
-  databaseInstance: openstack
   databaseUser: glance
+  databaseHostname: glance
   debug:
     dbSync: false
     service: false

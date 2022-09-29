@@ -19,8 +19,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// getVolumes - service volumes
-func getVolumes(name string) []corev1.Volume {
+// GetVolumes - service volumes
+func GetVolumes(name string, pvcName string) []corev1.Volume {
 	var scriptsVolumeDefaultMode int32 = 0755
 	var config0640AccessMode int32 = 0640
 
@@ -57,7 +57,7 @@ func getVolumes(name string) []corev1.Volume {
 			Name: "lib-data",
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: name,
+					ClaimName: pvcName,
 				},
 			},
 		},
@@ -86,8 +86,8 @@ func getInitVolumeMounts() []corev1.VolumeMount {
 	}
 }
 
-// getVolumeMounts - general VolumeMounts
-func getVolumeMounts() []corev1.VolumeMount {
+// GetVolumeMounts - general VolumeMounts
+func GetVolumeMounts() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
 			Name:      "scripts",

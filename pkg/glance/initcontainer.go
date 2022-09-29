@@ -39,8 +39,8 @@ const (
 	InitContainerCommand = "/usr/local/bin/container-scripts/init.sh"
 )
 
-// initContainer - init container for glance api pods
-func initContainer(init APIDetails) []corev1.Container {
+// InitContainer - init container for glance api pods
+func InitContainer(init APIDetails) []corev1.Container {
 	runAsUser := int64(0)
 
 	args := []string{

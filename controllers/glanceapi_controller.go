@@ -30,8 +30,9 @@ import (
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
-	glancev1beta1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	"github.com/openstack-k8s-operators/glance-operator/pkg/glanceapi"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
@@ -40,17 +41,12 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/pvc"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
-	"github.com/openstack-k8s-operators/lib-common/modules/database"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
-	mariadbv1beta1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 )
@@ -86,23 +82,20 @@ type GlanceAPIReconciler struct {
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update
-// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;create;update;delete;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete;
-// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete;
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete;
+// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete;
-// +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbdatabases,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
-// +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneservices,verbs=get;list;watch;create;update;patch;delete;
+// +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneendpoints,verbs=get;list;watch;create;update;patch;delete;
 
 // Reconcile reconcile Glance API requests
 func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
 	// Fetch the GlanceAPI instance
-	instance := &glancev1beta1.GlanceAPI{}
+	instance := &glancev1.GlanceAPI{}
 	err := r.Client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
@@ -122,14 +115,12 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		instance.Status.Conditions = condition.Conditions{}
 		// initialize conditions used later as Status=Unknown
 		cl := condition.CreateList(
-			condition.UnknownCondition(condition.DBReadyCondition, condition.InitReason, condition.DBReadyInitMessage),
-			condition.UnknownCondition(condition.DBSyncReadyCondition, condition.InitReason, condition.DBSyncReadyInitMessage),
 			condition.UnknownCondition(condition.ExposeServiceReadyCondition, condition.InitReason, condition.ExposeServiceReadyInitMessage),
 			condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 			condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
 			condition.UnknownCondition(condition.DeploymentReadyCondition, condition.InitReason, condition.DeploymentReadyInitMessage),
-			// right now we have no dedicated KeystoneServiceReadyInitMessage
-			condition.UnknownCondition(condition.KeystoneServiceReadyCondition, condition.InitReason, ""),
+			// right now we have no dedicated KeystoneEndpointReadyInitMessage
+			condition.UnknownCondition(condition.KeystoneEndpointReadyCondition, condition.InitReason, ""),
 		)
 
 		instance.Status.Conditions.Init(&cl)
@@ -189,39 +180,36 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&glancev1beta1.GlanceAPI{}).
-		Owns(&mariadbv1beta1.MariaDBDatabase{}).
-		Owns(&keystonev1.KeystoneService{}).
-		Owns(&batchv1.Job{}).
+		For(&glancev1.GlanceAPI{}).
+		Owns(&keystonev1.KeystoneEndpoint{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&routev1.Route{}).
-		Owns(&corev1.PersistentVolumeClaim{}).
 		Complete(r)
 }
 
-func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *glancev1beta1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info("Reconciling Service delete")
+func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
+	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
 
-	// It's possible to get here before the endpoints have been set in the status, so check for this
-	if instance.Status.APIEndpoints != nil {
-		ks, err := keystonev1.GetKeystoneServiceWithName(ctx, helper, glance.ServiceName, instance.Namespace)
-		if err != nil && !k8s_errors.IsNotFound(err) {
+	// Remove the finalizer from our KeystoneEndpoint CR
+	keystoneEndpoint, err := keystonev1.GetKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
+	if err != nil && !k8s_errors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+
+	if err == nil {
+		controllerutil.RemoveFinalizer(keystoneEndpoint, helper.GetFinalizer())
+		if err = helper.GetClient().Update(ctx, keystoneEndpoint); err != nil && !k8s_errors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
-		if !k8s_errors.IsNotFound(err) {
-			ksSvc := keystonev1.NewKeystoneService(ks.Spec, instance.Namespace, map[string]string{}, 10)
-			err = ksSvc.Delete(ctx, helper)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		}
+		util.LogForObject(helper, "Removed finalizer from our KeystoneEndpoint", instance)
 	}
-	// Service is deleted so remove the finalizer.
+
+	// Endpoints are deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
-	r.Log.Info("Reconciled Service delete successfully")
+	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
 	if err := r.Update(ctx, instance); err != nil && !k8s_errors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
@@ -231,99 +219,28 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 
 func (r *GlanceAPIReconciler) reconcileInit(
 	ctx context.Context,
-	instance *glancev1beta1.GlanceAPI,
+	instance *glancev1.GlanceAPI,
 	helper *helper.Helper,
 	serviceLabels map[string]string,
 ) (ctrl.Result, error) {
-	r.Log.Info("Reconciling Service init")
-
-	// Define a new PVC object
-	// TODO: Once conditions added to PVC lib-common logic, handle
-	//       the returned condition here
-	pvc := pvc.NewPvc(
-		glance.Pvc(instance, serviceLabels),
-		5,
-	)
-
-	ctrlResult, err := pvc.CreateOrPatch(ctx, helper)
-
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-	// End PVC creation/patch
-
-	//
-	// create service DB instance
-	//
-	db := database.NewDatabase(
-		instance.Name,
-		instance.Spec.DatabaseUser,
-		instance.Spec.Secret,
-		map[string]string{
-			"dbName": instance.Spec.DatabaseInstance,
-		},
-	)
-	// create or patch the DB
-	ctrlResult, err = db.CreateOrPatchDB(
-		ctx,
-		helper,
-	)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.DBReadyErrorMessage,
-			err.Error()))
-		return ctrl.Result{}, err
-	}
-	if (ctrlResult != ctrl.Result{}) {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBReadyCondition,
-			condition.RequestedReason,
-			condition.SeverityInfo,
-			condition.DBReadyRunningMessage))
-		return ctrlResult, nil
-	}
-	// wait for the DB to be setup
-	ctrlResult, err = db.WaitForDBCreated(ctx, helper)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.DBReadyErrorMessage,
-			err.Error()))
-		return ctrlResult, err
-	}
-	if (ctrlResult != ctrl.Result{}) {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBReadyCondition,
-			condition.RequestedReason,
-			condition.SeverityInfo,
-			condition.DBReadyRunningMessage))
-		return ctrlResult, nil
-	}
-	// update Status.DatabaseHostname, used to bootstrap/config the service
-	instance.Status.DatabaseHostname = db.GetDatabaseHostname()
-	instance.Status.Conditions.MarkTrue(condition.DBReadyCondition, condition.DBReadyMessage)
-	// create service DB - end
+	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
 
 	//
 	// expose the service (create service, route and return the created endpoint URLs)
 	//
-	var ports = map[endpoint.Endpoint]endpoint.Data{
-		endpoint.EndpointAdmin: {
+	ports := map[endpoint.Endpoint]endpoint.Data{}
+
+	if instance.Spec.APIType == glancev1.APIInternal {
+		ports[endpoint.EndpointAdmin] = endpoint.Data{
 			Port: glance.GlanceAdminPort,
-		},
-		endpoint.EndpointPublic: {
-			Port: glance.GlancePublicPort,
-		},
-		endpoint.EndpointInternal: {
+		}
+		ports[endpoint.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
-		},
+		}
+	} else {
+		ports[endpoint.EndpointPublic] = endpoint.Data{
+			Port: glance.GlancePublicPort,
+		}
 	}
 
 	apiEndpoints, ctrlResult, err := endpoint.ExposeEndpoints(
@@ -363,37 +280,23 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	// expose service - end
 
 	//
-	// create users and endpoints - https://docs.openstack.org/Glance/latest/install/install-rdo.html#configure-user-and-endpoints
-	// TODO: rework this
+	// create keystone endpoints
 	//
-	_, _, err = oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
-	if err != nil {
-		if k8s_errors.IsNotFound(err) {
-			return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
-		}
-		return ctrl.Result{}, err
+
+	ksEndpointSpec := keystonev1.KeystoneEndpointSpec{
+		ServiceName: glance.ServiceName,
+		Endpoints:   instance.Status.APIEndpoints,
 	}
 
-	ksSvcSpec := keystonev1.KeystoneServiceSpec{
-		ServiceType:        glance.ServiceType,
-		ServiceName:        glance.ServiceName,
-		ServiceDescription: "Glance Service",
-		Enabled:            true,
-		APIEndpoints:       instance.Status.APIEndpoints,
-		ServiceUser:        instance.Spec.ServiceUser,
-		Secret:             instance.Spec.Secret,
-		PasswordSelector:   instance.Spec.PasswordSelectors.Service,
-	}
-
-	ksSvc := keystonev1.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, 10)
+	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, 10)
 	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err
 	}
 
-	// mirror the Status, Reason, Severity and Message of the latest keystoneservice condition
-	// into a local condition with the type condition.KeystoneServiceReadyCondition
-	c := ksSvc.GetConditions().Mirror(condition.KeystoneServiceReadyCondition)
+	// mirror the Status, Reason, Severity and Message of the latest keystoneendpoint condition
+	// into a local condition with the type condition.KeystoneEndpointReadyCondition
+	c := ksSvc.GetConditions().Mirror(condition.KeystoneEndpointReadyCondition)
 	if c != nil {
 		instance.Status.Conditions.Set(c)
 	}
@@ -402,78 +305,36 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		return ctrlResult, nil
 	}
 
-	instance.Status.ServiceID = ksSvc.GetServiceID()
-
 	//
-	// run Glance db sync
+	// create keystone endpoints - end
 	//
-	dbSyncHash := instance.Status.Hash[glancev1beta1.DbSyncHash]
-	jobDef := glance.DbSyncJob(instance, serviceLabels)
-	dbSyncjob := job.NewJob(
-		jobDef,
-		glancev1beta1.DbSyncHash,
-		instance.Spec.PreserveJobs,
-		5,
-		dbSyncHash,
-	)
-	ctrlResult, err = dbSyncjob.DoJob(
-		ctx,
-		helper,
-	)
-	if (ctrlResult != ctrl.Result{}) {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBSyncReadyCondition,
-			condition.RequestedReason,
-			condition.SeverityInfo,
-			condition.DBSyncReadyRunningMessage))
-		return ctrlResult, nil
-	}
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBSyncReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.DBSyncReadyErrorMessage,
-			err.Error()))
-		return ctrl.Result{}, err
-	}
-	if dbSyncjob.HasChanged() {
-		instance.Status.Hash[glancev1beta1.DbSyncHash] = dbSyncjob.GetHash()
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			return ctrl.Result{}, err
-		}
-		r.Log.Info(fmt.Sprintf("Job %s hash added - %s", jobDef.Name, instance.Status.Hash[glancev1beta1.DbSyncHash]))
-	}
-	instance.Status.Conditions.MarkTrue(condition.DBSyncReadyCondition, condition.DBSyncReadyMessage)
 
-	// run Glance db sync - end
-
-	r.Log.Info("Reconciled Service init successfully")
+	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceAPIReconciler) reconcileUpdate(ctx context.Context, instance *glancev1beta1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info("Reconciling Service update")
+func (r *GlanceAPIReconciler) reconcileUpdate(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
+	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' update", instance.Name))
 
 	// TODO: should have minor update tasks if required
 	// - delete dbsync hash from status to rerun it?
 
-	r.Log.Info("Reconciled Service update successfully")
+	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' update successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceAPIReconciler) reconcileUpgrade(ctx context.Context, instance *glancev1beta1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info("Reconciling Service upgrade")
+func (r *GlanceAPIReconciler) reconcileUpgrade(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
+	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' upgrade", instance.Name))
 
 	// TODO: should have major version upgrade tasks
 	// -delete dbsync hash from status to rerun it?
 
-	r.Log.Info("Reconciled Service upgrade successfully")
+	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' upgrade successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1beta1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info("Reconciling Service")
+func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
+	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
 	// If the service object doesn't have our finalizer, add it.
 	controllerutil.AddFinalizer(instance, helper.GetFinalizer())
@@ -554,7 +415,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 
 	serviceLabels := map[string]string{
-		common.AppSelector: glance.ServiceName,
+		common.AppSelector: fmt.Sprintf("%s-%s", glance.ServiceName, instance.Spec.APIType),
 	}
 
 	// Handle service init
@@ -587,7 +448,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 
 	// Define a new Deployment object
 	depl := deployment.NewDeployment(
-		glance.Deployment(instance, inputHash, serviceLabels),
+		glanceapi.Deployment(instance, inputHash, serviceLabels),
 		5,
 	)
 
@@ -614,7 +475,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 	// create Deployment - end
 
-	r.Log.Info("Reconciled Service successfully")
+	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
@@ -625,7 +486,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	ctx context.Context,
 	h *helper.Helper,
-	instance *glancev1beta1.GlanceAPI,
+	instance *glancev1.GlanceAPI,
 	envVars *map[string]env.Setter,
 ) error {
 	//
@@ -661,7 +522,7 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	templateParameters["KeystonePublicURL"] = authURL
 
 	// Select CephBackend (otherwise "file" is the default)
-	gb := glance.SetGlanceBackend(instance)
+	gb := glanceapi.SetGlanceBackend(instance)
 	templateParameters["GlanceBackend"] = gb
 
 	/** If the Glance Backend is Ceph, populate the required templateParameters
@@ -678,6 +539,13 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 		templateParameters["User"] = ceph.GetRbdUser(instance.Spec.CephBackend.User)
 		// The OSD caps required in the client keyring
 		templateParameters["OsdCaps"] = ceph.GetOsdCaps(instance.Spec.CephBackend.Pools)
+	}
+
+	// We set "show_image_direct_url" to true if this is an internal GlanceAPI,
+	// otherwise we default to false
+	templateParameters["ShowImageDirectUrl"] = false
+	if instance.Spec.APIType == glancev1.APIInternal {
+		templateParameters["ShowImageDirectUrl"] = true
 	}
 
 	cms := []util.Template{
@@ -716,7 +584,7 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 //
 func (r *GlanceAPIReconciler) createHashOfInputHashes(
 	ctx context.Context,
-	instance *glancev1beta1.GlanceAPI,
+	instance *glancev1.GlanceAPI,
 	envVars map[string]env.Setter,
 ) (string, error) {
 	mergedMapVars := env.MergeEnvs([]corev1.EnvVar{}, envVars)

@@ -54,7 +54,7 @@ func TestAPIs(t *testing.T) {
 // 	Expect(err).NotTo(HaveOccurred())
 // 	Expect(cfg).NotTo(BeNil())
 
-// 	err = glancev1beta1.AddToScheme(scheme.Scheme)
+// 	err = glancev1.AddToScheme(scheme.Scheme)
 // 	Expect(err).NotTo(HaveOccurred())
 
 // 	//+kubebuilder:scaffold:scheme
