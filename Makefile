@@ -49,7 +49,8 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 endif
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+DEFAULT_IMG ?= quay.io/openstack-k8s-operators/glance-operator-index:latest
+IMG ?= $(DEFAULT_IMG)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24
 
@@ -136,6 +137,9 @@ docker-build: test ## Build docker image with the manager.
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
+ifeq ($(IMG), $(DEFAULT_IMG))
+	$(error As a precaution this target cannot push the default image. If that's really your intentention you'll need to do it manually.)
+endif
 	podman push --tls-verify=${VERIFY_TLS} ${IMG}
 
 ##@ Deployment

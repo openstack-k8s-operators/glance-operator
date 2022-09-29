@@ -46,19 +46,13 @@ for csv_image in $(cat "${CLUSTER_BUNDLE_FILE}" | grep "image:" | sed -e "s|.*im
 
   base_image=$(echo $csv_image | cut -f 1 -d${delimeter})
   tag_image=$(echo $csv_image | cut -f 2 -d${delimeter})
-
-  if [[ "$base_image:$tag_image" == "controller:latest" ]]; then
-    echo "$base_image:$tag_image becomes $OPERATOR_IMG_WITH_DIGEST"
-    sed -e "s|$base_image:$tag_image|$OPERATOR_IMG_WITH_DIGEST|g" -i "${CLUSTER_BUNDLE_FILE}"
+  digest_image=$(skopeo inspect docker://${base_image}${delimeter}${tag_image} | jq '.Digest' -r)
+  echo "Base image: $base_image"
+  if [ -n "$digest_image" ]; then
+    echo "$base_image${delimeter}$tag_image becomes $base_image@$digest_image"
+    sed -i "s|$base_image$delimeter$tag_image|$base_image@$digest_image|g" "${CLUSTER_BUNDLE_FILE}"
   else
-    digest_image=$(skopeo inspect docker://${base_image}${delimeter}${tag_image} | jq '.Digest' -r)
-    echo "Base image: $base_image"
-    if [ -n "$digest_image" ]; then
-      echo "$base_image${delimeter}$tag_image becomes $base_image@$digest_image"
-      sed -i "s|$base_image$delimeter$tag_image|$base_image@$digest_image|g" "${CLUSTER_BUNDLE_FILE}"
-    else
-      echo "$base_image${delimeter}$tag_image not changed"
-    fi
+    echo "$base_image${delimeter}$tag_image not changed"
   fi
 done
 
