@@ -248,6 +248,7 @@ func (in *GlanceSpec) DeepCopyInto(out *GlanceSpec) {
 	*out = *in
 	out.PasswordSelectors = in.PasswordSelectors
 	out.Debug = in.Debug
+	in.CephBackend.DeepCopyInto(&out.CephBackend)
 	if in.DefaultConfigOverwrite != nil {
 		in, out := &in.DefaultConfigOverwrite, &out.DefaultConfigOverwrite
 		*out = make(map[string]string, len(*in))
