@@ -610,6 +610,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 		deployment.Spec = apiInstance
 		// Add in transfers from umbrella Glance (this instance) spec
 		// TODO: Add logic to determine when to set/overwrite, etc
+		deployment.Spec.CephBackend = instance.Spec.CephBackend
 		deployment.Spec.ContainerImage = instance.Spec.ContainerImage
 		deployment.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
 		deployment.Spec.DatabaseHostname = instance.Status.DatabaseHostname

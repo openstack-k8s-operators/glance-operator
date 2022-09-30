@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -65,6 +66,10 @@ type GlanceSpec struct {
 	// Debug - enable debug for different deploy stages. If an init container is used, it runs and the
 	// actual action pod gets started with sleep infinity
 	Debug GlanceDebug `json:"debug,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// CephBackend - The ceph Backend structure with all the parameters
+	CephBackend ceph.Backend `json:"cephBackend,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false

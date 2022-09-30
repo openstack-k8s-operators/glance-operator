@@ -44,6 +44,12 @@ spec:
           spec:
             description: GlanceAPISpec defines the desired state of GlanceAPI
             properties:
+              apiType:
+                default: external
+                enum:
+                - internal
+                - external
+                type: string
               cephBackend:
                 description: CephBackend - The ceph Backend structure with all the
                   parameters
@@ -90,10 +96,8 @@ spec:
                   added to to /etc/<service>/<service>.conf.d directory as custom.conf
                   file.
                 type: string
-              databaseInstance:
-                description: MariaDB instance name Right now required by the maridb-operator
-                  to get the credentials from the instance to create the DB Might
-                  not be required in future
+              databaseHostname:
+                description: DatabaseHostname - Glance Database Hostname
                 type: string
               databaseUser:
                 default: glance
@@ -106,14 +110,6 @@ spec:
                   an init container is used, it runs and the actual action pod gets
                   started with sleep infinity
                 properties:
-                  bootstrap:
-                    default: false
-                    description: Bootstrap enable debug
-                    type: boolean
-                  dbSync:
-                    default: false
-                    description: DBSync enable debug
-                    type: boolean
                   service:
                     default: false
                     description: Service enable debug
@@ -134,8 +130,8 @@ spec:
                   this service
                 type: object
               passwordSelectors:
-                description: PasswordSelectors - Selectors to identify the DB and
-                  AdminUser password from the Secret
+                description: PasswordSelectors - Selectors to identify the AdminUser
+                  password from the Secret
                 properties:
                   admin:
                     default: GlancePassword
@@ -148,11 +144,9 @@ spec:
                       password from the Secret TODO: not used, need change in mariadb-operator'
                     type: string
                 type: object
-              preserveJobs:
-                default: false
-                description: PreserveJobs - do not delete jobs after they finished
-                  e.g. to check logs
-                type: boolean
+              pvc:
+                description: Pvc - Storage claim for file-backed Glance
+                type: string
               replicas:
                 default: 1
                 description: Replicas of glance API to run
@@ -189,18 +183,12 @@ spec:
                 type: object
               secret:
                 description: Secret containing OpenStack password information for
-                  glance GlanceDatabasePassword, AdminPassword
+                  glance AdminPassword
                 type: string
               serviceUser:
                 default: glance
                 description: ServiceUser - optional username used for this service
                   to register in glance
-                type: string
-              storageClass:
-                description: StorageClass
-                type: string
-              storageRequest:
-                description: StorageRequest
                 type: string
             type: object
           status:
@@ -254,9 +242,6 @@ spec:
                   - type
                   type: object
                 type: array
-              databaseHostname:
-                description: Glance Database Hostname
-                type: string
               hash:
                 additionalProperties:
                   type: string
@@ -266,9 +251,6 @@ spec:
                 description: ReadyCount of glance API instances
                 format: int32
                 type: integer
-              serviceID:
-                description: ServiceID
-                type: string
             type: object
         type: object
     served: true
