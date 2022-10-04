@@ -54,9 +54,9 @@ type GlanceSpec struct {
 	// TODO: -> implement needs work in mariadb-operator, right now only glance
 	DatabaseUser string `json:"databaseUser"`
 
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	// Secret containing OpenStack password information for glance GlanceDatabasePassword
-	Secret string `json:"secret"`
+	Secret string `json:"secret,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// PasswordSelectors - Selectors to identify the DB password from the Secret
