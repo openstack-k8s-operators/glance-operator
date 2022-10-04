@@ -98,10 +98,12 @@ type GlanceSpec struct {
 	StorageRequest string `json:"storageRequest"`
 
 	// +kubebuilder:validation:Required
+	// +kubebuilder:default:={replicas: 1}
 	// GlanceAPIInternal - Spec definition for the internal and admin API service of this Glance deployment
 	GlanceAPIInternal GlanceAPISpec `json:"glanceAPIInternal"`
 
 	// +kubebuilder:validation:Required
+	// +kubebuilder:default:={replicas: 1}
 	// GlanceAPIExternal - Spec definition for the external API service of this Glance deployment
 	GlanceAPIExternal GlanceAPISpec `json:"glanceAPIExternal"`
 }
