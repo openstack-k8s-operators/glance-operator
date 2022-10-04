@@ -467,7 +467,6 @@ spec:
             required:
             - glanceAPIExternal
             - glanceAPIInternal
-            - secret
             - storageRequest
             type: object
           status:
