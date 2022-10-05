@@ -24,18 +24,6 @@
         "dest": "/etc/glance/logging.conf",
         "owner": "glance",
         "perm": "0600"
-      },
-      {
-        "source": "/var/lib/config-data/merged/ceph.conf",
-        "dest": "/etc/ceph/ceph.conf",
-        "owner": "glance",
-        "perm": "0600"
-      },
-      {
-        "source": "/var/lib/config-data/merged/ceph.client.openstack.keyring",
-        "dest": "/etc/ceph/ceph.client.{{ .User }}.keyring",
-        "owner": "glance",
-        "perm": "0600"
       }
     ]
 }

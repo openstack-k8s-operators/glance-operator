@@ -1,5 +1,0 @@
-[client.{{ .User }}]
-        key = {{ .ClientKey }}
-        caps mgr = "allow *"
-        caps mon = "profile rbd"
-        caps osd = "{{ .OsdCaps }}"

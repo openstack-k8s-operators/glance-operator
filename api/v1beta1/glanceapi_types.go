@@ -21,7 +21,6 @@ import (
 
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
-	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -84,10 +83,6 @@ type GlanceAPISpec struct {
 	Debug GlanceAPIDebug `json:"debug,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// CephBackend - The ceph Backend structure with all the parameters
-	CephBackend ceph.Backend `json:"cephBackend,omitempty"`
-
-	// +kubebuilder:validation:Optional
 	// Pvc - Storage claim for file-backed Glance
 	Pvc string `json:"pvc,omitempty"`
 
@@ -108,6 +103,10 @@ type GlanceAPISpec struct {
 	// Resources - Compute Resources required by this service (Limits/Requests).
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// ExtraMounts containing conf files and credentials
+	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts"`
 }
 
 // GlanceAPIDebug defines the observed state of GlanceAPIDebug

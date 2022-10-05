@@ -20,6 +20,7 @@ import (
 
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,7 +73,7 @@ func DbSyncJob(
 								RunAsUser: &runAsUser,
 							},
 							Env:          env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts: GetVolumeMounts(),
+							VolumeMounts: GetVolumeMounts([]glancev1.GlanceExtraVolMounts{}, []storage.PropagationType{storage.DBSync}),
 						},
 					},
 				},
@@ -80,7 +81,7 @@ func DbSyncJob(
 		},
 	}
 
-	job.Spec.Template.Spec.Volumes = GetVolumes(instance.Name, ServiceName)
+	job.Spec.Template.Spec.Volumes = GetVolumes(instance.Name, ServiceName, []glancev1.GlanceExtraVolMounts{}, []storage.PropagationType{storage.DBSync})
 
 	initContainerDetails := APIDetails{
 		ContainerImage:       instance.Spec.ContainerImage,
@@ -90,7 +91,7 @@ func DbSyncJob(
 		OSPSecret:            instance.Spec.Secret,
 		DBPasswordSelector:   instance.Spec.PasswordSelectors.Database,
 		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
-		VolumeMounts:         getInitVolumeMounts(),
+		VolumeMounts:         getInitVolumeMounts([]glancev1.GlanceExtraVolMounts{}, []storage.PropagationType{storage.DBSync}),
 	}
 	job.Spec.Template.Spec.InitContainers = InitContainer(initContainerDetails)
 

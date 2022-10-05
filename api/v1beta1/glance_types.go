@@ -18,8 +18,8 @@ package v1beta1
 
 import (
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 )
 
 const (
@@ -70,10 +70,6 @@ type GlanceSpec struct {
 	Debug GlanceDebug `json:"debug,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// CephBackend - The ceph Backend structure with all the parameters
-	CephBackend ceph.Backend `json:"cephBackend,omitempty"`
-
-	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// PreserveJobs - do not delete jobs after they finished e.g. to check logs
 	PreserveJobs bool `json:"preserveJobs,omitempty"`
@@ -106,6 +102,10 @@ type GlanceSpec struct {
 	// +kubebuilder:validation:Required
 	// GlanceAPIExternal - Spec definition for the external API service of this Glance deployment
 	GlanceAPIExternal GlanceAPISpec `json:"glanceAPIExternal"`
+
+	// +kubebuilder:validation:Optional
+	// ExtraMounts containing conf files and credentials
+	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret
@@ -185,4 +185,28 @@ func (instance Glance) IsReady() bool {
 	// Ready when:
 	// - Both the internal and external API endpoints are ready (count >= 1)
 	return instance.Status.GlanceAPIInternalReadyCount >= 1 && instance.Status.GlanceAPIExternalReadyCount >= 1
+}
+
+// GlanceExtraVolMounts exposes additional parameters processed by the glance-operator
+// and defines the common VolMounts structure provided by the main storage module
+type GlanceExtraVolMounts struct {
+	// +kubebuilder:validation:Optional
+	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Optional
+	Region string `json:"region,omitempty"`
+	// +kubebuilder:validation:Required
+	VolMounts []storage.VolMounts `json:"extraVol"`
+}
+
+// Propagate is a function used to filter VolMounts according to the specified
+// PropagationType array
+func (g *GlanceExtraVolMounts) Propagate(svc []storage.PropagationType) []storage.VolMounts {
+
+	var vl []storage.VolMounts
+
+	for _, gv := range g.VolMounts {
+		vl = append(vl, gv.Propagate(svc)...)
+	}
+
+	return vl
 }
