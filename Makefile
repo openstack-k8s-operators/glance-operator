@@ -38,6 +38,8 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 # BUNDLE_GEN_FLAGS are the flags passed to the operator-sdk generate bundle command
 BUNDLE_GEN_FLAGS ?= -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 
+VERIFY_TLS ?= true
+
 # USE_IMAGE_DIGESTS defines if images are resolved via tags or digests
 # You can enable this value if you would like to use SHA Based Digests
 # To enable set flag to true
@@ -47,7 +49,8 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 endif
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+DEFAULT_IMG ?= quay.io/openstack-k8s-operators/glance-operator-index:latest
+IMG ?= $(DEFAULT_IMG)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24
 
@@ -56,6 +59,18 @@ ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
+endif
+
+# Project is OpenShift centered, so we use oc instead of kubectl, but the
+# operator-sdk uses kubectl.
+# To avoid errors try to create a kubectl symlink to oc when there's no kubectl.
+# Won't create it if oc is in a dir requiring sudo to write.
+ifeq ($(shell which kubectl 2>/dev/null),)
+       ifeq ($(shell which oc 2>/dev/null),)
+               res := $(warning Command "oc" and "kubectl" missing, some targets may fail)
+       else
+               res := $(shell ln -s oc `dirname \`which oc\``/kubectl)
+       endif
 endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
@@ -123,7 +138,10 @@ docker-build: test ## Build docker image with the manager.
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
-	podman push ${IMG}
+ifeq ($(IMG), $(DEFAULT_IMG))
+	$(error As a precaution this target cannot push the default image. If that's really your intentention you'll need to do it manually.)
+endif
+	podman push --tls-verify=${VERIFY_TLS} ${IMG}
 
 ##@ Deployment
 
@@ -132,12 +150,12 @@ ifndef ignore-not-found
 endif
 
 .PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+install: manifests kustomize ## Install CRDs and RBAC into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/dev | kubectl apply -f -
 
 .PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+uninstall: manifests kustomize ## Uninstall CRDs and RBAC from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/dev | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
