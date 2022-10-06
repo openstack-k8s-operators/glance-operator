@@ -21,4 +21,5 @@ spec:
     preserveJobs: false
     replicas: 1
   secret: osp-secret
+  storageClass: ""
   storageRequest: 10G
