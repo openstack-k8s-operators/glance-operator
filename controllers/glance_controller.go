@@ -553,6 +553,13 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
+	// It is possible that an earlier call to update the status has also set
+	// APIEndpoints to nil (if the APIEndpoints map was not nil but was empty,
+	// saving the status unfortunately re-initializes it as nil)
+	if instance.Status.APIEndpoints == nil {
+		instance.Status.APIEndpoints = map[string]string{}
+	}
+
 	// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
 		instance.Status.APIEndpoints = glanceAPI.Status.APIEndpoints
