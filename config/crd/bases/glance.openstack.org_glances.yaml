@@ -215,16 +215,16 @@ spec:
                     description: PasswordSelectors - Selectors to identify the AdminUser
                       password from the Secret
                     properties:
-                      admin:
-                        default: GlancePassword
-                        description: Database - Selector to get the glance service
-                          password from the Secret
-                        type: string
                       database:
                         default: GlanceDatabasePassword
                         description: 'Database - Selector to get the glance database
                           user password from the Secret TODO: not used, need change
                           in mariadb-operator'
+                        type: string
+                      service:
+                        default: GlancePassword
+                        description: Service - Selector to get the glance service
+                          password from the Secret
                         type: string
                     type: object
                   pvc:
@@ -370,16 +370,16 @@ spec:
                     description: PasswordSelectors - Selectors to identify the AdminUser
                       password from the Secret
                     properties:
-                      admin:
-                        default: GlancePassword
-                        description: Database - Selector to get the glance service
-                          password from the Secret
-                        type: string
                       database:
                         default: GlanceDatabasePassword
                         description: 'Database - Selector to get the glance database
                           user password from the Secret TODO: not used, need change
                           in mariadb-operator'
+                        type: string
+                      service:
+                        default: GlancePassword
+                        description: Service - Selector to get the glance service
+                          password from the Secret
                         type: string
                     type: object
                   pvc:
@@ -433,15 +433,15 @@ spec:
                 description: PasswordSelectors - Selectors to identify the DB password
                   from the Secret
                 properties:
-                  admin:
-                    default: GlancePassword
-                    description: Database - Selector to get the glance service password
-                      from the Secret
-                    type: string
                   database:
                     default: GlanceDatabasePassword
                     description: 'Database - Selector to get the glance database user
                       password from the Secret TODO: not used, need change in mariadb-operator'
+                    type: string
+                  service:
+                    default: GlancePassword
+                    description: Service - Selector to get the glance service password
+                      from the Secret
                     type: string
                 type: object
               preserveJobs:

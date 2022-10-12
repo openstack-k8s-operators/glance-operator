@@ -117,8 +117,8 @@ type PasswordSelector struct {
 	Database string `json:"database,omitempty"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default="GlancePassword"
-	// Database - Selector to get the glance service password from the Secret
-	Service string `json:"admin,omitempty"`
+	// Service - Selector to get the glance service password from the Secret
+	Service string `json:"service,omitempty"`
 }
 
 // GlanceDebug defines the observed state of GlanceAPIDebug
