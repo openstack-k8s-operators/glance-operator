@@ -46,7 +46,7 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
-  containerImage: quay.io/tripleotraincentos8/centos-binary-glance-api:current-tripleo
+  containerImage: quay.io/tripleowallabycentos9/openstack-glance-api:current-tripleo
   customServiceConfig: |
     [DEFAULT]
     debug = true
