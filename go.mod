@@ -5,14 +5,14 @@ go 1.18
 require (
 	github.com/go-logr/logr v1.2.3
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.22.0
+	github.com/onsi/gomega v1.22.1
 	github.com/openshift/api v3.9.0+incompatible
-	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20220927090553-6b3218c776f7
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20220923094431-9fca0c85a9dc
-	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20220915080953-f73a201a1da6
+	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-20221012180209-edb3e47d2cc4
+	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20221012160546-35f7a3fb81b0
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20221012094231-684885f64fda
+	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20221012094231-684885f64fda
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20220915080953-f73a201a1da6
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20220822131846-da454a446c65
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20221012054716-c13ec33e0cb9
 	k8s.io/api v0.25.2
 	k8s.io/apimachinery v0.25.2
 	k8s.io/client-go v0.25.2
