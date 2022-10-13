@@ -46,6 +46,8 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage/ceph"
 
+	database "github.com/openstack-k8s-operators/lib-common/modules/database"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -192,6 +194,19 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
+
+	// remove db finalizer
+	serviceDb, err := database.GetServiceDbByName(ctx, helper, instance.Name, instance.Namespace)
+	if err != nil && !k8s_errors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+	if err == nil {
+		controllerutil.RemoveFinalizer(serviceDb, helper.GetFinalizer())
+		if err = helper.GetClient().Update(ctx, serviceDb); err != nil && !k8s_errors.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+		util.LogForObject(helper, "Removed finalizer from our GlanceAPI database", instance)
+	}
 
 	// Remove the finalizer from our KeystoneEndpoint CR
 	keystoneEndpoint, err := keystonev1.GetKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
