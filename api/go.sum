@@ -365,6 +365,8 @@ github.com/openshift/api v3.9.0+incompatible h1:fJ/KsefYuZAjmrr3+5U9yZIZbTOpVkDD
 github.com/openshift/api v3.9.0+incompatible/go.mod h1:dh9o4Fs58gpFXGSYfnVxGR9PnV53I8TW84pQaJDdGiY=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20220819100430-0319abfd42d9 h1:3g6+RKXFGE0qB5XVhTjhn0NlaAERY/vBX7gMsHxZRJA=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20220819100430-0319abfd42d9/go.mod h1:KWqK7l2ej+rIYngoNUrxE2YjKGlRAAgJXXM0uU2R6XY=
+github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20221019154135-2d172cbff565 h1:mAk3gSrNwG66BgbfAwcxmrig09zg+HludmHS7NVjV/s=
+github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20221019154135-2d172cbff565/go.mod h1:KWqK7l2ej+rIYngoNUrxE2YjKGlRAAgJXXM0uU2R6XY=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20220915080953-f73a201a1da6 h1:VRSUN0Il4B0ey98LDVbQ+AuzdB8AfU1nGx8pqC7bzPw=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20220915080953-f73a201a1da6/go.mod h1:fhM62I45VF/5WVpOP1h9OpTfFn+lF2XGrT5jUBKEHVc=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=

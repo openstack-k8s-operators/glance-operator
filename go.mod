@@ -9,7 +9,7 @@ require (
 	github.com/openshift/api v3.9.0+incompatible
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-20221012180209-edb3e47d2cc4
 	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20221012160546-35f7a3fb81b0
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20221012094231-684885f64fda
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20221019154135-2d172cbff565
 	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20221012094231-684885f64fda
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20220915080953-f73a201a1da6
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20221012054716-c13ec33e0cb9
