@@ -441,10 +441,12 @@ func (r *GlanceReconciler) reconcileUpgrade(ctx context.Context, instance *glanc
 func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
-	// If the service object doesn't have our finalizer, add it.
-	controllerutil.AddFinalizer(instance, helper.GetFinalizer())
-	// Register the finalizer immediately to avoid orphaning resources on delete
-	if err := r.Update(ctx, instance); err != nil {
+	if !controllerutil.ContainsFinalizer(instance, helper.GetFinalizer()) {
+		// If the service object doesn't have our finalizer, add it.
+		controllerutil.AddFinalizer(instance, helper.GetFinalizer())
+		// Register the finalizer immediately to avoid orphaning resources on delete
+		err := r.Update(ctx, instance)
+
 		return ctrl.Result{}, err
 	}
 
