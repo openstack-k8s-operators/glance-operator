@@ -3,7 +3,7 @@ module github.com/openstack-k8s-operators/glance-operator/api
 go 1.18
 
 require (
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20220819100430-0319abfd42d9
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20221019154135-2d172cbff565
 	k8s.io/api v0.24.3
 	k8s.io/apimachinery v0.24.3
 	sigs.k8s.io/controller-runtime v0.12.3
