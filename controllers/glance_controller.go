@@ -162,6 +162,21 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			util.LogErrorForObject(helper, err, "Set after and calc patch/diff", instance)
 		}
 
+		if changed := helper.GetChanges()["metadata"]; changed {
+			// Patch wipes out all defaulted non-scalar fields from the spec (such as PasswordSelector)
+			// that were not explicitly included in the instance's CR YAML
+			// if err := r.Patch(ctx, instance, patch); err != nil && !k8s_errors.IsNotFound(err) {
+			// 	util.LogErrorForObject(helper, err, "Update finalizer", instance)
+			// }
+
+			// Update does not exhibit the "wipes out defaulted non-scalar fields" behavior mentioned above
+			if err := r.Update(ctx, instance); err != nil && !k8s_errors.IsNotFound(err) {
+				util.LogErrorForObject(helper, err, "Update metadata", instance)
+			}
+		}
+
+		// Calling "r.Status().Patch()" BEFORE handling the metadata causes any metadata changes to be
+		// wiped out, for whatever reason, so we call it here AFTER to avoid that problem
 		if changed := helper.GetChanges()["status"]; changed {
 			patch := client.MergeFrom(helper.GetBeforeObject())
 
@@ -225,20 +240,12 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 				return ctrl.Result{}, err
 			}
 			util.LogForObject(helper, fmt.Sprintf("Removed finalizer from GlanceAPI %s", glanceAPI.Name), glanceAPI)
-
-			// if err = helper.GetClient().Delete(ctx, glanceAPI); err != nil && !k8s_errors.IsNotFound(err) {
-			// 	return ctrl.Result{}, err
-			// }
-			// util.LogForObject(helper, fmt.Sprintf("Deleted GlanceAPI %s", glanceAPI.Name), glanceAPI)
 		}
 	}
 
 	// Service is deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
-	if err := r.Update(ctx, instance); err != nil && !k8s_errors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
 
 	return ctrl.Result{}, nil
 }
@@ -444,10 +451,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	if !controllerutil.ContainsFinalizer(instance, helper.GetFinalizer()) {
 		// If the service object doesn't have our finalizer, add it.
 		controllerutil.AddFinalizer(instance, helper.GetFinalizer())
-		// Register the finalizer immediately to avoid orphaning resources on delete
-		err := r.Update(ctx, instance)
-
-		return ctrl.Result{}, err
 	}
 
 	// ConfigMap

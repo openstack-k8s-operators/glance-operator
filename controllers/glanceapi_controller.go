@@ -159,6 +159,12 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			util.LogErrorForObject(helper, err, "Set after and calc patch/diff", instance)
 		}
 
+		if changed := helper.GetChanges()["metadata"]; changed {
+			if err := r.Update(ctx, instance); err != nil && !k8s_errors.IsNotFound(err) {
+				util.LogErrorForObject(helper, err, "Update metadata", instance)
+			}
+		}
+
 		if changed := helper.GetChanges()["status"]; changed {
 			patch := client.MergeFrom(helper.GetBeforeObject())
 
@@ -210,9 +216,6 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 	// Endpoints are deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
-	if err := r.Update(ctx, instance); err != nil && !k8s_errors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
 
 	return ctrl.Result{}, nil
 }
@@ -339,10 +342,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	if !controllerutil.ContainsFinalizer(instance, helper.GetFinalizer()) {
 		// If the service object doesn't have our finalizer, add it.
 		controllerutil.AddFinalizer(instance, helper.GetFinalizer())
-		// Register the finalizer immediately to avoid orphaning resources on delete
-		err := r.Update(ctx, instance)
-
-		return ctrl.Result{}, err
 	}
 
 	// ConfigMap
