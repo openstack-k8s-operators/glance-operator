@@ -8,6 +8,12 @@
         "perm": "0600"
       },
       {
+        "source": "/var/lib/config-data/merged/policy.yaml",
+        "dest": "/etc/glance/glance.conf.d/policy.yaml",
+        "owner": "glance",
+        "perm": "0600"
+      },
+      {
         "source": "/var/lib/config-data/merged/custom.conf",
         "dest": "/etc/glance/glance.conf.d/01-custom.conf",
         "owner": "glance",
