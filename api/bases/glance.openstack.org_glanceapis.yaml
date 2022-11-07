@@ -130,8 +130,11 @@ spec:
                   this service
                 type: object
               passwordSelectors:
-                description: PasswordSelectors - Selectors to identify the AdminUser
-                  password from the Secret
+                default:
+                  database: GlanceDatabasePassword
+                  service: GlancePassword
+                description: PasswordSelectors - Selectors to identify the DB and
+                  ServiceUser password from the Secret
                 properties:
                   database:
                     default: GlanceDatabasePassword

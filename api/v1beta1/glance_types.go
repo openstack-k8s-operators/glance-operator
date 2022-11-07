@@ -59,7 +59,8 @@ type GlanceSpec struct {
 	Secret string `json:"secret,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// PasswordSelectors - Selectors to identify the DB password from the Secret
+	// +kubebuilder:default={database: GlanceDatabasePassword, service: GlancePassword}
+	// PasswordSelectors - Selectors to identify the DB and ServiceUser password from the Secret
 	PasswordSelectors PasswordSelector `json:"passwordSelectors,omitempty"`
 
 	// +kubebuilder:validation:Optional
