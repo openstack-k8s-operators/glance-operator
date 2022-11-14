@@ -40,13 +40,13 @@ type GlanceSpec struct {
 
 	// +kubebuilder:validation:Required
 	// Glance Container Image URL
-	ContainerImage string `json:"containerImage,omitempty"`
+	ContainerImage string `json:"containerImage"`
 
 	// +kubebuilder:validation:Required
 	// MariaDB instance name
 	// Right now required by the maridb-operator to get the credentials from the instance to create the DB
 	// Might not be required in future
-	DatabaseInstance string `json:"databaseInstance,omitempty"`
+	DatabaseInstance string `json:"databaseInstance"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=glance
