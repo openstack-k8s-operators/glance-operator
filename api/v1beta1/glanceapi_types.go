@@ -40,7 +40,7 @@ type GlanceAPISpec struct {
 
 	// +kubebuilder:validation:Required
 	// GlanceAPI Container Image URL
-	ContainerImage string `json:"containerImage,omitempty"`
+	ContainerImage string `json:"containerImage"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=internal;external
