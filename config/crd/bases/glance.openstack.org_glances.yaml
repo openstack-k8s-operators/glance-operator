@@ -212,8 +212,11 @@ spec:
                       this service
                     type: object
                   passwordSelectors:
-                    description: PasswordSelectors - Selectors to identify the AdminUser
-                      password from the Secret
+                    default:
+                      database: GlanceDatabasePassword
+                      service: GlancePassword
+                    description: PasswordSelectors - Selectors to identify the DB
+                      and ServiceUser password from the Secret
                     properties:
                       database:
                         default: GlanceDatabasePassword
@@ -273,6 +276,8 @@ spec:
                     description: ServiceUser - optional username used for this service
                       to register in glance
                     type: string
+                required:
+                - containerImage
                 type: object
               glanceAPIInternal:
                 default:
@@ -367,8 +372,11 @@ spec:
                       this service
                     type: object
                   passwordSelectors:
-                    description: PasswordSelectors - Selectors to identify the AdminUser
-                      password from the Secret
+                    default:
+                      database: GlanceDatabasePassword
+                      service: GlancePassword
+                    description: PasswordSelectors - Selectors to identify the DB
+                      and ServiceUser password from the Secret
                     properties:
                       database:
                         default: GlanceDatabasePassword
@@ -428,10 +436,15 @@ spec:
                     description: ServiceUser - optional username used for this service
                       to register in glance
                     type: string
+                required:
+                - containerImage
                 type: object
               passwordSelectors:
-                description: PasswordSelectors - Selectors to identify the DB password
-                  from the Secret
+                default:
+                  database: GlanceDatabasePassword
+                  service: GlancePassword
+                description: PasswordSelectors - Selectors to identify the DB and
+                  ServiceUser password from the Secret
                 properties:
                   database:
                     default: GlanceDatabasePassword
@@ -465,6 +478,8 @@ spec:
                 description: StorageRequest
                 type: string
             required:
+            - containerImage
+            - databaseInstance
             - glanceAPIExternal
             - glanceAPIInternal
             - storageRequest

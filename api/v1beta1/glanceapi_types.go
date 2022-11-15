@@ -40,7 +40,7 @@ type GlanceAPISpec struct {
 
 	// +kubebuilder:validation:Required
 	// GlanceAPI Container Image URL
-	ContainerImage string `json:"containerImage,omitempty"`
+	ContainerImage string `json:"containerImage"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=internal;external
@@ -69,7 +69,8 @@ type GlanceAPISpec struct {
 	Secret string `json:"secret"`
 
 	// +kubebuilder:validation:Optional
-	// PasswordSelectors - Selectors to identify the AdminUser password from the Secret
+	// +kubebuilder:default={database: GlanceDatabasePassword, service: GlancePassword}
+	// PasswordSelectors - Selectors to identify the DB and ServiceUser password from the Secret
 	PasswordSelectors PasswordSelector `json:"passwordSelectors,omitempty"`
 
 	// +kubebuilder:validation:Optional
