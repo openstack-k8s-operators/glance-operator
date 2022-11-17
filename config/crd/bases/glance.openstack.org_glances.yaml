@@ -120,8 +120,6 @@ spec:
                   in /etc/<service> . TODO: -> implement'
                 type: object
               glanceAPIExternal:
-                default:
-                  replicas: 1
                 description: GlanceAPIExternal - Spec definition for the external
                   API service of this Glance deployment
                 properties:
@@ -280,8 +278,6 @@ spec:
                 - containerImage
                 type: object
               glanceAPIInternal:
-                default:
-                  replicas: 1
                 description: GlanceAPIInternal - Spec definition for the internal
                   and admin API service of this Glance deployment
                 properties:

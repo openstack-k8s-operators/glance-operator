@@ -11,11 +11,13 @@ spec:
   databaseInstance: openstack
   databaseUser: glance
   glanceAPIInternal:
+    containerImage: quay.io/tripleowallabycentos9/openstack-glance-api:current-tripleo
     debug:
       service: false
     preserveJobs: false
     replicas: 1
   glanceAPIExternal:
+    containerImage: quay.io/tripleowallabycentos9/openstack-glance-api:current-tripleo
     debug:
       service: false
     preserveJobs: false
