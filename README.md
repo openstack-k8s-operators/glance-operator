@@ -27,6 +27,66 @@ make glance GLANCE_IMG=quay.io/openstack-k8s-operators/glance-operator-index:lat
 make glance_deploy
 ```
 
+## Launch glance-api-* service/process in debug mode 
+
+Sometimes as a developer we need to make changes in configuration/policy files
+or add more logs in actual code to see what went wrong in API calls. In normal
+deployment it is not possible to do this on the fly and you need to redeploy
+everything each time you make changes to either of above. If you launch the
+glance-api container(pod) in debug mode then you will be able to do it on
+the fly without relaunching/recreating the container each time. The following
+represents how you can launch the glance pod in debug mode and make changes
+on the fly.
+
+```
+Enable debug = True for the container you want to launch in debug mode, here
+we want to launch userfacing container (External) in debug mode.
+
+(path to file: install_yamls/out/openstack/glance/cr/glance_v1beta1_glance.yaml)
+
+glanceAPIExternal:
+    debug:
+      service: true # Change it to true if it is false
+    preserveJobs: false
+    replicas: 1
+
+Now rebuild the operator;
+
+make generate && make manifests && make build
+OPERATOR_TEMPLATES=$PWD/templates ./bin/manager
+
+Once deployment is complete, you need to login to container;
+
+oc exec -it glance-external-api-* bash
+
+Verify that glance process is not running here;
+$ ps aux | grep glance
+root     1635263  0.0  0.0   6392  2296 pts/3    S+   07:35   0:00 grep --color=auto glance
+
+Now you can modify the code to add pdb or more logs by doing actual
+changes to code base;
+
+$ python3 -c "import glance;print(glance.__file__)"
+/usr/lib/python3.9/site-packages/glance/__init__.py
+
+Add debug/log statements or pdb at your desired location in
+/usr/lib/python3.9/site-packages/<file_name>.py
+
+Launch the glance service;
+/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+
+Verify that glance process is running;
+$ ps aux | grep glance
+root       13555  0.4  0.7 708732 123860 pts/1   S+   Nov15  35:33 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
+root       13590  0.0  0.6 711036 99096 pts/1    S+   Nov15   0:03 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
+root       13591  0.0  0.8 990744 135064 pts/1   S+   Nov15   0:04 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
+root       13592  0.0  0.8 990232 134864 pts/1   S+   Nov15   0:03 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
+root     1635263  0.0  0.0   6392  2296 pts/3    S+   07:35   0:00 grep --color=auto glance
+ 
+Similar way you can modify configuration/policy files located in /etc/glance/* and kill
+and start the service inside container.  
+```
+
 ## Example: configure Glance with Ceph backend
 
 The Glance spec API can be used to configure and customize the Ceph backend. In
