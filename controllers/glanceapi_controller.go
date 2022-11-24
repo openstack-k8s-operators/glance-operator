@@ -542,11 +542,14 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 		templateParameters["OsdCaps"] = ceph.GetOsdCaps(instance.Spec.CephBackend.Pools)
 	}
 
-	// We set "show_image_direct_url" to true if this is an internal GlanceAPI,
-	// otherwise we default to false
-	templateParameters["ShowImageDirectUrl"] = false
+	// Configure the internal GlanceAPI to provide image location data, and the
+	// external version to *not* provide it.
 	if instance.Spec.APIType == glancev1.APIInternal {
 		templateParameters["ShowImageDirectUrl"] = true
+		templateParameters["ShowMultipleLocations"] = true
+	} else {
+		templateParameters["ShowImageDirectUrl"] = false
+		templateParameters["ShowMultipleLocations"] = false
 	}
 
 	cms := []util.Template{
