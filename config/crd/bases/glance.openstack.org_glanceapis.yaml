@@ -86,6 +86,7 @@ spec:
                 - cephMons
                 type: object
               containerImage:
+                default: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
                 description: GlanceAPI Container Image URL
                 type: string
               customServiceConfig:
@@ -193,8 +194,6 @@ spec:
                 description: ServiceUser - optional username used for this service
                   to register in glance
                 type: string
-            required:
-            - containerImage
             type: object
           status:
             description: GlanceAPIStatus defines the observed state of GlanceAPI

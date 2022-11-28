@@ -38,7 +38,8 @@ type GlanceAPISpec struct {
 	// ServiceUser - optional username used for this service to register in glance
 	ServiceUser string `json:"serviceUser"`
 
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo"
 	// GlanceAPI Container Image URL
 	ContainerImage string `json:"containerImage"`
 
