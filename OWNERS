@@ -1,6 +1,9 @@
 approvers:
   - abays
   - dprince
+  - fmount
+  - fultonj
+  - konan-abhi
   - olliewalsh
   - Sandeepyadav93
   - stuggi
@@ -9,6 +12,9 @@ approvers:
 reviewers:
   - abays
   - dprince
+  - fmount
+  - fultonj
+  - konan-abhi
   - olliewalsh
   - Sandeepyadav93
   - stuggi
