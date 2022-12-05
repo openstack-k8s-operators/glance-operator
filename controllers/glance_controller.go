@@ -625,6 +625,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 		deployment.Spec.DatabaseHostname = instance.Status.DatabaseHostname
 		deployment.Spec.DatabaseUser = instance.Spec.DatabaseUser
 		deployment.Spec.DefaultConfigOverwrite = instance.Spec.DefaultConfigOverwrite
+		deployment.Spec.NodeSelector = instance.Spec.NodeSelector
 		// TODO: This could be superfluous if backed by Ceph?
 		deployment.Spec.Pvc = glance.ServiceName
 		deployment.Spec.Secret = instance.Spec.Secret

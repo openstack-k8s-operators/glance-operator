@@ -247,6 +247,13 @@ func (in *GlanceList) DeepCopyObject() runtime.Object {
 func (in *GlanceSpec) DeepCopyInto(out *GlanceSpec) {
 	*out = *in
 	out.PasswordSelectors = in.PasswordSelectors
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	out.Debug = in.Debug
 	in.CephBackend.DeepCopyInto(&out.CephBackend)
 	if in.DefaultConfigOverwrite != nil {
