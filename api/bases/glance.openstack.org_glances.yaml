@@ -434,6 +434,12 @@ spec:
                       to register in glance
                     type: string
                 type: object
+              nodeSelector:
+                additionalProperties:
+                  type: string
+                description: NodeSelector to target subset of worker nodes running
+                  this service
+                type: object
               passwordSelectors:
                 default:
                   database: GlanceDatabasePassword
