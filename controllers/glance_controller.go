@@ -619,7 +619,6 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 		deployment.Spec = apiInstance
 		// Add in transfers from umbrella Glance (this instance) spec
 		// TODO: Add logic to determine when to set/overwrite, etc
-		deployment.Spec.CephBackend = instance.Spec.CephBackend
 		deployment.Spec.ContainerImage = instance.Spec.ContainerImage
 		deployment.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
 		deployment.Spec.DatabaseHostname = instance.Status.DatabaseHostname
@@ -629,6 +628,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 		// TODO: This could be superfluous if backed by Ceph?
 		deployment.Spec.Pvc = glance.ServiceName
 		deployment.Spec.Secret = instance.Spec.Secret
+		deployment.Spec.ExtraMounts = instance.Spec.ExtraMounts
 
 		err := controllerutil.SetControllerReference(instance, deployment, r.Scheme)
 		if err != nil {

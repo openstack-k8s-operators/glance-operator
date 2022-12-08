@@ -15,6 +15,10 @@ limitations under the License.
 
 package glance
 
+import (
+	"github.com/openstack-k8s-operators/lib-common/modules/storage"
+)
+
 const (
 	// ServiceName -
 	ServiceName = "glance"
@@ -34,4 +38,16 @@ const (
 
 	// KollaConfig -
 	KollaConfig = "/var/lib/config-data/merged/glance-api-config.json"
+
+	// GlanceExtraVolTypeUndefined can be used to label an extraMount which
+	// is not associated with a specific backend
+	GlanceExtraVolTypeUndefined storage.ExtraVolType = "Undefined"
+	// GlanceExtraVolTypeCeph can be used to label an extraMount which
+	// is associated to a Ceph backend
+	GlanceExtraVolTypeCeph storage.ExtraVolType = "Ceph"
+	// GlanceAPI defines the glance-api group
+	GlanceAPI storage.PropagationType = "GlanceAPI"
+	// Glance is the global ServiceType that refers to all the components deployed
+	// by the glance operator
+	Glance storage.PropagationType = "Glance"
 )
