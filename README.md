@@ -89,60 +89,91 @@ and start the service inside container.
 
 ## Example: configure Glance with Ceph backend
 
-The Glance spec API can be used to configure and customize the Ceph backend. In
-particular, the presence of the cephBackend data structure has the effect of
-creating an override in the glance config, adding rbd as default backend
-parameter. The global `cephBackend` parameter is used to specify the Ceph
-client-related "key/value" pairs required to connect the service with an
-external Ceph cluster. Multiple external Ceph clusters are not supported at the
-moment. The following represents an example of Glance resource that can be used
-to trigger the service deployment, and enable the rbd backend that points to an
-external Ceph cluster.
+The Glance spec can be used to configure Glance to connect to a Ceph
+RBD server.
+
+Create a secret which contains the Cephx key and Ceph configuration
+file so that the Glance pod created by the operator can mount those
+files in `/etc/ceph`.
+
+```
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ceph-client-conf
+  namespace: openstack
+stringData:
+  ceph.client.openstack.keyring: |
+    [client.openstack]
+        key = <secret key>
+        caps mgr = "allow *"
+        caps mon = "profile rbd"
+        caps osd = "profile rbd pool=images"
+  ceph.conf: |
+    [global]
+    fsid = 7a1719e8-9c59-49e2-ae2b-d7eb08c695d4
+    mon_host = 10.1.1.2,10.1.1.3,10.1.1.4
+```
+
+The following represents an example of Glance resource that can be used
+to trigger the service deployment, and enable an RBD backend that
+points to an external Ceph cluster.
 
 ```
 apiVersion: glance.openstack.org/v1beta1
-kind: GlanceAPI
+kind: Glance
 metadata:
   name: glance
 spec:
   serviceUser: glance
-  containerImage: quay.io/tripleowallabycentos9/openstack-glance-api:current-tripleo
+  containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
   customServiceConfig: |
     [DEFAULT]
-    debug = true
+    enabled_backends = default_backend:rbd
+    [glance_store]
+    default_backend = default_backend
+    [default_backend]
+    rbd_store_ceph_conf = /etc/ceph/ceph.conf
+    store_description = "RBD backend"
+    rbd_store_pool = images
+    rbd_store_user = openstack
   databaseInstance: openstack
   databaseUser: glance
-  debug:
-    dbSync: false
-    service: false
-  preserveJobs: false
-  replicas: 1
+  glanceAPIInternal:
+    debug:
+      service: false
+    preserveJobs: false
+    replicas: 1
+  glanceAPIExternal:
+    debug:
+      service: false
+    preserveJobs: false
+    replicas: 1
+  secret: osp-secret
+  storageClass: ""
   storageRequest: 1G
-  secret: glance-secret
-  cephBackend:
-    cephFsid: <ClusterFSID>
-    cephMons: <CephMons>
-    cephClientKey: <ClientKey>
-    cephUser: <rbdUser>
-    cephPools:
-      cinder:
-        name: volumes
-      nova:
-        name: vms
-      glance:
-        name: images
-      cinder_backup:
-        name: backup
-      extra_pool1:
-        name: ceph_ssd_tier
-      extra_pool2:
-        name: ceph_nvme_tier
-      extra_pool3:
-        name: ceph_hdd_tier
+  extraMounts:
+    - name: v1
+      region: r1
+      extraVol:
+        - propagation:
+          - Glance
+          extraVolType: Ceph
+          volumes:
+          - name: ceph
+            projected:
+              sources:
+              - secret:
+                  name: ceph-client-conf
+          mounts:
+          - name: ceph
+            mountPath: "/etc/ceph"
+            readOnly: true
 ```
 
-When the service is up and running, it's possible to interact with the glance
-API and upload an image using the Ceph backend.
+When the service is up and running, it will be possible to interact
+with the Glance API and upload an image using the Ceph backend.
 
 ## Example: Testing Glance policies
 
