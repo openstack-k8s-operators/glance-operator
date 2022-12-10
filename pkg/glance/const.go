@@ -51,3 +51,11 @@ const (
 	// by the glance operator
 	Glance storage.PropagationType = "Glance"
 )
+
+// DbsyncPropagation keeps track of the DBSync Service Propagation Type
+var DbsyncPropagation = []storage.PropagationType{storage.DBSync}
+
+// GlanceAPIPropagation is the  definition of the GlanceAPI propagation group
+// It allows the GlanceAPI pod to mount volumes destined to Glance related
+// ServiceTypes
+var GlanceAPIPropagation = []storage.PropagationType{Glance, GlanceAPI}
