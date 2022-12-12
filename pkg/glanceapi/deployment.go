@@ -24,7 +24,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 
-	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,7 +125,7 @@ func Deployment(
 								RunAsUser: &runAsUser,
 							},
 							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts:   glance.GetVolumeMounts(instance.Spec.ExtraMounts, []storage.PropagationType{glance.Glance, glance.GlanceAPI}),
+							VolumeMounts:   glance.GetVolumeMounts(instance.Spec.ExtraMounts, glance.GlanceAPIPropagation),
 							Resources:      instance.Spec.Resources,
 							ReadinessProbe: readinessProbe,
 							LivenessProbe:  livenessProbe,
@@ -136,7 +135,7 @@ func Deployment(
 			},
 		},
 	}
-	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(instance.Name, glance.ServiceName, instance.Spec.ExtraMounts, []storage.PropagationType{glance.Glance, glance.GlanceAPI})
+	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(instance.Name, glance.ServiceName, instance.Spec.ExtraMounts, glance.GlanceAPIPropagation)
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
 	// the get still created on the same worker node.
@@ -159,7 +158,7 @@ func Deployment(
 		OSPSecret:            instance.Spec.Secret,
 		DBPasswordSelector:   instance.Spec.PasswordSelectors.Database,
 		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
-		VolumeMounts:         getInitVolumeMounts(instance.Spec.ExtraMounts, []storage.PropagationType{glance.Glance, glance.GlanceAPI}),
+		VolumeMounts:         getInitVolumeMounts(instance.Spec.ExtraMounts, glance.GlanceAPIPropagation),
 	}
 	deployment.Spec.Template.Spec.InitContainers = glance.InitContainer(initContainerDetails)
 
