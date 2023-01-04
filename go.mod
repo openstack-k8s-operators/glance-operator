@@ -10,7 +10,7 @@ require (
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-20221012180209-edb3e47d2cc4
 	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20221012160546-35f7a3fb81b0
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20221212162305-ec57ccd85ad5
-	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20221012094231-684885f64fda
+	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20221123155618-fe0bc99bca8a
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20221207150746-c4fe7a228d42
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20221012054716-c13ec33e0cb9
 	k8s.io/api v0.25.4

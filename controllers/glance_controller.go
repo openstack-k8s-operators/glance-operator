@@ -197,6 +197,18 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
 
+	// remove db finalizer first
+	db, err := database.GetDatabaseByName(ctx, helper, instance.Name)
+	if err != nil && !k8s_errors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+
+	if !k8s_errors.IsNotFound(err) {
+		if err := db.DeleteFinalizer(ctx, helper); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Remove the finalizer from our KeystoneService CR
 	keystoneService, err := keystonev1.GetKeystoneServiceWithName(ctx, helper, glance.ServiceName, instance.Namespace)
 	if err != nil && !k8s_errors.IsNotFound(err) {
