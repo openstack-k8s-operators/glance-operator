@@ -90,7 +90,7 @@ type GlanceAPIReconciler struct {
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneendpoints,verbs=get;list;watch;create;update;patch;delete;
 
 // Reconcile reconcile Glance API requests
-func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
 	_ = log.FromContext(ctx)
 
 	// Fetch the GlanceAPI instance
@@ -105,35 +105,6 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
-	}
-
-	//
-	// initialize status
-	//
-	if instance.Status.Conditions == nil {
-		instance.Status.Conditions = condition.Conditions{}
-		// initialize conditions used later as Status=Unknown
-		cl := condition.CreateList(
-			condition.UnknownCondition(condition.ExposeServiceReadyCondition, condition.InitReason, condition.ExposeServiceReadyInitMessage),
-			condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
-			condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
-			condition.UnknownCondition(condition.DeploymentReadyCondition, condition.InitReason, condition.DeploymentReadyInitMessage),
-			// right now we have no dedicated KeystoneEndpointReadyInitMessage
-			condition.UnknownCondition(condition.KeystoneEndpointReadyCondition, condition.InitReason, ""),
-		)
-
-		instance.Status.Conditions.Init(&cl)
-
-		// Register overall status immediately to have an early feedback e.g. in the cli
-		if err := r.Status().Update(ctx, instance); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	if instance.Status.Hash == nil {
-		instance.Status.Hash = map[string]string{}
-	}
-	if instance.Status.APIEndpoints == nil {
-		instance.Status.APIEndpoints = map[string]string{}
 	}
 
 	helper, err := helper.NewHelper(
@@ -154,18 +125,44 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			instance.Status.Conditions.MarkTrue(condition.ReadyCondition, condition.ReadyMessage)
 		}
 
-		if err := helper.SetAfter(instance); err != nil {
-			util.LogErrorForObject(helper, err, "Set after and calc patch/diff", instance)
-		}
-
-		if changed := helper.GetChanges()["status"]; changed {
-			patch := client.MergeFrom(helper.GetBeforeObject())
-
-			if err := r.Status().Patch(ctx, instance, patch); err != nil && !k8s_errors.IsNotFound(err) {
-				util.LogErrorForObject(helper, err, "Update status", instance)
-			}
+		err := helper.PatchInstance(ctx, instance)
+		if err != nil {
+			_err = err
+			return
 		}
 	}()
+
+	// If we're not deleting this and the service object doesn't have our finalizer, add it.
+	if instance.DeletionTimestamp.IsZero() && controllerutil.AddFinalizer(instance, helper.GetFinalizer()) {
+		return ctrl.Result{}, nil
+	}
+
+	//
+	// initialize status
+	//
+	if instance.Status.Conditions == nil {
+		instance.Status.Conditions = condition.Conditions{}
+		// initialize conditions used later as Status=Unknown
+		cl := condition.CreateList(
+			condition.UnknownCondition(condition.ExposeServiceReadyCondition, condition.InitReason, condition.ExposeServiceReadyInitMessage),
+			condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
+			condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
+			condition.UnknownCondition(condition.DeploymentReadyCondition, condition.InitReason, condition.DeploymentReadyInitMessage),
+			// right now we have no dedicated KeystoneEndpointReadyInitMessage
+			condition.UnknownCondition(condition.KeystoneEndpointReadyCondition, condition.InitReason, ""),
+		)
+
+		instance.Status.Conditions.Init(&cl)
+
+		// Register overall status immediately to have an early feedback e.g. in the cli
+		return ctrl.Result{}, nil
+	}
+	if instance.Status.Hash == nil {
+		instance.Status.Hash = map[string]string{}
+	}
+	if instance.Status.APIEndpoints == nil {
+		instance.Status.APIEndpoints = map[string]string{}
+	}
 
 	// Handle service delete
 	if !instance.DeletionTimestamp.IsZero() {
@@ -209,9 +206,6 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 	// Endpoints are deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
-	if err := r.Update(ctx, instance); err != nil && !k8s_errors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
 
 	return ctrl.Result{}, nil
 }
@@ -335,15 +329,6 @@ func (r *GlanceAPIReconciler) reconcileUpgrade(ctx context.Context, instance *gl
 func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
-	if !controllerutil.ContainsFinalizer(instance, helper.GetFinalizer()) {
-		// If the service object doesn't have our finalizer, add it.
-		controllerutil.AddFinalizer(instance, helper.GetFinalizer())
-		// Register the finalizer immediately to avoid orphaning resources on delete
-		err := r.Update(ctx, instance)
-
-		return ctrl.Result{}, err
-	}
-
 	// ConfigMap
 	configMapVars := make(map[string]env.Setter)
 
@@ -397,7 +382,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// create hash over all the different input resources to identify if any those changed
 	// and a restart/recreate is required.
 	//
-	inputHash, err := r.createHashOfInputHashes(ctx, instance, configMapVars)
+	inputHash, hashChanged, err := r.createHashOfInputHashes(ctx, instance, configMapVars)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -406,6 +391,10 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			condition.ServiceConfigReadyErrorMessage,
 			err.Error()))
 		return ctrl.Result{}, err
+	} else if hashChanged {
+		// Hash changed and instance status should be updated (which will be done by main defer func),
+		// so we need to return and reconcile again
+		return ctrl.Result{}, nil
 	}
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
 	// Create ConfigMaps and Secrets - end
@@ -565,22 +554,23 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 // createHashOfInputHashes - creates a hash of hashes which gets added to the resources which requires a restart
 // if any of the input resources change, like configs, passwords, ...
 //
+// returns the hash, whether the hash changed (as a bool) and any error
+//
 func (r *GlanceAPIReconciler) createHashOfInputHashes(
 	ctx context.Context,
 	instance *glancev1.GlanceAPI,
 	envVars map[string]env.Setter,
-) (string, error) {
+) (string, bool, error) {
+	var hashMap map[string]string
+	changed := false
 	mergedMapVars := env.MergeEnvs([]corev1.EnvVar{}, envVars)
 	hash, err := util.ObjectHash(mergedMapVars)
 	if err != nil {
-		return hash, err
+		return hash, changed, err
 	}
-	if hashMap, changed := util.SetHash(instance.Status.Hash, common.InputHashName, hash); changed {
+	if hashMap, changed = util.SetHash(instance.Status.Hash, common.InputHashName, hash); changed {
 		instance.Status.Hash = hashMap
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			return hash, err
-		}
 		r.Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
 	}
-	return hash, nil
+	return hash, changed, nil
 }

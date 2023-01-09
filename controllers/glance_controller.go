@@ -94,7 +94,7 @@ type GlanceReconciler struct {
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneservices,verbs=get;list;watch;create;update;patch;delete;
 
 // Reconcile reconcile Glance requests
-func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
 	_ = log.FromContext(ctx)
 
 	// Fetch the Glance instance
@@ -109,35 +109,6 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
-	}
-
-	//
-	// initialize status
-	//
-	if instance.Status.Conditions == nil {
-		instance.Status.Conditions = condition.Conditions{}
-		// initialize conditions used later as Status=Unknown
-		cl := condition.CreateList(
-			condition.UnknownCondition(condition.DBReadyCondition, condition.InitReason, condition.DBReadyInitMessage),
-			condition.UnknownCondition(condition.DBSyncReadyCondition, condition.InitReason, condition.DBSyncReadyInitMessage),
-			condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
-			condition.UnknownCondition(glancev1.GlanceAPIReadyCondition, condition.InitReason, glancev1.GlanceAPIReadyInitMessage),
-			// right now we have no dedicated KeystoneServiceReadyInitMessage
-			condition.UnknownCondition(condition.KeystoneServiceReadyCondition, condition.InitReason, ""),
-		)
-
-		instance.Status.Conditions.Init(&cl)
-
-		// Register overall status immediately to have an early feedback e.g. in the cli
-		if err := r.Status().Update(ctx, instance); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	if instance.Status.Hash == nil {
-		instance.Status.Hash = map[string]string{}
-	}
-	if instance.Status.APIEndpoints == nil {
-		instance.Status.APIEndpoints = map[string]string{}
 	}
 
 	helper, err := helper.NewHelper(
@@ -158,18 +129,44 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			instance.Status.Conditions.MarkTrue(condition.ReadyCondition, condition.ReadyMessage)
 		}
 
-		if err := helper.SetAfter(instance); err != nil {
-			util.LogErrorForObject(helper, err, "Set after and calc patch/diff", instance)
-		}
-
-		if changed := helper.GetChanges()["status"]; changed {
-			patch := client.MergeFrom(helper.GetBeforeObject())
-
-			if err := r.Status().Patch(ctx, instance, patch); err != nil && !k8s_errors.IsNotFound(err) {
-				util.LogErrorForObject(helper, err, "Update status", instance)
-			}
+		err := helper.PatchInstance(ctx, instance)
+		if err != nil {
+			_err = err
+			return
 		}
 	}()
+
+	// If we're not deleting this and the service object doesn't have our finalizer, add it.
+	if instance.DeletionTimestamp.IsZero() && controllerutil.AddFinalizer(instance, helper.GetFinalizer()) {
+		return ctrl.Result{}, nil
+	}
+
+	//
+	// initialize status
+	//
+	if instance.Status.Conditions == nil {
+		instance.Status.Conditions = condition.Conditions{}
+		// initialize conditions used later as Status=Unknown
+		cl := condition.CreateList(
+			condition.UnknownCondition(condition.DBReadyCondition, condition.InitReason, condition.DBReadyInitMessage),
+			condition.UnknownCondition(condition.DBSyncReadyCondition, condition.InitReason, condition.DBSyncReadyInitMessage),
+			condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
+			condition.UnknownCondition(glancev1.GlanceAPIReadyCondition, condition.InitReason, glancev1.GlanceAPIReadyInitMessage),
+			// right now we have no dedicated KeystoneServiceReadyInitMessage
+			condition.UnknownCondition(condition.KeystoneServiceReadyCondition, condition.InitReason, ""),
+		)
+
+		instance.Status.Conditions.Init(&cl)
+
+		// Register overall status immediately to have an early feedback e.g. in the cli
+		return ctrl.Result{}, nil
+	}
+	if instance.Status.Hash == nil {
+		instance.Status.Hash = map[string]string{}
+	}
+	if instance.Status.APIEndpoints == nil {
+		instance.Status.APIEndpoints = map[string]string{}
+	}
 
 	// Handle service delete
 	if !instance.DeletionTimestamp.IsZero() {
@@ -248,9 +245,6 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	// Service is deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
-	if err := r.Update(ctx, instance); err != nil && !k8s_errors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
 
 	return ctrl.Result{}, nil
 }
@@ -417,9 +411,6 @@ func (r *GlanceReconciler) reconcileInit(
 	}
 	if dbSyncjob.HasChanged() {
 		instance.Status.Hash[glancev1.DbSyncHash] = dbSyncjob.GetHash()
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			return ctrl.Result{}, err
-		}
 		r.Log.Info(fmt.Sprintf("Service '%s' - Job %s hash added - %s", instance.Name, jobDef.Name, instance.Status.Hash[glancev1.DbSyncHash]))
 	}
 	instance.Status.Conditions.MarkTrue(condition.DBSyncReadyCondition, condition.DBSyncReadyMessage)
@@ -452,15 +443,6 @@ func (r *GlanceReconciler) reconcileUpgrade(ctx context.Context, instance *glanc
 
 func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
-
-	if !controllerutil.ContainsFinalizer(instance, helper.GetFinalizer()) {
-		// If the service object doesn't have our finalizer, add it.
-		controllerutil.AddFinalizer(instance, helper.GetFinalizer())
-		// Register the finalizer immediately to avoid orphaning resources on delete
-		err := r.Update(ctx, instance)
-
-		return ctrl.Result{}, err
-	}
 
 	// ConfigMap
 	configMapVars := make(map[string]env.Setter)
