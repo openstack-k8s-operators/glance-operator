@@ -16,6 +16,10 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - description: NetworkAttachments
+      jsonPath: .status.networkAttachments
+      name: NetworkAttachments
+      type: string
     - description: Status
       jsonPath: .status.conditions[0].status
       name: Status
@@ -1946,6 +1950,12 @@ spec:
                   - extraVol
                   type: object
                 type: array
+              networkAttachments:
+                description: NetworkAttachments is a list of NetworkAttachment resource
+                  names to expose the services to the given network
+                items:
+                  type: string
+                type: array
               nodeSelector:
                 additionalProperties:
                   type: string
@@ -2092,6 +2102,13 @@ spec:
                 additionalProperties:
                   type: string
                 description: Map of hashes to track e.g. job status
+                type: object
+              networkAttachments:
+                additionalProperties:
+                  items:
+                    type: string
+                  type: array
+                description: NetworkAttachments status of the deployment pods
                 type: object
               readyCount:
                 description: ReadyCount of glance API instances

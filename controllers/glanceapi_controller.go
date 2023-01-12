@@ -42,6 +42,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
+	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 
@@ -65,9 +66,11 @@ type GlanceAPIReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete;
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneendpoints,verbs=get;list;watch;create;update;patch;delete;
+// +kubebuilder:rbac:groups=k8s.cni.cncf.io,resources=network-attachment-definitions,verbs=get;list;watch
 
 // Reconcile reconcile Glance API requests
 func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
@@ -130,6 +133,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			condition.UnknownCondition(condition.DeploymentReadyCondition, condition.InitReason, condition.DeploymentReadyInitMessage),
 			// right now we have no dedicated KeystoneEndpointReadyInitMessage
 			condition.UnknownCondition(condition.KeystoneEndpointReadyCondition, condition.InitReason, ""),
+			condition.UnknownCondition(condition.NetworkAttachmentsReadyCondition, condition.InitReason, condition.NetworkAttachmentsReadyInitMessage),
 		)
 
 		instance.Status.Conditions.Init(&cl)
@@ -142,6 +146,9 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	if instance.Status.APIEndpoints == nil {
 		instance.Status.APIEndpoints = map[string]string{}
+	}
+	if instance.Status.NetworkAttachments == nil {
+		instance.Status.NetworkAttachments = map[string][]string{}
 	}
 
 	// Handle service delete
@@ -388,6 +395,35 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		common.AppSelector: fmt.Sprintf("%s-%s", glance.ServiceName, instance.Spec.APIType),
 	}
 
+	// networks to attach to
+	for _, netAtt := range instance.Spec.NetworkAttachments {
+		_, err := nad.GetNADWithName(ctx, helper, netAtt, instance.Namespace)
+		if err != nil {
+			if k8s_errors.IsNotFound(err) {
+				instance.Status.Conditions.Set(condition.FalseCondition(
+					condition.NetworkAttachmentsReadyCondition,
+					condition.RequestedReason,
+					condition.SeverityInfo,
+					condition.NetworkAttachmentsReadyWaitingMessage,
+					netAtt))
+				return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("network-attachment-definition %s not found", netAtt)
+			}
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.NetworkAttachmentsReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.NetworkAttachmentsReadyErrorMessage,
+				err.Error()))
+			return ctrl.Result{}, err
+		}
+	}
+
+	serviceAnnotations, err := nad.CreateNetworksAnnotation(instance.Namespace, instance.Spec.NetworkAttachments)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed create network annotation from %s: %w",
+			instance.Spec.NetworkAttachments, err)
+	}
+
 	// Handle service init
 	ctrlResult, err := r.reconcileInit(ctx, instance, helper, serviceLabels)
 	if err != nil {
@@ -417,8 +453,9 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 
 	// Define a new Deployment object
+	deplDef := glanceapi.Deployment(instance, inputHash, serviceLabels, serviceAnnotations)
 	depl := deployment.NewDeployment(
-		glanceapi.Deployment(instance, inputHash, serviceLabels),
+		deplDef,
 		time.Duration(5)*time.Second,
 	)
 
@@ -440,6 +477,28 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrlResult, nil
 	}
 	instance.Status.ReadyCount = depl.GetDeployment().Status.ReadyReplicas
+
+	// verify if network attachment matches expectations
+	networkReady, networkAttachmentStatus, err := nad.VerifyNetworkStatusFromAnnotation(ctx, helper, instance.Spec.NetworkAttachments, serviceLabels, instance.Status.ReadyCount)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	instance.Status.NetworkAttachments = networkAttachmentStatus
+	if networkReady {
+		instance.Status.Conditions.MarkTrue(condition.NetworkAttachmentsReadyCondition, condition.NetworkAttachmentsReadyMessage)
+	} else {
+		err := fmt.Errorf("not all pods have interfaces with ips as configured in NetworkAttachments: %s", instance.Spec.NetworkAttachments)
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.NetworkAttachmentsReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.NetworkAttachmentsReadyErrorMessage,
+			err.Error()))
+
+		return ctrl.Result{}, err
+	}
+
 	if instance.Status.ReadyCount > 0 {
 		instance.Status.Conditions.MarkTrue(condition.DeploymentReadyCondition, condition.DeploymentReadyMessage)
 	}
