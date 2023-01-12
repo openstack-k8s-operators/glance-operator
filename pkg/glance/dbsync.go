@@ -16,10 +16,14 @@ limitations under the License.
 package glance
 
 import (
+	"fmt"
+
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +38,7 @@ const (
 func DbSyncJob(
 	instance *glancev1.Glance,
 	labels map[string]string,
-) *batchv1.Job {
+) (*batchv1.Job, error) {
 	runAsUser := int64(0)
 
 	dbSyncExtraMounts := []glancev1.GlanceExtraVolMounts{}
@@ -84,6 +88,14 @@ func DbSyncJob(
 
 	job.Spec.Template.Spec.Volumes = GetVolumes(instance.Name, ServiceName, dbSyncExtraMounts, DbsyncPropagation)
 
+	// networks to attach to
+	nwAnnotation, err := annotations.GetNADAnnotation(instance.Namespace, instance.Spec.GlanceAPIInternal.NetworkAttachmentDefinitions)
+	if err != nil {
+		return nil, fmt.Errorf("failed create network annotation from %s: %w",
+			instance.Spec.GlanceAPIInternal.NetworkAttachmentDefinitions, err)
+	}
+	job.Spec.Template.Annotations = util.MergeStringMaps(job.Spec.Template.Annotations, nwAnnotation)
+
 	initContainerDetails := APIDetails{
 		ContainerImage:       instance.Spec.ContainerImage,
 		DatabaseHost:         instance.Status.DatabaseHostname,
@@ -96,5 +108,5 @@ func DbSyncJob(
 	}
 	job.Spec.Template.Spec.InitContainers = InitContainer(initContainerDetails)
 
-	return job
+	return job, nil
 }

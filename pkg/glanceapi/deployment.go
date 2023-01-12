@@ -22,7 +22,9 @@ import (
 	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,7 +42,7 @@ func Deployment(
 	instance *glancev1.GlanceAPI,
 	configHash string,
 	labels map[string]string,
-) *appsv1.Deployment {
+) (*appsv1.Deployment, error) {
 	runAsUser := int64(0)
 
 	livenessProbe := &corev1.Probe{
@@ -136,6 +138,7 @@ func Deployment(
 		},
 	}
 	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(instance.Name, glance.ServiceName, instance.Spec.ExtraMounts, glance.GlanceAPIPropagation)
+
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
 	// the get still created on the same worker node.
@@ -150,6 +153,14 @@ func Deployment(
 		deployment.Spec.Template.Spec.NodeSelector = instance.Spec.NodeSelector
 	}
 
+	// networks to attach to
+	nwAnnotation, err := annotations.GetNADAnnotation(instance.Namespace, instance.Spec.NetworkAttachmentDefinitions)
+	if err != nil {
+		return nil, fmt.Errorf("failed create network annotation from %s: %w",
+			instance.Spec.NetworkAttachmentDefinitions, err)
+	}
+	deployment.Spec.Template.Annotations = util.MergeStringMaps(deployment.Spec.Template.Annotations, nwAnnotation)
+
 	initContainerDetails := glance.APIDetails{
 		ContainerImage:       instance.Spec.ContainerImage,
 		DatabaseHost:         instance.Spec.DatabaseHostname,
@@ -162,5 +173,5 @@ func Deployment(
 	}
 	deployment.Spec.Template.Spec.InitContainers = glance.InitContainer(initContainerDetails)
 
-	return deployment
+	return deployment, nil
 }

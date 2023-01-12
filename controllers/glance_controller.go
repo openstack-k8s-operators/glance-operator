@@ -381,7 +381,10 @@ func (r *GlanceReconciler) reconcileInit(
 	// run Glance db sync
 	//
 	dbSyncHash := instance.Status.Hash[glancev1.DbSyncHash]
-	jobDef := glance.DbSyncJob(instance, serviceLabels)
+	jobDef, err := glance.DbSyncJob(instance, serviceLabels)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	dbSyncjob := job.NewJob(
 		jobDef,
 		glancev1.DbSyncHash,

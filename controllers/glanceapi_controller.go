@@ -436,8 +436,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 
 	// Define a new Deployment object
+	deplDef, err := glanceapi.Deployment(instance, inputHash, serviceLabels)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	depl := deployment.NewDeployment(
-		glanceapi.Deployment(instance, inputHash, serviceLabels),
+		deplDef,
 		5,
 	)
 
@@ -459,6 +463,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrlResult, nil
 	}
 	instance.Status.ReadyCount = depl.GetDeployment().Status.ReadyReplicas
+	instance.Status.Networks = instance.Spec.NetworkAttachmentDefinitions
 	if instance.Status.ReadyCount > 0 {
 		instance.Status.Conditions.MarkTrue(condition.DeploymentReadyCondition, condition.DeploymentReadyMessage)
 	}

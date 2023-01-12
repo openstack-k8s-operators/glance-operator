@@ -3847,6 +3847,12 @@ spec:
                       - extraVol
                       type: object
                     type: array
+                  networkAttachmentDefinitions:
+                    description: NetworkAttachmentDefinitions list of network attachment
+                      definitions the service pod gets attached to
+                    items:
+                      type: string
+                    type: array
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -5877,6 +5883,12 @@ spec:
                       required:
                       - extraVol
                       type: object
+                    type: array
+                  networkAttachmentDefinitions:
+                    description: NetworkAttachmentDefinitions list of network attachment
+                      definitions the service pod gets attached to
+                    items:
+                      type: string
                     type: array
                   nodeSelector:
                     additionalProperties:
