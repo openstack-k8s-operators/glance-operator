@@ -512,14 +512,18 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	if err != nil {
 		return err
 	}
-	authURL, err := keystoneAPI.GetEndpoint(endpoint.EndpointPublic)
-	// authURL not available, we should not aggregate the error and continue
+	keystoneInternalURL, err := keystoneAPI.GetEndpoint(endpoint.EndpointInternal)
+	if err != nil {
+		return err
+	}
+	keystonePublicURL, err := keystoneAPI.GetEndpoint(endpoint.EndpointPublic)
 	if err != nil {
 		return err
 	}
 	templateParameters := make(map[string]interface{})
 	templateParameters["ServiceUser"] = instance.Spec.ServiceUser
-	templateParameters["KeystonePublicURL"] = authURL
+	templateParameters["KeystoneInternalURL"] = keystoneInternalURL
+	templateParameters["KeystonePublicURL"] = keystonePublicURL
 
 	// Configure the internal GlanceAPI to provide image location data, and the
 	// external version to *not* provide it.
