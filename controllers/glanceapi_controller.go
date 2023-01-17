@@ -468,10 +468,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	return ctrl.Result{}, nil
 }
 
-//
 // generateServiceConfigMaps - create create configmaps which hold scripts and service configuration
 // TODO add DefaultConfigOverwrite
-//
 func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	ctx context.Context,
 	h *helper.Helper,
@@ -511,14 +509,14 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	}
 	templateParameters := make(map[string]interface{})
 	templateParameters["ServiceUser"] = instance.Spec.ServiceUser
-	templateParameters["KeystoneInternalURL"] = keystoneInternalURL
-	templateParameters["KeystonePublicURL"] = keystonePublicURL
+	templateParameters["KeystoneAuthURL"] = keystonePublicURL
 
 	// Configure the internal GlanceAPI to provide image location data, and the
 	// external version to *not* provide it.
 	if instance.Spec.APIType == glancev1.APIInternal {
 		templateParameters["ShowImageDirectUrl"] = true
 		templateParameters["ShowMultipleLocations"] = true
+		templateParameters["KeystoneAuthURL"] = keystoneInternalURL
 	} else {
 		templateParameters["ShowImageDirectUrl"] = false
 		templateParameters["ShowMultipleLocations"] = false
@@ -554,12 +552,10 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	return nil
 }
 
-//
 // createHashOfInputHashes - creates a hash of hashes which gets added to the resources which requires a restart
 // if any of the input resources change, like configs, passwords, ...
 //
 // returns the hash, whether the hash changed (as a bool) and any error
-//
 func (r *GlanceAPIReconciler) createHashOfInputHashes(
 	ctx context.Context,
 	instance *glancev1.GlanceAPI,

@@ -640,10 +640,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 	return deployment, op, err
 }
 
-//
 // generateServiceConfigMaps - create create configmaps which hold scripts and service configuration (*used for DBSync only*)
 // TODO add DefaultConfigOverwrite
-//
 func (r *GlanceReconciler) generateServiceConfigMaps(
 	ctx context.Context,
 	h *helper.Helper,
