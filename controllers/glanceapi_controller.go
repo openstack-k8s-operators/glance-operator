@@ -522,6 +522,9 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 		templateParameters["ShowMultipleLocations"] = false
 	}
 
+    // Configure glance image import internal plugins, default to 'no_op'
+    templateParameters["GlanceImageImportPlugins"] = ['no_op']
+
 	cms := []util.Template{
 		// ScriptsConfigMap
 		{
