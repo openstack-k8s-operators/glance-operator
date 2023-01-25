@@ -27,7 +27,7 @@ make glance GLANCE_IMG=quay.io/openstack-k8s-operators/glance-operator-index:lat
 make glance_deploy
 ```
 
-## Launch glance-api-* service/process in debug mode 
+## Launch glance-api-* service/process in debug mode
 
 Sometimes as a developer we need to make changes in configuration/policy files
 or add more logs in actual code to see what went wrong in API calls. In normal
@@ -82,9 +82,9 @@ root       13590  0.0  0.6 711036 99096 pts/1    S+   Nov15   0:03 /usr/bin/pyth
 root       13591  0.0  0.8 990744 135064 pts/1   S+   Nov15   0:04 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
 root       13592  0.0  0.8 990232 134864 pts/1   S+   Nov15   0:03 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
 root     1635263  0.0  0.0   6392  2296 pts/3    S+   07:35   0:00 grep --color=auto glance
- 
+
 Similar way you can modify configuration/policy files located in /etc/glance/* and kill
-and start the service inside container.  
+and start the service inside container.
 ```
 
 ## Example: configure Glance with Ceph backend
@@ -229,7 +229,7 @@ $ source project-a-reader-rc file
 $ glance image-create --disk-format qcow2 --container-format bare --name cirros --file <file_path_of_image>
 
 Since reader role is not permitted to create/update/delete action, you will get 403 Forbidden response.
- 
+
 3. Run glance image-list command
 $ glance image-list
 
@@ -259,4 +259,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-

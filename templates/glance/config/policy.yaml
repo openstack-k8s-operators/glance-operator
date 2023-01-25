@@ -519,5 +519,3 @@
 # GET  /v2/info/stores/detail
 # Intended scope(s): project
 "stores_info_detail": "role:admin"
-
-

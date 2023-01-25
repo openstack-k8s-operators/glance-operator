@@ -19,22 +19,16 @@ import (
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 )
 
-//
 // Glance Condition Types used by API objects.
-//
 const (
 	// GlanceAPIReadyCondition Status=True condition which indicates if the GlanceAPI is configured and operational
 	GlanceAPIReadyCondition condition.Type = "GlanceAPIReady"
 )
 
-//
 // Glance Reasons used by API objects.
-//
 const ()
 
-//
 // Common Messages used by API objects.
-//
 const (
 	//
 	// GlanceAPIReady condition messages
