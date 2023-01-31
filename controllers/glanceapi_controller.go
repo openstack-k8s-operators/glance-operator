@@ -210,9 +210,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	//
 	ports := map[endpoint.Endpoint]endpoint.Data{}
 	if instance.Spec.APIType == glancev1.APIInternal {
-		ports[endpoint.EndpointAdmin] = endpoint.Data{
-			Port: glance.GlanceAdminPort,
-		}
 		ports[endpoint.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
 		}
