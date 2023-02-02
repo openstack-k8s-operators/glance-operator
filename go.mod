@@ -7,13 +7,13 @@ require (
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
 	github.com/openshift/api v3.9.0+incompatible
-	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-20221012180209-edb3e47d2cc4
-	github.com/openstack-k8s-operators/infra-operator/apis v0.0.0-20230126151500-66ff44f847f6
-	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20221012160546-35f7a3fb81b0
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230120104300-c5aa132b34d6
-	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20221123155618-fe0bc99bca8a
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20221207150746-c4fe7a228d42
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20221012054716-c13ec33e0cb9
+	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-20230202181309-a7400b873299
+	github.com/openstack-k8s-operators/infra-operator/apis v0.0.0-20230202181106-bb7c1e38bff3
+	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230202111515-d17bb72530fb
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230131105859-675e99666dbc
+	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20230131105859-675e99666dbc
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230131105859-675e99666dbc
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20230201132830-7c038a5e967e
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
@@ -38,7 +38,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/gophercloud/gophercloud v1.0.0 // indirect
+	github.com/gophercloud/gophercloud v1.1.1 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -47,7 +47,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.0.0-20220915080953-f73a201a1da6 // indirect
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.0.0-20230131105859-675e99666dbc // indirect; indirect // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
