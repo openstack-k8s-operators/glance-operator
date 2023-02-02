@@ -72,7 +72,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.26.1 // indirect; indirect // indirect
 	k8s.io/component-base v0.26.1 // indirect; indirect // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20230131224050-76d406abb92a // indirect; indirect // indirect
+	k8s.io/kube-openapi v0.0.0-20230202010329-39b3636cbaa3 // indirect; indirect // indirect // indirect
 	k8s.io/utils v0.0.0-20230115233650-391b47cb4029 // indirect; indirect // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect; indirect // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
