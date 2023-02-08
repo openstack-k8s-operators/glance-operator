@@ -208,6 +208,10 @@ github.com/openshift/api v3.9.0+incompatible h1:fJ/KsefYuZAjmrr3+5U9yZIZbTOpVkDD
 github.com/openshift/api v3.9.0+incompatible/go.mod h1:dh9o4Fs58gpFXGSYfnVxGR9PnV53I8TW84pQaJDdGiY=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230131105859-675e99666dbc h1:yLxSsMlAxxnHwwpDUYUE53Cp/9BGMX/5iMC1dNk/XHw=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230131105859-675e99666dbc/go.mod h1:qV9OlokZRpqbHI3lmeN5EOmIKynWphw6GPl3zP9KOGM=
+github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230207162833-94c25ed85b4c h1:fGV+R0B/JbXw01wV7GwiegAKbzUe1gxeKdawiS5AAJQ=
+github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230207162833-94c25ed85b4c/go.mod h1:qV9OlokZRpqbHI3lmeN5EOmIKynWphw6GPl3zP9KOGM=
+github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230208113903-f7b52e2a2ccb h1:GL2gr48Uj07HAR4m4iShujzCrHwy/vH78FIKKjgtIR0=
+github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230208113903-f7b52e2a2ccb/go.mod h1:qV9OlokZRpqbHI3lmeN5EOmIKynWphw6GPl3zP9KOGM=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230131105859-675e99666dbc h1:ShHe3Shz8M1S2grwJFjaKo4veUYICHi4h7OfYHgAwqI=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230131105859-675e99666dbc/go.mod h1:I8t9nOD+GpfOakInGk9C47aIrI0ZvKTKiuhz9G3tehU=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
