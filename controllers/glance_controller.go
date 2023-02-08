@@ -354,7 +354,7 @@ func (r *GlanceReconciler) reconcileInit(
 		PasswordSelector:   instance.Spec.PasswordSelectors.Service,
 	}
 
-	ksSvc := keystonev1.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, 10)
+	ksSvc := keystonev1.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, time.Duration(10)*time.Second)
 	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err
