@@ -53,26 +53,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GetClient -
-func (r *GlanceReconciler) GetClient() client.Client {
-	return r.Client
-}
-
-// GetKClient -
-func (r *GlanceReconciler) GetKClient() kubernetes.Interface {
-	return r.Kclient
-}
-
-// GetLogger -
-func (r *GlanceReconciler) GetLogger() logr.Logger {
-	return r.Log
-}
-
-// GetScheme -
-func (r *GlanceReconciler) GetScheme() *runtime.Scheme {
-	return r.Scheme
-}
-
 // GlanceReconciler reconciles a Glance object
 type GlanceReconciler struct {
 	client.Client
