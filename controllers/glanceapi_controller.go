@@ -50,26 +50,6 @@ import (
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-// GetClient -
-func (r *GlanceAPIReconciler) GetClient() client.Client {
-	return r.Client
-}
-
-// GetKClient -
-func (r *GlanceAPIReconciler) GetKClient() kubernetes.Interface {
-	return r.Kclient
-}
-
-// GetLogger -
-func (r *GlanceAPIReconciler) GetLogger() logr.Logger {
-	return r.Log
-}
-
-// GetScheme -
-func (r *GlanceAPIReconciler) GetScheme() *runtime.Scheme {
-	return r.Scheme
-}
-
 // GlanceAPIReconciler reconciles a GlanceAPI object
 type GlanceAPIReconciler struct {
 	client.Client
