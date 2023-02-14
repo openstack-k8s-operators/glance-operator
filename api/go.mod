@@ -3,8 +3,10 @@ module github.com/openstack-k8s-operators/glance-operator/api
 go 1.19
 
 require (
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230208113903-f7b52e2a2ccb
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230131105859-675e99666dbc
+	github.com/onsi/ginkgo/v2 v2.6.0
+	github.com/onsi/gomega v1.24.1
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230213100743-10d19ef192ad
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230213100743-10d19ef192ad
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	sigs.k8s.io/controller-runtime v0.14.2
