@@ -129,12 +129,11 @@ test: manifests generate fmt vet envtest ## Run tests.
 build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
-.PHONY: generate-cert
-generate-cert:
-	/bin/bash hack/create_self_signed_cert.sh
 
 .PHONY: run
-run: manifests generate fmt vet generate-cert ## Run a controller from your host.
+run: export ENABLE_WEBHOOKS?=false
+run: export OPERATOR_TEMPLATES=./templates/
+run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 .PHONY: docker-build
@@ -329,3 +328,7 @@ gowork: ## Generate go.work file to support our multi module repository
 operator-lint: gowork ## Runs operator-lint
 	GOBIN=$(LOCALBIN) go install github.com/gibizer/operator-lint@v0.1.0
 	go vet -vettool=$(LOCALBIN)/operator-lint ./... ./api/...
+
+.PHONY: generate-cert
+generate-cert:
+	/bin/bash hack/create_self_signed_cert.sh
