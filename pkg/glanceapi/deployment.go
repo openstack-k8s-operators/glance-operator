@@ -40,6 +40,7 @@ func Deployment(
 	instance *glancev1.GlanceAPI,
 	configHash string,
 	labels map[string]string,
+	annotations map[string]string,
 ) *appsv1.Deployment {
 	runAsUser := int64(0)
 
@@ -109,7 +110,8 @@ func Deployment(
 			Replicas: &instance.Spec.Replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Annotations: annotations,
+					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: glance.ServiceAccount,
@@ -136,6 +138,7 @@ func Deployment(
 		},
 	}
 	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(instance.Name, glance.ServiceName, instance.Spec.ExtraMounts, glance.GlanceAPIPropagation)
+
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
 	// the get still created on the same worker node.
