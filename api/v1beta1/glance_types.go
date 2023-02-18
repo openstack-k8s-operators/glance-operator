@@ -151,10 +151,10 @@ type GlanceStatus struct {
 	DatabaseHostname string `json:"databaseHostname,omitempty"`
 
 	// ReadyCount of internal and admin Glance API instance
-	GlanceAPIInternalReadyCount int32 `json:"cinderAPIReadyInternalCount,omitempty"`
+	GlanceAPIInternalReadyCount int32 `json:"glanceAPIReadyInternalCount,omitempty"`
 
 	// ReadyCount of external and admin Glance API instance
-	GlanceAPIExternalReadyCount int32 `json:"cinderAPIReadyExternalCount,omitempty"`
+	GlanceAPIExternalReadyCount int32 `json:"glanceAPIReadyExternalCount,omitempty"`
 }
 
 //+kubebuilder:object:root=true
