@@ -6320,14 +6320,6 @@ spec:
                   type: string
                 description: API endpoint
                 type: object
-              cinderAPIReadyExternalCount:
-                description: ReadyCount of external and admin Glance API instance
-                format: int32
-                type: integer
-              cinderAPIReadyInternalCount:
-                description: ReadyCount of internal and admin Glance API instance
-                format: int32
-                type: integer
               conditions:
                 description: Conditions
                 items:
@@ -6374,6 +6366,14 @@ spec:
               databaseHostname:
                 description: Glance Database Hostname
                 type: string
+              glanceAPIReadyExternalCount:
+                description: ReadyCount of external and admin Glance API instance
+                format: int32
+                type: integer
+              glanceAPIReadyInternalCount:
+                description: ReadyCount of internal and admin Glance API instance
+                format: int32
+                type: integer
               hash:
                 additionalProperties:
                   type: string
