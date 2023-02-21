@@ -5,6 +5,7 @@ metadata:
 spec:
   serviceUser: glance
   containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+  customServiceConfig: |
     [DEFAULT]
     debug = true
   databaseInstance: openstack
