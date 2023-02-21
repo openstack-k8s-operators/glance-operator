@@ -119,12 +119,21 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Glance")
 		os.Exit(1)
 	}
+
+	// Acquire environmental defaults and initialize Glance and GlanceAPI defaults with them
+	glanceDefaults := glancev1.GlanceDefaults{
+		ContainerImageURL: os.Getenv("GLANCE_API_IMAGE_URL_DEFAULT"),
+	}
+
+	(&glancev1.Glance{}).Spec.SetupDefaults(glanceDefaults)
+	// Setup webhooks if requested
 	if strings.ToLower(os.Getenv("ENABLE_WEBHOOKS")) != "false" {
 		if err = (&glancev1.Glance{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Glance")
 			os.Exit(1)
 		}
 	}
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

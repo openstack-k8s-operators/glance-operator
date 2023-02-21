@@ -38,8 +38,7 @@ type GlanceSpec struct {
 	// ServiceUser - optional username used for this service to register in glance
 	ServiceUser string `json:"serviceUser"`
 
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo"
+	// +kubebuilder:validation:Required
 	// Glance Container Image URL
 	ContainerImage string `json:"containerImage"`
 
@@ -108,8 +107,9 @@ type GlanceSpec struct {
 	GlanceAPIExternal GlanceAPISpec `json:"glanceAPIExternal"`
 
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:default={}
 	// ExtraMounts containing conf files and credentials
-	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts"`
+	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts,omitempty"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret
