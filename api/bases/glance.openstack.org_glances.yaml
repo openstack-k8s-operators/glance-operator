@@ -2031,6 +2031,7 @@ spec:
                             no SharedIPKey specified.
                           type: string
                       required:
+                      - endpoint
                       - ipAddressPool
                       type: object
                     type: array
@@ -4191,6 +4192,7 @@ spec:
                             no SharedIPKey specified.
                           type: string
                       required:
+                      - endpoint
                       - ipAddressPool
                       type: object
                     type: array
