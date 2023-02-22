@@ -57,9 +57,10 @@ import (
 // GlanceReconciler reconciles a Glance object
 type GlanceReconciler struct {
 	client.Client
-	Kclient kubernetes.Interface
-	Log     logr.Logger
-	Scheme  *runtime.Scheme
+	Kclient           kubernetes.Interface
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	ContainerImageURL string
 }
 
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glances,verbs=get;list;watch;create;update;patch;delete
@@ -117,6 +118,11 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			return
 		}
 	}()
+
+	// Enforce defaults
+	if defaultsChanged := r.applyDefaults(instance); defaultsChanged {
+		return ctrl.Result{}, nil
+	}
 
 	// If we're not deleting this and the service object doesn't have our finalizer, add it.
 	if instance.DeletionTimestamp.IsZero() && controllerutil.AddFinalizer(instance, helper.GetFinalizer()) {
@@ -712,4 +718,30 @@ func (r *GlanceReconciler) generateServiceConfigMaps(
 	}
 
 	return nil
+}
+
+func (r *GlanceReconciler) applyDefaults(instance *glancev1.Glance) bool {
+	defaultsChanged := false
+
+	if r.ContainerImageURL != "" {
+		if instance.Spec.ContainerImage == "" {
+			defaultsChanged = true
+			instance.Spec.ContainerImage = r.ContainerImageURL
+			r.Log.Info("AJB 1")
+		}
+
+		if instance.Spec.GlanceAPIExternal.ContainerImage == "" {
+			defaultsChanged = true
+			instance.Spec.GlanceAPIExternal.ContainerImage = r.ContainerImageURL
+			r.Log.Info("AJB 2")
+		}
+
+		if instance.Spec.GlanceAPIInternal.ContainerImage == "" {
+			defaultsChanged = true
+			instance.Spec.GlanceAPIInternal.ContainerImage = r.ContainerImageURL
+			r.Log.Info("AJB 3")
+		}
+	}
+
+	return defaultsChanged
 }

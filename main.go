@@ -102,19 +102,21 @@ func main() {
 	}
 
 	if err = (&controllers.GlanceAPIReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Kclient: kclient,
-		Log:     ctrl.Log.WithName("controllers").WithName("GlanceAPI"),
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		Kclient:           kclient,
+		Log:               ctrl.Log.WithName("controllers").WithName("GlanceAPI"),
+		ContainerImageURL: os.Getenv("GLANCE_API_IMAGE_URL_DEFAULT"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GlanceAPI")
 		os.Exit(1)
 	}
 	if err = (&controllers.GlanceReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Kclient: kclient,
-		Log:     ctrl.Log.WithName("controllers").WithName("Glance"),
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		Kclient:           kclient,
+		Log:               ctrl.Log.WithName("controllers").WithName("Glance"),
+		ContainerImageURL: os.Getenv("GLANCE_API_IMAGE_URL_DEFAULT"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Glance")
 		os.Exit(1)

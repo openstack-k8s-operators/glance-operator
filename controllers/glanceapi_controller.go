@@ -54,9 +54,10 @@ import (
 // GlanceAPIReconciler reconciles a GlanceAPI object
 type GlanceAPIReconciler struct {
 	client.Client
-	Kclient kubernetes.Interface
-	Log     logr.Logger
-	Scheme  *runtime.Scheme
+	Kclient           kubernetes.Interface
+	Log               logr.Logger
+	Scheme            *runtime.Scheme
+	ContainerImageURL string
 }
 
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
@@ -114,6 +115,11 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return
 		}
 	}()
+
+	// Enforce defaults
+	if defaultsChanged := r.applyDefaults(instance); defaultsChanged {
+		return ctrl.Result{}, nil
+	}
 
 	// If we're not deleting this and the service object doesn't have our finalizer, add it.
 	if instance.DeletionTimestamp.IsZero() && controllerutil.AddFinalizer(instance, helper.GetFinalizer()) {
@@ -615,4 +621,13 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 		r.Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
 	}
 	return hash, changed, nil
+}
+
+func (r *GlanceAPIReconciler) applyDefaults(instance *glancev1.GlanceAPI) bool {
+	if r.ContainerImageURL != "" && instance.Spec.ContainerImage == "" {
+		instance.Spec.ContainerImage = r.ContainerImageURL
+		return true
+	}
+
+	return false
 }

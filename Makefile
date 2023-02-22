@@ -131,6 +131,7 @@ build: generate fmt vet ## Build manager binary.
 
 
 .PHONY: run
+run: export GLANCE_API_IMAGE_URL_DEFAULT=quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
 run: export ENABLE_WEBHOOKS?=false
 run: export OPERATOR_TEMPLATES=./templates/
 run: manifests generate fmt vet ## Run a controller from your host.

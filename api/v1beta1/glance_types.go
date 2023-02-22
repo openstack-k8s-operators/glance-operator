@@ -39,7 +39,6 @@ type GlanceSpec struct {
 	ServiceUser string `json:"serviceUser"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo"
 	// Glance Container Image URL
 	ContainerImage string `json:"containerImage"`
 
