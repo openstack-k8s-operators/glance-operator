@@ -23,8 +23,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
+// GlanceDefaults -
+type GlanceDefaults struct {
+	ContainerImageURL string
+}
+
+var glanceDefaults GlanceDefaults
+
 // log is for logging in this package.
 var glancelog = logf.Log.WithName("glance-resource")
+
+// SetupDefaults - initialize Glance spec defaults for use with either internal or external webhooks
+func (spec *GlanceSpec) SetupDefaults(defaults GlanceDefaults) {
+	glanceDefaults = defaults
+}
 
 // SetupWebhookWithManager sets up the webhook with the Manager
 func (r *Glance) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -33,9 +45,32 @@ func (r *Glance) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+//+kubebuilder:webhook:path=/mutate-glance-openstack-org-v1beta1-glance,mutating=true,failurePolicy=fail,sideEffects=None,groups=glance.openstack.org,resources=glances,verbs=create;update,versions=v1beta1,name=mglance.kb.io,admissionReviewVersions=v1
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
+var _ webhook.Defaulter = &Glance{}
+
+// Default implements webhook.Defaulter so a webhook will be registered for the type
+func (r *Glance) Default() {
+	glancelog.Info("default", "name", r.Name)
+
+	r.Spec.Default()
+}
+
+// Default - set defaults for this Glance spec
+func (spec *GlanceSpec) Default() {
+	if spec.ContainerImage == "" {
+		spec.ContainerImage = glanceDefaults.ContainerImageURL
+	}
+
+	if spec.GlanceAPIExternal.ContainerImage == "" {
+		spec.GlanceAPIExternal.ContainerImage = glanceDefaults.ContainerImageURL
+	}
+
+	if spec.GlanceAPIInternal.ContainerImage == "" {
+		spec.GlanceAPIInternal.ContainerImage = glanceDefaults.ContainerImageURL
+	}
+}
+
 //+kubebuilder:webhook:path=/validate-glance-openstack-org-v1beta1-glance,mutating=false,failurePolicy=fail,sideEffects=None,groups=glance.openstack.org,resources=glances,verbs=create;update,versions=v1beta1,name=vglance.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &Glance{}

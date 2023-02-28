@@ -45,7 +45,6 @@ spec:
             description: GlanceSpec defines the desired state of Glance
             properties:
               containerImage:
-                default: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
                 description: Glance Container Image URL
                 type: string
               customServiceConfig:
@@ -1953,7 +1952,6 @@ spec:
                     - external
                     type: string
                   containerImage:
-                    default: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
                     description: GlanceAPI Container Image URL
                     type: string
                   customServiceConfig:
@@ -4102,6 +4100,8 @@ spec:
                     description: ServiceUser - optional username used for this service
                       to register in glance
                     type: string
+                required:
+                - containerImage
                 type: object
               glanceAPIInternal:
                 description: GlanceAPIInternal - Spec definition for the internal
@@ -4114,7 +4114,6 @@ spec:
                     - external
                     type: string
                   containerImage:
-                    default: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
                     description: GlanceAPI Container Image URL
                     type: string
                   customServiceConfig:
@@ -6263,6 +6262,8 @@ spec:
                     description: ServiceUser - optional username used for this service
                       to register in glance
                     type: string
+                required:
+                - containerImage
                 type: object
               nodeSelector:
                 additionalProperties:
@@ -6309,6 +6310,7 @@ spec:
                 description: StorageRequest
                 type: string
             required:
+            - containerImage
             - databaseInstance
             - glanceAPIExternal
             - glanceAPIInternal
