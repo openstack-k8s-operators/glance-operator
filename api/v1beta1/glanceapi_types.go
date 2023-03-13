@@ -44,7 +44,7 @@ type GlanceAPISpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=internal;external
 	// +kubebuilder:default=external
-	APIType string `json:"apiType,omitempty"`
+	APIType string `json:"apiType"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=1
@@ -70,7 +70,7 @@ type GlanceAPISpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default={database: GlanceDatabasePassword, service: GlancePassword}
 	// PasswordSelectors - Selectors to identify the DB and ServiceUser password from the Secret
-	PasswordSelectors PasswordSelector `json:"passwordSelectors,omitempty"`
+	PasswordSelectors PasswordSelector `json:"passwordSelectors"`
 
 	// +kubebuilder:validation:Optional
 	// NodeSelector to target subset of worker nodes running this service
@@ -86,7 +86,6 @@ type GlanceAPISpec struct {
 	Pvc string `json:"pvc,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="# add your customization here"
 	// CustomServiceConfig - customize the service config using this parameter to change service defaults,
 	// or overwrite rendered information using raw OpenStack config format. The content gets added to
 	// to /etc/<service>/<service>.conf.d directory as custom.conf file.
@@ -104,17 +103,14 @@ type GlanceAPISpec struct {
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default={}
 	// ExtraMounts containing conf files and credentials
 	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default={}
 	// NetworkAttachments is a list of NetworkAttachment resource names to expose the services to the given network
 	NetworkAttachments []string `json:"networkAttachments,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default={}
 	// ExternalEndpoints, expose a VIP via MetalLB on the pre-created address pool
 	ExternalEndpoints []MetalLBConfig `json:"externalEndpoints,omitempty"`
 }
@@ -153,7 +149,7 @@ type GlanceAPIDebug struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// Service enable debug
-	Service bool `json:"service,omitempty"`
+	Service bool `json:"service"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI
