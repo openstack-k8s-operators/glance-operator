@@ -14,6 +14,8 @@ ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
 
+CRDDESC_OVERRIDE ?= :maxDescLen=0
+
 # DEFAULT_CHANNEL defines the default channel used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g DEFAULT_CHANNEL = "stable")
 # To re-generate a bundle for any other default channel without changing the default setup, you can:
@@ -180,7 +182,6 @@ ifndef ignore-not-found
 endif
 
 .PHONY: install
-install: CRDDESC_OVERRIDE=:maxDescLen=0
 install: manifests kustomize ## Install CRDs and RBAC into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/dev | kubectl apply -f -
 
@@ -189,7 +190,6 @@ uninstall: manifests kustomize ## Uninstall CRDs and RBAC from the K8s cluster s
 	$(KUSTOMIZE) build config/dev | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
-deploy: CRDDESC_OVERRIDE=:maxDescLen=0
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
@@ -232,7 +232,6 @@ $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: bundle
-bundle: CRDDESC_OVERRIDE=:maxDescLen=0
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
