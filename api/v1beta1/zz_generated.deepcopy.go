@@ -60,6 +60,13 @@ func (in *GlanceAPI) DeepCopyInto(out *GlanceAPI) {
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
+	if in.ExtraMounts != nil {
+		in, out := &in.ExtraMounts, &out.ExtraMounts
+		*out = make([]GlanceExtraVolMounts, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	in.Status.DeepCopyInto(&out.Status)
 }
 
@@ -148,13 +155,6 @@ func (in *GlanceAPISpec) DeepCopyInto(out *GlanceAPISpec) {
 		}
 	}
 	in.Resources.DeepCopyInto(&out.Resources)
-	if in.ExtraMounts != nil {
-		in, out := &in.ExtraMounts, &out.ExtraMounts
-		*out = make([]GlanceExtraVolMounts, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
 	if in.NetworkAttachments != nil {
 		in, out := &in.NetworkAttachments, &out.NetworkAttachments
 		*out = make([]string, len(*in))
