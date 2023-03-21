@@ -1,6 +1,8 @@
 package glance
 
-import "sigs.k8s.io/controller-runtime/pkg/client"
+import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
 
 // GetOwningGlanceName - Given a GlanceAPI (both internal and external)
 // object, return the parent Glance object that created it (if any)
@@ -10,6 +12,5 @@ func GetOwningGlanceName(instance client.Object) string {
 			return ownerRef.Name
 		}
 	}
-
 	return ""
 }

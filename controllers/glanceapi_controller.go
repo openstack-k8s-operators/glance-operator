@@ -27,7 +27,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
@@ -121,27 +124,6 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	// Get Glance Top level CR and fetch ExtraVolumes if defined
-	parentGlance := &glancev1.Glance{}
-
-	err = r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      glance.GetOwningGlanceName(instance),
-			Namespace: req.Namespace,
-		},
-		parentGlance)
-
-	if err != nil {
-		if !k8s_errors.IsNotFound(err) {
-			return ctrl.Result{}, err
-		}
-		r.Log.Info("Reconciling Service: Glance CR not present")
-	}
-	// if the top-level resource (parentGlance) is empty, an empty array is
-	// assigned to instance.ExtraMounts
-	instance.ExtraMounts = parentGlance.Spec.ExtraMounts
-
 	//
 	// initialize status
 	//
@@ -184,6 +166,68 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	glance := func(o client.Object) []reconcile.Request {
+
+		result := []reconcile.Request{}
+
+		// Get GlanceAPIList that should be updated
+		glanceapis := &glancev1.GlanceAPIList{}
+
+		listOpts := []client.ListOption{
+			client.InNamespace(o.GetNamespace()),
+		}
+		if err := r.Client.List(context.Background(), glanceapis, listOpts...); err != nil {
+			r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %v")
+			return nil
+		}
+
+		// For each GlanceAPI instance (typically internal and external), we
+		// create a reconcile request if ExtraMounts changed in the parent CR
+		for _, api := range glanceapis.Items {
+
+			// Get parent Glance CR checking the GetOwnerReferences in the
+			// glance pkg
+			parentGlance := &glancev1.Glance{}
+			err := r.Client.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      glance.GetOwningGlanceName(&api),
+					Namespace: o.GetNamespace(),
+				},
+				parentGlance)
+
+			// No parent in the OwnerReferences available, we should return
+			// as no reconcile loop should be triggered
+			if err != nil {
+				return nil
+			}
+
+			// The new reconcile request should be enqueued as long as the
+			// ExtraMounts struct has changed in the top-level CR and the
+			// ownerRef matches with the client.Object
+			hashChanged, hash, err := r.extraMountsHashChanged(&api, parentGlance.Spec.ExtraMounts)
+			if err != nil {
+				r.Log.Error(err, "Failing to get instance Hash")
+				return nil
+			}
+
+			util.SetHash(api.Status.Hash, "extraMounts", hash)
+			if parentGlance.Name == o.GetName() && hashChanged {
+				name := client.ObjectKey{
+					Namespace: o.GetNamespace(),
+					Name:      api.Name,
+				}
+				result = append(result, reconcile.Request{NamespacedName: name})
+				r.Log.Info(fmt.Sprintf("REQUESTS: %v", result))
+			}
+		}
+		if len(result) > 0 {
+			return result
+		}
+		return nil
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.GlanceAPI{}).
 		Owns(&keystonev1.KeystoneEndpoint{}).
@@ -192,6 +236,9 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ConfigMap{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&routev1.Route{}).
+		// Watch for Glance{} ExtraVolumes
+		Watches(&source.Kind{Type: &glancev1.Glance{}},
+			handler.EnqueueRequestsFromMapFunc(glance)).
 		Complete(r)
 }
 
@@ -375,6 +422,37 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
+	// Get Glance Top level CR and fetch ExtraVolumes if defined
+	parentGlance := &glancev1.Glance{}
+
+	err = r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      glance.GetOwningGlanceName(instance),
+			Namespace: instance.Namespace,
+		},
+		parentGlance)
+
+	if err != nil {
+		if !k8s_errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		r.Log.Error(err, "Reconciling Service: Glance CR not present")
+	}
+
+	// if the top-level resource (parentGlance) is empty, an empty array is
+	// assigned to instance.ExtraMounts
+	instance.ExtraMounts = parentGlance.Spec.ExtraMounts
+
+	if len(instance.ExtraMounts) > 0 {
+		h, err := util.ObjectHash(instance.ExtraMounts)
+		if err != nil {
+			r.Log.Error(err, "Failed to get ExtraMountsHash")
+			return ctrl.Result{}, err
+		}
+		util.SetHash(instance.Status.Hash, "extraMounts", h)
+	}
+
 	//
 	// Create ConfigMaps and Secrets required as input for the Service and calculate an overall hash of hashes
 	//
@@ -488,7 +566,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		deplDef,
 		time.Duration(5)*time.Second,
 	)
-
 	ctrlResult, err = depl.CreateOrPatch(ctx, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -637,4 +714,30 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 		r.Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
 	}
 	return hash, changed, nil
+}
+
+// extraMountsHashChanged - computes the hash of a GalnceExtraVolMounts passed
+// as input, and compares the result with the existing hash stored in the
+// GlanceAPI
+func (r *GlanceAPIReconciler) extraMountsHashChanged(
+	instance *glancev1.GlanceAPI,
+	ev []glancev1.GlanceExtraVolMounts,
+) (bool, string, error) {
+
+	// No extraMounts defined, we shouldn't trigger a reconcile loop
+	if len(instance.Status.Hash["extraMounts"]) == 0 {
+		//if len(instance.Status.ExtraMountsHash) == 0 {
+		return false, "", nil
+	}
+
+	h, err := util.ObjectHash(ev)
+	if err != nil {
+		return false, h, err
+	}
+
+	// Compare the top-level and sub-resource hashes
+	if instance.Status.Hash["extraMounts"] != h {
+		return true, h, nil
+	}
+	return false, h, nil
 }
