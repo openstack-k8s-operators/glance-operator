@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -120,27 +119,6 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if instance.DeletionTimestamp.IsZero() && controllerutil.AddFinalizer(instance, helper.GetFinalizer()) {
 		return ctrl.Result{}, nil
 	}
-
-	// Get Glance Top level CR and fetch ExtraVolumes if defined
-	parentGlance := &glancev1.Glance{}
-
-	err = r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      glance.GetOwningGlanceName(instance),
-			Namespace: req.Namespace,
-		},
-		parentGlance)
-
-	if err != nil {
-		if !k8s_errors.IsNotFound(err) {
-			return ctrl.Result{}, err
-		}
-		r.Log.Info("Reconciling Service: Glance CR not present")
-	}
-	// if the top-level resource (parentGlance) is empty, an empty array is
-	// assigned to instance.ExtraMounts
-	instance.ExtraMounts = parentGlance.Spec.ExtraMounts
 
 	//
 	// initialize status

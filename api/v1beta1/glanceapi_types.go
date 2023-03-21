@@ -103,6 +103,10 @@ type GlanceAPISpec struct {
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// +kubebuilder:validation:Optional
+	// ExtraMounts containing conf files and credentials
+	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts,omitempty"`
+
+	// +kubebuilder:validation:Optional
 	// NetworkAttachments is a list of NetworkAttachment resource names to expose the services to the given network
 	NetworkAttachments []string `json:"networkAttachments,omitempty"`
 
@@ -177,9 +181,8 @@ type GlanceAPI struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec        GlanceAPISpec          `json:"spec,omitempty"`
-	Status      GlanceAPIStatus        `json:"status,omitempty"`
-	ExtraMounts []GlanceExtraVolMounts `json:"-"`
+	Spec   GlanceAPISpec   `json:"spec,omitempty"`
+	Status GlanceAPIStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
