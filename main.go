@@ -125,7 +125,8 @@ func main() {
 		ContainerImageURL: os.Getenv("GLANCE_API_IMAGE_URL_DEFAULT"),
 	}
 
-	(&glancev1.Glance{}).Spec.SetupDefaults(glanceDefaults)
+	glancev1.SetupGlanceDefaults(glanceDefaults)
+
 	// Setup webhooks if requested
 	if strings.ToLower(os.Getenv("ENABLE_WEBHOOKS")) != "false" {
 		if err = (&glancev1.Glance{}).SetupWebhookWithManager(mgr); err != nil {

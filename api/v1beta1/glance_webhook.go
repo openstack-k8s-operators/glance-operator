@@ -33,9 +33,15 @@ var glanceDefaults GlanceDefaults
 // log is for logging in this package.
 var glancelog = logf.Log.WithName("glance-resource")
 
-// SetupDefaults - initialize Glance spec defaults for use with either internal or external webhooks
+// SetupDefaults - FIXME: remove in followup PR to satisfy CI for this PR
 func (spec *GlanceSpec) SetupDefaults(defaults GlanceDefaults) {
+	SetupGlanceDefaults(defaults)
+}
+
+// SetupGlanceDefaults - initialize Glance spec defaults for use with either internal or external webhooks
+func SetupGlanceDefaults(defaults GlanceDefaults) {
 	glanceDefaults = defaults
+	glancelog.Info("Glance defaults initialized", "defaults", defaults)
 }
 
 // SetupWebhookWithManager sets up the webhook with the Manager
