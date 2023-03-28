@@ -1,91 +1,209 @@
-# glance-operator
+# GLACE-OPERATOR
 
-A Kubernetes Operator built using the [Operator Framework for Go](https://github.com/operator-framework).
-The Operator provides a way to install and manage the OpenStack Glance component
-on Kubernetes.
+The glance-operator is an OpenShift Operator built using the
+[Operator Framework for Go](https://github.com/operator-framework). The
+Operator provides a way to install and manage the OpenStack Glance
+installation on OpenShift. This Operator is developed using RDO containers
+for OpenStack.
 
-## Deployment
+## Getting started
 
-The operator is intended to be deployed via [OLM Operator Lifecycle Manager](https://sdk.operatorframework.io/docs/olm-integration/quickstart-bundle).
+**NOTES:**
 
-For development purposes, it can be deployed using [install_yamls](https://github.com/openstack-k8s-operators/install_yamls) project.
+- *The project is in a rapid development phase and not yet intended for
+  production consumption, so instructions are meant for developers.*
 
+- *If possible don't run things in your own machine to avoid the risk of
+  affecting the development of your other projects.*
+
+Here we'll explain how to get a functiona OpenShift deployment running inside a
+VM that is running MariaDB, RabbitMQ, KeyStone and Glance services
+against a Ceph backend.
+
+There are 4 steps:
+
+- [Install prerequisites](#prerequisites)
+- [Deploy an OpenShift cluster](#openshift-cluster)
+- [Prepare Storage](#storage)
+- [Deploy OpenStack](#deploy)
+
+### Prerequisites
+
+There are some tools that will be required through this process, so the first
+thing we do is install them:
+
+```sh
+sudo dnf install -y git wget make ansible-core python-pip podman gcc
 ```
-# clone the install_yamls repository
-git clone https://github.com/openstack-k8s-operators/install_yamls
 
-# move to the install_yamls directory
-cd install_yamls
+We'll also need this repository as well as `install_yamls`:
 
-# one time operation to initialize PVs within the CRC VM, required by glance to start
+```sh
+cd ~
+git clone https://github.com/openstack-k8s-operators/install_yamls.git
+git clone https://github.com/openstack-k8s-operators/glance-operator.git
+```
+
+### OpenShift cluster
+
+There are many ways get an OpenShift cluster, and our recommendation for the
+time being is to use [OpenShift Local](https://access.redhat.com/documentation/en-us/red_hat_openshift_local/2.5/html/getting_started_guide/index)
+(formerly known as CRC / Code Ready Containers).
+
+To help with the deployment we have [companion development tools](https://github.com/openstack-k8s-operators/install_yamls/blob/master/devsetup)
+available that will install OpenShift Local for you and will also help with
+later steps.
+
+Running OpenShift requires a considerable amount of resources, even more when
+running all the operators and services required for an OpenStack deployment,
+so make sure that you have enough resources in the machine to run everything.
+
+You will need at least 5 CPUS and 16GB of RAM, preferably more, just for the
+local OpenShift VM.
+
+**You will also need to get your [pull-secrets from Red Hat](
+https://cloud.redhat.com/openshift/create/local) and store it in the machine,
+for example on your home directory as `pull-secret`.**
+
+```sh
+cd ~/install_yamls/devsetup
+PULL_SECRET=~/pull-secret CPUS=6 MEMORY=20480 make download_tools crc
+```
+
+This will take a while, but once it has completed you'll have an OpenShift
+cluster ready.
+
+Now you need to set the right environmental variables for the OCP cluster, and
+you may want to logging to the cluster manually (although the previous step
+already logs in at the end):
+
+```sh
+eval $(crc oc-env)
+```
+
+**NOTE**: When CRC finishes the deployment the `oc` client is logged in, but
+the token will eventually expire, in that case we can login again with
+`oc login -u kubeadmin -p 12345678 https://api.crc.testing:6443`.
+
+Let's now get the cluster version confirming we have access to it:
+
+```sh
+oc get clusterversion
+```
+
+If you are running OCP on a different machine you'll need additional steps to
+[access its dashboard from an external system](https://github.com/openstack-k8s-operators/install_yamls/tree/master/devsetup#access-ocp-from-external-systems).
+
+### Storage
+
+There are 2 kinds of storage we'll need: One for the pods to run, for example
+for the MariaDB database files, and another for the OpenStack services to use
+for the VMs.
+
+To create the pod storage we run:
+
+```sh
+cd ~/install_yamls
 make crc_storage
-
-# Install Glance Operator using OLM (defaults to quay.io/openstack-k8s-operators)
-make glance GLANCE_IMG=quay.io/openstack-k8s-operators/glance-operator-index:latest
-
-# Deploy Glance
-make glance_deploy
 ```
 
-## Launch glance-api-* service/process in debug mode
+As for the storage for the OpenStack services, at the time of this writing only
+NFS and Ceph are supported. The [Glance Spec](#example-configure-glance-with-ceph-backend)
+can be used to configure Glance to connect to a Ceph RBD server.
 
-Sometimes as a developer we need to make changes in configuration/policy files
-or add more logs in actual code to see what went wrong in API calls. In normal
-deployment it is not possible to do this on the fly and you need to redeploy
-everything each time you make changes to either of above. If you launch the
-glance-api container(pod) in debug mode then you will be able to do it on
-the fly without relaunching/recreating the container each time. The following
-represents how you can launch the glance pod in debug mode and make changes
-on the fly.
+## Deploy openstack-k8s-operators
 
+Deploying the podified OpenStack control plane is a 2 step process. First
+deploying the operators, and then telling the openstack-operator how we want
+our OpenStack deployment to look like.
+
+Deploying the openstack operator:
+
+```sh
+cd ~/install_yamls
+make openstack
 ```
-Enable debug = True for the container you want to launch in debug mode, here
-we want to launch userfacing container (External) in debug mode.
 
-(path to file: install_yamls/out/openstack/glance/cr/glance_v1beta1_glance.yaml)
+Once all the operator ready we'll see the pod with:
 
-glanceAPIExternal:
-    debug:
-      service: true # Change it to true if it is false
-    preserveJobs: false
-    replicas: 1
-
-Now rebuild the operator;
-
-make generate && make manifests && make build
-OPERATOR_TEMPLATES=$PWD/templates ./bin/manager
-
-Once deployment is complete, you need to login to container;
-
-oc exec -it glance-external-api-* bash
-
-Verify that glance process is not running here;
-$ ps aux | grep glance
-root     1635263  0.0  0.0   6392  2296 pts/3    S+   07:35   0:00 grep --color=auto glance
-
-Now you can modify the code to add pdb or more logs by doing actual
-changes to code base;
-
-$ python3 -c "import glance;print(glance.__file__)"
-/usr/lib/python3.9/site-packages/glance/__init__.py
-
-Add debug/log statements or pdb at your desired location in
-/usr/lib/python3.9/site-packages/<file_name>.py
-
-Launch the glance service;
-/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
-
-Verify that glance process is running;
-$ ps aux | grep glance
-root       13555  0.4  0.7 708732 123860 pts/1   S+   Nov15  35:33 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
-root       13590  0.0  0.6 711036 99096 pts/1    S+   Nov15   0:03 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
-root       13591  0.0  0.8 990744 135064 pts/1   S+   Nov15   0:04 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
-root       13592  0.0  0.8 990232 134864 pts/1   S+   Nov15   0:03 /usr/bin/python3 /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d
-root     1635263  0.0  0.0   6392  2296 pts/3    S+   07:35   0:00 grep --color=auto glance
-
-Similar way you can modify configuration/policy files located in /etc/glance/* and kill
-and start the service inside container.
+```sh
+oc get pod -l control-plane=controller-manager
 ```
+
+And now we can tell this operator to deploy RabbitMQ, MariaDB, Keystone and Glance
+using the external Ceph cluster:
+
+```sh
+cd ~/install_yamls
+make openstack_deploy
+```
+
+After a bit we can see the 4 operators are running:
+
+```sh
+oc get pods -l control-plane=controller-manager
+```
+
+And a while later the services will also appear:
+
+```sh
+oc get pods -l app=mariadb
+oc get pods -l app.kubernetes.io/component=rabbitmq
+oc get pods -l service=keystone
+oc get pods -l service=glance
+```
+
+### Configure Clients
+
+We can now see available endpoints and services to confirm that the clients and
+the Keystone service work as expected:
+
+```sh
+openstack service list
+openstack endpoint list
+```
+
+Upload a glance image:
+
+```sh
+cd
+wget http://download.cirros-cloud.net/0.5.2/cirros-0.5.2-x86_64-disk.img -O cirros.img
+openstack image create cirros --container-format=bare --disk-format=qcow2 < cirros.img
+openstack image list
+```
+
+## Cleanup
+
+To delete the deployed OpenStack we can do:
+
+```sh
+cd ~/install_yamls
+make openstack_deploy_cleanup
+```
+
+Once we've done this we need to recreate the PVs that we created at the start,
+since some of them will be in failed state:
+
+```sh
+make crc_storage_cleanup crc_storage
+```
+
+We can now remove the openstack-operator as well:
+
+```sh
+make openstack_cleanup
+```
+
+# ADDITIONAL INFORMATION
+
+**NOTE:** Run `make --help` for more information on all potential `make`
+targets.
+
+More information about the Makefile can be found via the [Kubebuilder
+Documentation]( https://book.kubebuilder.io/introduction.html).
+
+For developer specific documentation please refer to the [Contributing
+Guide](CONTRIBUTING.md).
 
 ## Example: configure Glance with Ceph backend
 
