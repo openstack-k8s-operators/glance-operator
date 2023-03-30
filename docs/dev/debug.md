@@ -150,8 +150,7 @@ of the glance api service.
 
 If the glance-operator is running successfully then it should generate those
 resources based on the top level `Glance` resource and the information gathered
-by the `TransportURL`, the `mariadbdatabase`, and the generated `ConfigMap`s
-and `Secret`s.
+by the `mariadbdatabase`, and the generated `ConfigMap`s and `Secret`s.
 
 If we don't see a specific resource kind it may be because 
 there is a failure during it's creation.  In this case we should check the
