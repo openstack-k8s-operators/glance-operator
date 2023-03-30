@@ -1,4 +1,4 @@
-# GLACE-OPERATOR
+# GLANCE-OPERATOR
 
 The glance-operator is an OpenShift Operator built using the
 [Operator Framework for Go](https://github.com/operator-framework). The
@@ -108,7 +108,7 @@ make crc_storage
 ```
 
 As for the storage for the OpenStack services, at the time of this writing only
-NFS and Ceph are supported. The [Glance Spec](#example-configure-glance-with-ceph-backend)
+File and Ceph are supported. The [Glance Spec](#example-configure-glance-with-ceph-backend)
 can be used to configure Glance to connect to a Ceph RBD server.
 
 ## Deploy openstack-k8s-operators
@@ -131,7 +131,7 @@ oc get pod -l control-plane=controller-manager
 ```
 
 And now we can tell this operator to deploy RabbitMQ, MariaDB, Keystone and Glance
-using the external Ceph cluster:
+with File as a backend:
 
 ```sh
 cd ~/install_yamls
