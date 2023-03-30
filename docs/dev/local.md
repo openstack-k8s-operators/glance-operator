@@ -30,7 +30,7 @@ running.
 Since we have everything running we need to uninstalling both the
 glance-operator and Glance services.
 
-To uninstall the Cinder services we will edit the `OpenStackControlPlane` CR
+To uninstall the Glance services we will edit the `OpenStackControlPlane` CR
 that we used to deploy OpenStack and is present in the OpenShift cluster.
 
 ```sh
@@ -96,11 +96,8 @@ using the helper functions):
 
 ```sh
 make build
-OPERATOR_TEMPLATES=$PWD/templates ./bin/manager
+make run
 ```
-
-We can also do it with a single make call: `OPERATOR_TEMPLATES=$PWD/templates
-make install run`
 
 Any changes in the `templates` directory will be automatically available to the
 operator and there will be no need to recompile, rebuild, or restart the
@@ -108,13 +105,7 @@ glance-operator.
 
 Now that the glance operator is running locally we can go back and set the
 `replicas` back to `1` in the `glance` section of the `OpenStackControlPlane`
-CR to trigger the deployment of the Glance services.  The easiest way to do so
-is to apply the original manifest we used to deploy OpenStack in the first
-place:
-
-```sh
-oc apply -f hack/dev/openstack.yaml
-```
+CR to trigger the deployment of the Glance services.
 
 We should now see the local glance-operator detecting the change and we'll be
 able to see validate our code changes.
