@@ -98,7 +98,7 @@ instead using a merge strategy instead.  This means that we can have both
 single commit and as multi-commit PRs, and both have their places. It's all
 about how and when to split changes.
 
-#### Dependency Management
+#### Good practice for Dependency Management
 
 When submitting a PR that has dependencies in other repositories these
 dependencies should be stated in the PR or the commits using the `Depends-On:`
@@ -109,23 +109,6 @@ There are 4 ways to state a dependency with another projects PR:
 - `Depends-On: lib-common#88`
 - `Depends-On: openstack-k8s-operators/lib-common#88`
 - `Depends-On: https://github.com/openstack-k8s-operators/lib-common/88`
-
-Multiple `Depends-On:` tags are supported.
-
-A good example of using these tags is the `extraVol` series of PRs. There are
-PRs in 4 projects: lib-common, cinder-operator, glance-operator, and the
-openstack-operator.
-
-The operators all require the lib-common PR, but then there are 2 circular
-requirements.  One is between the cinder-operator and the openstack-operator,
-and the other is between the glance-operator and the openstack-operator.
-
-These are the PRs for reference:
-
-- https://github.com/openstack-k8s-operators/lib-common/pull/88
-- https://github.com/openstack-k8s-operators/cinder-operator/pull/65
-- https://github.com/openstack-k8s-operators/glance-operator/pull/75
-- https://github.com/openstack-k8s-operators/openstack-operator/pull/38
 
 #### Structural split of changes
 
@@ -192,7 +175,9 @@ make fmt
 ```
 
 Pull Requests are expected to have passed the formatting tool before committing
-the code and submitting the PR.
+the code and submitting the PR. [pre-commit](https://github.com/openstack-k8s-operators/glance-operator/blob/master/.pre-commit-config.yaml)
+and other related git hook can be used to check locally if patch is going to
+pass related checks (job).
 
 ### Commit Messages
 
