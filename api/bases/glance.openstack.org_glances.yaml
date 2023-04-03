@@ -823,11 +823,6 @@ spec:
                     type: string
                   customServiceConfig:
                     type: string
-                  databaseHostname:
-                    type: string
-                  databaseUser:
-                    default: glance
-                    type: string
                   debug:
                     properties:
                       service:
@@ -872,18 +867,6 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
-                  passwordSelectors:
-                    default:
-                      database: GlanceDatabasePassword
-                      service: GlancePassword
-                    properties:
-                      database:
-                        default: GlanceDatabasePassword
-                        type: string
-                      service:
-                        default: GlancePassword
-                        type: string
-                    type: object
                   pvc:
                     type: string
                   replicas:
@@ -923,11 +906,6 @@ spec:
                           x-kubernetes-int-or-string: true
                         type: object
                     type: object
-                  secret:
-                    type: string
-                  serviceUser:
-                    default: glance
-                    type: string
                 required:
                 - containerImage
                 type: object
@@ -943,11 +921,6 @@ spec:
                     type: string
                   customServiceConfig:
                     type: string
-                  databaseHostname:
-                    type: string
-                  databaseUser:
-                    default: glance
-                    type: string
                   debug:
                     properties:
                       service:
@@ -992,18 +965,6 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
-                  passwordSelectors:
-                    default:
-                      database: GlanceDatabasePassword
-                      service: GlancePassword
-                    properties:
-                      database:
-                        default: GlanceDatabasePassword
-                        type: string
-                      service:
-                        default: GlancePassword
-                        type: string
-                    type: object
                   pvc:
                     type: string
                   replicas:
@@ -1043,11 +1004,6 @@ spec:
                           x-kubernetes-int-or-string: true
                         type: object
                     type: object
-                  secret:
-                    type: string
-                  serviceUser:
-                    default: glance
-                    type: string
                 required:
                 - containerImage
                 type: object

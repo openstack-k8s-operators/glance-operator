@@ -99,11 +99,11 @@ type GlanceSpec struct {
 
 	// +kubebuilder:validation:Required
 	// GlanceAPIInternal - Spec definition for the internal and admin API service of this Glance deployment
-	GlanceAPIInternal GlanceAPISpec `json:"glanceAPIInternal"`
+	GlanceAPIInternal GlanceAPITemplate `json:"glanceAPIInternal"`
 
 	// +kubebuilder:validation:Required
 	// GlanceAPIExternal - Spec definition for the external API service of this Glance deployment
-	GlanceAPIExternal GlanceAPISpec `json:"glanceAPIExternal"`
+	GlanceAPIExternal GlanceAPITemplate `json:"glanceAPIExternal"`
 
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials
