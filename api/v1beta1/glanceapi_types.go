@@ -30,8 +30,10 @@ const (
 	DeploymentHash = "deployment"
 )
 
+
 // GlanceAPISpec defines the desired state of GlanceAPI
 type GlanceAPISpec struct {
+
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=glance
 	// ServiceUser - optional username used for this service to register in glance
@@ -109,35 +111,10 @@ type GlanceAPISpec struct {
 	// +kubebuilder:validation:Optional
 	// ExternalEndpoints, expose a VIP via MetalLB on the pre-created address pool
 	ExternalEndpoints []MetalLBConfig `json:"externalEndpoints,omitempty"`
-}
-
-// MetalLBConfig to configure the MetalLB loadbalancer service
-type MetalLBConfig struct {
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=internal;public
-	// Endpoint, OpenStack endpoint this service maps to
-	Endpoint endpoint.Endpoint `json:"endpoint"`
-
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	// IPAddressPool expose VIP via MetalLB on the IPAddressPool
-	IPAddressPool string `json:"ipAddressPool"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=true
-	// SharedIP if true, VIP/VIPs get shared with multiple services
-	SharedIP bool `json:"sharedIP"`
-
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=""
-	// SharedIPKey specifies the sharing key which gets set as the annotation on the LoadBalancer service.
-	// Services which share the same VIP must have the same SharedIPKey. Defaults to the IPAddressPool if
-	// SharedIP is true, but no SharedIPKey specified.
-	SharedIPKey string `json:"sharedIPKey"`
-
-	// +kubebuilder:validation:Optional
-	// LoadBalancerIPs, request given IPs from the pool if available. Using a list to allow dual stack (IPv4/IPv6) support
-	LoadBalancerIPs []string `json:"loadBalancerIPs,omitempty"`
+	// ExtraMounts containing conf files and credentials
+	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts,omitempty"`
 }
 
 // GlanceAPIDebug defines the observed state of GlanceAPIDebug
@@ -179,7 +156,6 @@ type GlanceAPI struct {
 
 	Spec        GlanceAPISpec          `json:"spec,omitempty"`
 	Status      GlanceAPIStatus        `json:"status,omitempty"`
-	ExtraMounts []GlanceExtraVolMounts `json:"-"`
 }
 
 // +kubebuilder:object:root=true
