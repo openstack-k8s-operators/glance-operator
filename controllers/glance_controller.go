@@ -619,26 +619,38 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance, apiInstance glancev1.GlanceAPISpec, helper *helper.Helper) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
+func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance, apiTemplate glancev1.GlanceAPITemplate, helper *helper.Helper) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
+
+	apiSpec := glancev1.GlanceAPISpec{
+		APIType:                apiTemplate.APIType,
+		Replicas:               apiTemplate.Replicas,
+		ContainerImage:         apiTemplate.ContainerImage,
+		NodeSelector:           apiTemplate.NodeSelector,
+		Debug:                  apiTemplate.Debug,
+		Pvc:                    glance.ServiceName,
+		CustomServiceConfig:    apiTemplate.CustomServiceConfig,
+		DefaultConfigOverwrite: apiTemplate.DefaultConfigOverwrite,
+		Resources:              apiTemplate.Resources,
+		DatabaseHostname:       instance.Status.DatabaseHostname,
+		DatabaseUser:           instance.Spec.DatabaseUser,
+		Secret:                 instance.Spec.Secret,
+		ExtraMounts:            instance.Spec.ExtraMounts,
+		PasswordSelectors:      instance.Spec.PasswordSelectors,
+		NetworkAttachments:     apiTemplate.NetworkAttachments,
+		ExternalEndpoints:      apiTemplate.ExternalEndpoints,
+	}
+
 	deployment := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", instance.Name, apiInstance.APIType),
+			Name:      fmt.Sprintf("%s-%s", instance.Name, apiTemplate.APIType),
 			Namespace: instance.Namespace,
 		},
 	}
 
 	op, err := controllerutil.CreateOrUpdate(context.TODO(), r.Client, deployment, func() error {
-		deployment.Spec = apiInstance
-		// Add in transfers from umbrella Glance (this instance) spec
-		// TODO: Add logic to determine when to set/overwrite, etc
-		deployment.Spec.ContainerImage = instance.Spec.ContainerImage
-		deployment.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
-		deployment.Spec.DatabaseHostname = instance.Status.DatabaseHostname
-		deployment.Spec.DatabaseUser = instance.Spec.DatabaseUser
-		deployment.Spec.DefaultConfigOverwrite = instance.Spec.DefaultConfigOverwrite
-		deployment.Spec.NodeSelector = instance.Spec.NodeSelector
-		deployment.Spec.Pvc = glance.ServiceName
-		deployment.Spec.Secret = instance.Spec.Secret
+		// Assign the created spec containing both field provided via GlanceAPITemplate
+		// and what is inherited from the top-level CR (ExtraMounts)
+		deployment.Spec = apiSpec
 
 		err := controllerutil.SetControllerReference(instance, deployment, r.Scheme)
 		if err != nil {

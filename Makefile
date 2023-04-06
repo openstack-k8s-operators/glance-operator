@@ -123,7 +123,10 @@ vet: gowork ## Run go vet against code.
 
 .PHONY: tidy
 tidy: fmt
-	go mod tidy
+	go mod tidy; \
+	pushd "$(LOCALBIN)/../api"; \
+	go mod tidy; \
+	popd;
 
 .PHONY: golangci-lint
 golangci-lint:

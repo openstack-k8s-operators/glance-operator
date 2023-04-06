@@ -1,21 +1,10 @@
+# See the OWNERS docs at https://go.k8s.io/owners
 approvers:
-  - abays
-  - dprince
-  - fmount
-  - fultonj
-  - konan-abhi
-  - olliewalsh
-  - Sandeepyadav93
-  - stuggi
-  - viroel
+  - ci-approvers
+  - openstack-approvers
+  - storage-approvers
 
 reviewers:
-  - abays
-  - dprince
-  - fmount
-  - fultonj
-  - konan-abhi
-  - olliewalsh
-  - Sandeepyadav93
-  - stuggi
-  - viroel
+  - ci-approvers
+  - openstack-approvers
+  - storage-approvers
