@@ -48,9 +48,6 @@ metadata:
 spec:
   apiType: external
   containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
-  customServiceConfig: |
-    [DEFAULT]
-    debug = true
   databaseUser: glance
   databaseHostname: openstack
   debug:
@@ -60,7 +57,6 @@ spec:
     service: GlancePassword
   replicas: 1
   pvc: glance
-  serviceUser: glance
 status:
   readyCount: 1
 ---
@@ -71,9 +67,6 @@ metadata:
 spec:
   apiType: internal
   containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
-  customServiceConfig: |
-    [DEFAULT]
-    debug = true
   databaseUser: glance
   databaseHostname: openstack
   debug:
@@ -83,7 +76,6 @@ spec:
     service: GlancePassword
   replicas: 1
   pvc: glance
-  serviceUser: glance
 status:
   readyCount: 1
 ---
