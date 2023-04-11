@@ -1,0 +1,240 @@
+#
+# Check for:
+# - Glance CR
+# - GlanceAPI glance-external CR
+# - GlanceAPI glance-internal CR
+# - GlanceAPI glance-external-api Deployment
+# - GlanceAPI glance-internal-api Deployment
+# - glance-external-api Pod
+# - glance-internal-api Pod
+# - glance-internal service
+# - glance-public service
+# - glance-public route
+# - glance internal and public endpoints
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  serviceUser: glance
+  containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+  customServiceConfig: |
+    [DEFAULT]
+    debug = true
+  databaseInstance: openstack
+  databaseUser: glance
+  glanceAPIInternal:
+    containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+    debug:
+      service: false
+    replicas: 1
+  glanceAPIExternal:
+    containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+    debug:
+      service: false
+    replicas: 1
+  secret: osp-secret
+  storageRequest: 10G
+status:
+  databaseHostname: openstack
+  glanceAPIReadyExternalCount: 1
+  glanceAPIReadyInternalCount: 1
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-external
+spec:
+  apiType: external
+  containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+  customServiceConfig: |
+    [DEFAULT]
+    debug = true
+  databaseUser: glance
+  databaseHostname: openstack
+  debug:
+    service: false
+  passwordSelectors:
+    database: GlanceDatabasePassword
+    service: GlancePassword
+  replicas: 1
+  pvc: glance
+  serviceUser: glance
+status:
+  readyCount: 1
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-internal
+spec:
+  apiType: internal
+  containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+  customServiceConfig: |
+    [DEFAULT]
+    debug = true
+  databaseUser: glance
+  databaseHostname: openstack
+  debug:
+    service: false
+  passwordSelectors:
+    database: GlanceDatabasePassword
+    service: GlancePassword
+  replicas: 1
+  pvc: glance
+  serviceUser: glance
+status:
+  readyCount: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glance-external-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: glance-external
+  template:
+    metadata:
+      labels:
+        service: glance-external
+    spec:
+      containers:
+      - args:
+        - -c
+        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        command:
+        - /bin/bash
+        image: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+        name: glance-api
+      initContainers:
+      - args:
+        - -c
+        - /usr/local/bin/container-scripts/init.sh
+        command:
+        - /bin/bash
+        image: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+        name: init
+      serviceAccount: glance-operator-glance
+      serviceAccountName: glance-operator-glance
+status:
+  availableReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glance-internal-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: glance-internal
+  template:
+    metadata:
+      labels:
+        service: glance-internal
+    spec:
+      containers:
+      - args:
+        - -c
+        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        command:
+        - /bin/bash
+        image: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+        name: glance-api
+      initContainers:
+      - args:
+        - -c
+        - /usr/local/bin/container-scripts/init.sh
+        command:
+        - /bin/bash
+        image: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+        name: init
+      serviceAccount: glance-operator-glance
+      serviceAccountName: glance-operator-glance
+status:
+  availableReplicas: 1
+  replicas: 1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    service: glance-external
+status:
+  phase: Running
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    service: glance-internal
+status:
+  phase: Running
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-internal
+  labels:
+    internal: "true"
+    service: glance-internal
+spec:
+  ports:
+  - name: glance-internal
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance-internal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-public
+  labels:
+    public: "true"
+    service: glance-external
+spec:
+  ports:
+  - name: glance-public
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance-external
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    public: "true"
+    service: glance-external
+  name: glance-public
+spec:
+  port:
+    targetPort: glance-public
+  to:
+    kind: Service
+    name: glance-public
+---
+# the actual addresses of the apiEndpoints are platform specific, so we can't rely on
+# kuttl asserts to check them. This short script gathers the addresses and checks that
+# the three endpoints are defined and their addresses follow the default pattern
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+namespaced: true
+commands:
+  - script: |
+      template='{{.status.apiEndpoint.internal}}{{":"}}{{.status.apiEndpoint.public}}{{"\n"}}'
+      regex="http:\/\/glance-internal.openstack.*:http:\/\/glance-public-openstack\.apps.*"
+      apiEndpoints=$(oc get -n openstack Glance glance -o go-template="$template")
+      matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")
+      if [ -z "$matches" ]; then
+        exit 0
+      else
+        exit 1
+      fi
