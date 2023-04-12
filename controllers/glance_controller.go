@@ -638,6 +638,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 		PasswordSelectors:      instance.Spec.PasswordSelectors,
 		NetworkAttachments:     apiTemplate.NetworkAttachments,
 		ExternalEndpoints:      apiTemplate.ExternalEndpoints,
+		ServiceUser:            instance.Spec.ServiceUser,
 	}
 
 	deployment := &glancev1.GlanceAPI{
