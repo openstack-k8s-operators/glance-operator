@@ -622,23 +622,13 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance, apiTemplate glancev1.GlanceAPITemplate, helper *helper.Helper) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 
 	apiSpec := glancev1.GlanceAPISpec{
-		APIType:                apiTemplate.APIType,
-		Replicas:               apiTemplate.Replicas,
-		ContainerImage:         apiTemplate.ContainerImage,
-		NodeSelector:           apiTemplate.NodeSelector,
-		Debug:                  apiTemplate.Debug,
-		Pvc:                    glance.ServiceName,
-		CustomServiceConfig:    apiTemplate.CustomServiceConfig,
-		DefaultConfigOverwrite: apiTemplate.DefaultConfigOverwrite,
-		Resources:              apiTemplate.Resources,
-		DatabaseHostname:       instance.Status.DatabaseHostname,
-		DatabaseUser:           instance.Spec.DatabaseUser,
-		Secret:                 instance.Spec.Secret,
-		ExtraMounts:            instance.Spec.ExtraMounts,
-		PasswordSelectors:      instance.Spec.PasswordSelectors,
-		NetworkAttachments:     apiTemplate.NetworkAttachments,
-		ExternalEndpoints:      apiTemplate.ExternalEndpoints,
-		ServiceUser:            instance.Spec.ServiceUser,
+		GlanceAPITemplate: apiTemplate,
+		DatabaseHostname:  instance.Status.DatabaseHostname,
+		DatabaseUser:      instance.Spec.DatabaseUser,
+		Secret:            instance.Spec.Secret,
+		ExtraMounts:       instance.Spec.ExtraMounts,
+		PasswordSelectors: instance.Spec.PasswordSelectors,
+		ServiceUser:       instance.Spec.ServiceUser,
 	}
 
 	deployment := &glancev1.GlanceAPI{
@@ -652,6 +642,13 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
 		deployment.Spec = apiSpec
+
+		// We might want to create instances pointing to different backends in
+		// the future, hence we inherit the customServiceConfig (where the backends
+		// are defined) only if it's not specified in the GlanceAPITemplate
+		if len(deployment.Spec.CustomServiceConfig) == 0 {
+			deployment.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
+		}
 
 		err := controllerutil.SetControllerReference(instance, deployment, r.Scheme)
 		if err != nil {
