@@ -21,7 +21,6 @@ import (
 
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -34,26 +33,13 @@ const (
 // GlanceAPISpec defines the desired state of GlanceAPI
 type GlanceAPISpec struct {
 
+	// Input parameter coming from glance template
+	GlanceAPITemplate `json:",inline"`
+
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=glance
 	// ServiceUser - optional username used for this service to register in glance
 	ServiceUser string `json:"serviceUser"`
-
-	// +kubebuilder:validation:Required
-	// GlanceAPI Container Image URL
-	ContainerImage string `json:"containerImage"`
-
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=internal;external
-	// +kubebuilder:default=external
-	APIType string `json:"apiType"`
-
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=1
-	// +kubebuilder:validation:Maximum=32
-	// +kubebuilder:validation:Minimum=0
-	// Replicas of glance API to run
-	Replicas int32 `json:"replicas"`
 
 	// +kubebuilder:validation:Optional
 	// DatabaseHostname - Glance Database Hostname
@@ -73,44 +59,6 @@ type GlanceAPISpec struct {
 	// +kubebuilder:default={database: GlanceDatabasePassword, service: GlancePassword}
 	// PasswordSelectors - Selectors to identify the DB and ServiceUser password from the Secret
 	PasswordSelectors PasswordSelector `json:"passwordSelectors"`
-
-	// +kubebuilder:validation:Optional
-	// NodeSelector to target subset of worker nodes running this service
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// Debug - enable debug for different deploy stages. If an init container is used, it runs and the
-	// actual action pod gets started with sleep infinity
-	Debug GlanceAPIDebug `json:"debug,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// Pvc - Storage claim for file-backed Glance
-	Pvc string `json:"pvc,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// CustomServiceConfig - customize the service config using this parameter to change service defaults,
-	// or overwrite rendered information using raw OpenStack config format. The content gets added to
-	// to /etc/<service>/<service>.conf.d directory as custom.conf file.
-	CustomServiceConfig string `json:"customServiceConfig,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// ConfigOverwrite - interface to overwrite default config files like e.g. logging.conf or policy.json.
-	// But can also be used to add additional files. Those get added to the service config dir in /etc/<service> .
-	// TODO: -> implement
-	DefaultConfigOverwrite map[string]string `json:"defaultConfigOverwrite,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// Resources - Compute Resources required by this service (Limits/Requests).
-	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// NetworkAttachments is a list of NetworkAttachment resource names to expose the services to the given network
-	NetworkAttachments []string `json:"networkAttachments,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	// ExternalEndpoints, expose a VIP via MetalLB on the pre-created address pool
-	ExternalEndpoints []MetalLBConfig `json:"externalEndpoints,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials
