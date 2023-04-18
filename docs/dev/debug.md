@@ -12,7 +12,7 @@ https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod).
 
 Usually the first step to resolve issues is to figure out **where** the issue
 is happening and we can do it starting from the OLM and go forward through the
-steps, do it in reverse starting from the cinder-operator and move backwards,
+steps, do it in reverse starting from the glance-operator and move backwards,
 or anything in between.
 
 ### General flow
