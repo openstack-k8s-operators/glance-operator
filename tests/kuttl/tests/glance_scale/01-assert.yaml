@@ -18,19 +18,19 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
-  containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   customServiceConfig: |
     [DEFAULT]
     debug = true
   databaseInstance: openstack
   databaseUser: glance
   glanceAPIInternal:
-    containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+    containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
     debug:
       service: false
     replicas: 1
   glanceAPIExternal:
-    containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+    containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
     debug:
       service: false
     replicas: 1
@@ -47,7 +47,7 @@ metadata:
   name: glance-external
 spec:
   apiType: external
-  containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   databaseUser: glance
   databaseHostname: openstack
   debug:
@@ -66,7 +66,7 @@ metadata:
   name: glance-internal
 spec:
   apiType: internal
-  containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   databaseUser: glance
   databaseHostname: openstack
   debug:
@@ -99,7 +99,7 @@ spec:
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         command:
         - /bin/bash
-        image: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-api
       initContainers:
       - args:
@@ -107,7 +107,7 @@ spec:
         - /usr/local/bin/container-scripts/init.sh
         command:
         - /bin/bash
-        image: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: init
       serviceAccount: glance-operator-glance
       serviceAccountName: glance-operator-glance
@@ -135,7 +135,7 @@ spec:
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         command:
         - /bin/bash
-        image: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-api
       initContainers:
       - args:
@@ -143,7 +143,7 @@ spec:
         - /usr/local/bin/container-scripts/init.sh
         command:
         - /bin/bash
-        image: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: init
       serviceAccount: glance-operator-glance
       serviceAccountName: glance-operator-glance
