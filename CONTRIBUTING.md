@@ -72,7 +72,7 @@ section](README.md#getting-started):
 
 ### Debugging
 
-When working on the cinder-operator there will be times where things won't work
+When working on the glance-operator there will be times where things won't work
 as expected and we'll need to debug things.
 
 In the [debugging article](docs/dev/debug.md) we present some ideas to help you
@@ -167,7 +167,7 @@ Successfully pushed "glance-operator-index:9f3d1ec26ba8939710f146f3e6a1d81f5077b
 While the project has not formally defined a Go Style Guide for the project it
 uses [Gofmt](https://pkg.go.dev/cmd/gofmt) for automated code formatting.
 
-This tool is automatically called when building the cinder-operator binary
+This tool is automatically called when building the glance-operator binary
 using the `Makefile` or when it is manually invoked with:
 
 ```sh
