@@ -4,20 +4,20 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
-  containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   customServiceConfig: |
     [DEFAULT]
     debug = true
   databaseInstance: openstack
   databaseUser: glance
   glanceAPIInternal:
-    containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+    containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
     debug:
       service: false
     preserveJobs: false
     replicas: 1
   glanceAPIExternal:
-    containerImage: quay.io/tripleozedcentos9/openstack-glance-api:current-tripleo
+    containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
     debug:
       service: false
     preserveJobs: false
