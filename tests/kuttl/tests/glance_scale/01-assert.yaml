@@ -56,7 +56,6 @@ spec:
     database: GlanceDatabasePassword
     service: GlancePassword
   replicas: 1
-  pvc: glance
 status:
   readyCount: 1
 ---
@@ -75,7 +74,6 @@ spec:
     database: GlanceDatabasePassword
     service: GlancePassword
   replicas: 1
-  pvc: glance
 status:
   readyCount: 1
 ---
