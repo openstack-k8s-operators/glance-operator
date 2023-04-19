@@ -1,0 +1,52 @@
+# Sample using Ceph as a glance backend
+# Requires a running Ceph cluster and its `/etc/ceph` files in secret `ceph-conf-files`
+# This can be achieved with the `ceph` target of `install_yamls`
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  serviceUser: glance
+  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
+  customServiceConfig: |
+    [DEFAULT]
+    enabled_backends = default_backend:rbd
+    [glance_store]
+    default_backend = default_backend
+    [default_backend]
+    rbd_store_ceph_conf = /etc/ceph/ceph.conf
+    store_description = "RBD backend"
+    rbd_store_pool = images
+    rbd_store_user = openstack
+  databaseInstance: openstack
+  databaseUser: glance
+  glanceAPIInternal:
+    debug:
+      service: false
+    preserveJobs: false
+    replicas: 1
+  glanceAPIExternal:
+    debug:
+      service: false
+    preserveJobs: false
+    replicas: 1
+  secret: osp-secret
+  storageClass: ""
+  storageRequest: 1G
+  extraMounts:
+    - name: v1
+      region: r1
+      extraVol:
+        - propagation:
+          - Glance
+          extraVolType: Ceph
+          volumes:
+          - name: ceph
+            projected:
+              sources:
+              - secret:
+                  name: ceph-client-conf
+          mounts:
+          - name: ceph
+            mountPath: "/etc/ceph"
+            readOnly: true
