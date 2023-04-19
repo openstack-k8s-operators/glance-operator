@@ -17,35 +17,61 @@ set -ex
 
 # This script generates the glance-api.conf/logging.conf file and
 # copies the result to the ephemeral /var/lib/config-data/merged volume.
-#
-# Secrets are obtained from ENV variables.
-export DBPASSWORD=${DatabasePassword:?"Please specify a DatabasePassword variable."}
-# TODO
-#export TRANSPORTURL=${TransportUrl:?"Please specify a TransportUrl variable."}
-export GLANCEPASSWORD=${GlancePassword:?"Please specify a GlanceKeystoneAuthPassword variable."}
+
+export PASSWORD=${GlancePassword:?"Please specify a GlanceKeystoneAuthPassword variable."}
 export DBHOST=${DatabaseHost:?"Please specify a DatabaseHost variable."}
 export DBUSER=${DatabaseUser:-"glance"}
 export DB=${DatabaseName:-"glance"}
+export DBPASSWORD=${DatabasePassword:?"Please specify a DatabasePassword variable."}
 
+
+DEFAULT_DIR=/var/lib/config-data/default
+CUSTOM_DIR=/var/lib/config-data/custom
+MERGED_DIR=/var/lib/config-data/merged
 SVC_CFG=/etc/glance/glance-api.conf
-SVC_CFG_MERGED=/var/lib/config-data/merged/glance-api.conf
+SVC_CFG_MERGED=${MERGED_DIR}/glance-api.conf
+SVC_CFG_MERGED_DIR=${MERGED_DIR}/glance.conf.d
 
-# expect that the common.sh is in the same dir as the calling script
-SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-. ${SCRIPTPATH}/common.sh --source-only
+mkdir -p ${SVC_CFG_MERGED_DIR}
 
-# Copy default service config from container image as base
-cp -a ${SVC_CFG} ${SVC_CFG_MERGED}
+cp ${DEFAULT_DIR}/* ${MERGED_DIR}
 
-# Merge all templates from config-data
-for dir in /var/lib/config-data/default; do
-    merge_config_dir ${dir}
-done
+# Save the default service config from container image as glance-api.conf.sample,
+# and create a small glance-api.conf file that directs people to files in
+# glance.conf.d.
 
-# set secrets
-# TODO: transportUrl (either set here or elsewhere)
-#crudini --set ${SVC_CFG_MERGED} DEFAULT transport_url $TRANSPORTURL
-crudini --set ${SVC_CFG_MERGED} database connection mysql+pymysql://${DBUSER}:${DBPASSWORD}@${DBHOST}/${DB}
-crudini --set ${SVC_CFG_MERGED} keystone_authtoken password $GLANCEPASSWORD
-# TODO: transportUrl (either set here or elsewhere)
-#crudini --set ${SVC_CFG_MERGED} oslo_messaging_notifications transport_url $TRANSPORTURL
+cp -a ${SVC_CFG} ${SVC_CFG_MERGED}.sample
+cat <<EOF > ${SVC_CFG_MERGED}
+# Service configuration snippets are stored in the glance.conf.d subdirectory.
+EOF
+
+cp ${DEFAULT_DIR}/glance-api.conf ${SVC_CFG_MERGED_DIR}/00-default.conf
+
+# Generate 01-deployment-secrets.conf
+DEPLOYMENT_SECRETS=${SVC_CFG_MERGED_DIR}/01-deployment-secrets.conf
+
+cat <<EOF >> ${DEPLOYMENT_SECRETS}
+[database]
+connection = mysql+pymysql://${DBUSER}:${DBPASSWORD}@${DBHOST}/${DB}
+
+[keystone_authtoken]
+password = ${PASSWORD}
+
+[service_user]
+password = ${PASSWORD}
+EOF
+
+if [ -f ${DEFAULT_DIR}/custom.conf ]; then
+    cp ${DEFAULT_DIR}/custom.conf ${SVC_CFG_MERGED_DIR}/02-global.conf
+fi
+
+if [ -f ${CUSTOM_DIR}/custom.conf ]; then
+    cp ${CUSTOM_DIR}/custom.conf ${SVC_CFG_MERGED_DIR}/03-service.conf
+fi
+
+SECRET_FILES="$(ls /var/lib/config-data/secret-*/* 2>/dev/null || true)"
+if [ -n "${SECRET_FILES}" ]; then
+    cat ${SECRET_FILES} > ${SVC_CFG_MERGED_DIR}/04-secrets.conf
+fi
+
+chown -R :glance ${SVC_CFG_MERGED_DIR}

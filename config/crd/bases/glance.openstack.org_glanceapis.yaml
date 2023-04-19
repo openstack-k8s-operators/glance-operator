@@ -50,6 +50,10 @@ spec:
                 type: string
               customServiceConfig:
                 type: string
+              customServiceConfigSecrets:
+                items:
+                  type: string
+                type: array
               databaseHostname:
                 type: string
               databaseUser:

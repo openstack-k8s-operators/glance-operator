@@ -645,9 +645,14 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 
 		// We might want to create instances pointing to different backends in
 		// the future, hence we inherit the customServiceConfig (where the backends
-		// are defined) only if it's not specified in the GlanceAPITemplate
+		// are defined) only if it's not specified in the GlanceAPITemplate.
+		// Same comment applies to CustomServiceConfigSecrets
 		if len(deployment.Spec.CustomServiceConfig) == 0 {
 			deployment.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
+		}
+
+		if len(deployment.Spec.CustomServiceConfigSecrets) == 0 {
+			deployment.Spec.CustomServiceConfigSecrets = instance.Spec.CustomServiceConfigSecrets
 		}
 
 		err := controllerutil.SetControllerReference(instance, deployment, r.Scheme)
@@ -696,12 +701,11 @@ func (r *GlanceReconciler) generateServiceConfigMaps(
 	cms := []util.Template{
 		// ScriptsConfigMap
 		{
-			Name:               fmt.Sprintf("%s-scripts", instance.Name),
-			Namespace:          instance.Namespace,
-			Type:               util.TemplateTypeScripts,
-			InstanceType:       instance.Kind,
-			AdditionalTemplate: map[string]string{"common.sh": "/common/common.sh"},
-			Labels:             cmLabels,
+			Name:         fmt.Sprintf("%s-scripts", instance.Name),
+			Namespace:    instance.Namespace,
+			Type:         util.TemplateTypeScripts,
+			InstanceType: instance.Kind,
+			Labels:       cmLabels,
 		},
 		// ConfigMap
 		{

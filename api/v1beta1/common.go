@@ -66,6 +66,12 @@ type GlanceAPITemplate struct {
 	DefaultConfigOverwrite map[string]string `json:"defaultConfigOverwrite,omitempty"`
 
 	// +kubebuilder:validation:Optional
+	// CustomServiceConfigSecrets - customize the service config using this parameter to specify Secrets
+	// that contain sensitive service config data. The content of each Secret gets added to the
+	// /etc/<service>/<service>.conf.d directory as a custom config file.
+	CustomServiceConfigSecrets []string `json:"customServiceConfigSecrets,omitempty"`
+
+	// +kubebuilder:validation:Optional
 	// Resources - Compute Resources required by this service (Limits/Requests).
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`

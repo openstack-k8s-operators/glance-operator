@@ -221,6 +221,11 @@ func (in *GlanceAPITemplate) DeepCopyInto(out *GlanceAPITemplate) {
 			(*out)[key] = val
 		}
 	}
+	if in.CustomServiceConfigSecrets != nil {
+		in, out := &in.CustomServiceConfigSecrets, &out.CustomServiceConfigSecrets
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.NetworkAttachments != nil {
 		in, out := &in.NetworkAttachments, &out.NetworkAttachments
@@ -348,6 +353,11 @@ func (in *GlanceSpec) DeepCopyInto(out *GlanceSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.CustomServiceConfigSecrets != nil {
+		in, out := &in.CustomServiceConfigSecrets, &out.CustomServiceConfigSecrets
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 	in.GlanceAPIInternal.DeepCopyInto(&out.GlanceAPIInternal)
 	in.GlanceAPIExternal.DeepCopyInto(&out.GlanceAPIExternal)

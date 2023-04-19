@@ -2,10 +2,10 @@
     "command": "/usr/bin/glance-api --config-dir /etc/glance/glance.conf.d",
     "config_files": [
       {
-        "source": "/var/lib/config-data/merged/glance-api.conf",
-        "dest": "/etc/glance/glance.conf.d/00-glance-api.conf",
+        "source": "/var/lib/config-data/merged/glance.conf.d",
+        "dest": "/etc/glance/glance.conf.d",
         "owner": "glance",
-        "perm": "0600"
+        "perm": "0750"
       },
       {
         "source": "/var/lib/config-data/merged/glance-image-import.conf",
@@ -16,12 +16,6 @@
       {
         "source": "/var/lib/config-data/merged/policy.yaml",
         "dest": "/etc/glance/glance.conf.d/policy.yaml",
-        "owner": "glance",
-        "perm": "0600"
-      },
-      {
-        "source": "/var/lib/config-data/merged/custom.conf",
-        "dest": "/etc/glance/glance.conf.d/01-custom.conf",
         "owner": "glance",
         "perm": "0600"
       },

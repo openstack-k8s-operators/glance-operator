@@ -26,7 +26,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
@@ -162,6 +165,40 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
+	svcSecretFn := func(o client.Object) []reconcile.Request {
+		var namespace string = o.GetNamespace()
+		var secretName string = o.GetName()
+		result := []reconcile.Request{}
+
+		// get all API CRs
+		apis := &glancev1.GlanceAPIList{}
+		listOpts := []client.ListOption{
+			client.InNamespace(namespace),
+		}
+		if err := r.Client.List(context.Background(), apis, listOpts...); err != nil {
+			r.Log.Error(err, "Unable to retrieve API CRs %v")
+			return nil
+		}
+		for _, cr := range apis.Items {
+			for _, v := range cr.Spec.CustomServiceConfigSecrets {
+				if v == secretName {
+					name := client.ObjectKey{
+						Namespace: namespace,
+						Name:      cr.Name,
+					}
+					r.Log.Info(fmt.Sprintf("Secret %s is used by Glance CR %s", secretName, cr.Name))
+					result = append(result, reconcile.Request{NamespacedName: name})
+				}
+			}
+		}
+		if len(result) > 0 {
+			return result
+		}
+		return nil
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.GlanceAPI{}).
 		Owns(&keystonev1.KeystoneEndpoint{}).
@@ -170,6 +207,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ConfigMap{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&routev1.Route{}).
+		Watches(&source.Kind{Type: &corev1.Secret{}},
+			handler.EnqueueRequestsFromMapFunc(svcSecretFn)).
 		Complete(r)
 }
 
@@ -573,12 +612,11 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	cms := []util.Template{
 		// ScriptsConfigMap
 		{
-			Name:               fmt.Sprintf("%s-scripts", instance.Name),
-			Namespace:          instance.Namespace,
-			Type:               util.TemplateTypeScripts,
-			InstanceType:       instance.Kind,
-			AdditionalTemplate: map[string]string{"common.sh": "/common/common.sh"},
-			Labels:             cmLabels,
+			Name:         fmt.Sprintf("%s-scripts", instance.Name),
+			Namespace:    instance.Namespace,
+			Type:         util.TemplateTypeScripts,
+			InstanceType: instance.Kind,
+			Labels:       cmLabels,
 		},
 		// ConfigMap
 		{

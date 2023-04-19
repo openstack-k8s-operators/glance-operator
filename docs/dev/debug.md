@@ -152,7 +152,7 @@ If the glance-operator is running successfully then it should generate those
 resources based on the top level `Glance` resource and the information gathered
 by the `mariadbdatabase`, and the generated `ConfigMap`s and `Secret`s.
 
-If we don't see a specific resource kind it may be because 
+If we don't see a specific resource kind it may be because
 there is a failure during it's creation.  In this case we should check the
 glance-operator's log and look for the error:
 
@@ -264,4 +264,3 @@ root 	1635263  0.0  0.0   6392  2296 pts/3	S+   07:35   0:00 grep --color=auto g
 
 Similar way you can modify configuration/policy files located in /etc/glance/* and kill
 and start the service inside the container.
-

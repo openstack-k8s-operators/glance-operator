@@ -40,6 +40,10 @@ spec:
                 type: string
               customServiceConfig:
                 type: string
+              customServiceConfigSecrets:
+                items:
+                  type: string
+                type: array
               databaseInstance:
                 type: string
               databaseUser:
@@ -823,6 +827,10 @@ spec:
                     type: string
                   customServiceConfig:
                     type: string
+                  customServiceConfigSecrets:
+                    items:
+                      type: string
+                    type: array
                   debug:
                     properties:
                       service:
@@ -921,6 +929,10 @@ spec:
                     type: string
                   customServiceConfig:
                     type: string
+                  customServiceConfigSecrets:
+                    items:
+                      type: string
+                    type: array
                   debug:
                     properties:
                       service:
