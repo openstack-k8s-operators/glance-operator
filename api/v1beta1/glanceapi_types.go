@@ -29,7 +29,6 @@ const (
 	DeploymentHash = "deployment"
 )
 
-
 // GlanceAPISpec defines the desired state of GlanceAPI
 type GlanceAPISpec struct {
 
@@ -40,6 +39,10 @@ type GlanceAPISpec struct {
 	// +kubebuilder:default=glance
 	// ServiceUser - optional username used for this service to register in glance
 	ServiceUser string `json:"serviceUser"`
+
+	// +kubebuilder:validation:Required
+	// ServiceAccount - service account name used internally to provide GlanceAPI the default SA name
+	ServiceAccount string `json:"serviceAccount"`
 
 	// +kubebuilder:validation:Optional
 	// DatabaseHostname - Glance Database Hostname
@@ -102,8 +105,8 @@ type GlanceAPI struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec        GlanceAPISpec          `json:"spec,omitempty"`
-	Status      GlanceAPIStatus        `json:"status,omitempty"`
+	Spec   GlanceAPISpec   `json:"spec,omitempty"`
+	Status GlanceAPIStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

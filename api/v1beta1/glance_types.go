@@ -218,3 +218,18 @@ func (g *GlanceExtraVolMounts) Propagate(svc []storage.PropagationType) []storag
 
 	return vl
 }
+
+// RbacConditionsSet - set the conditions for the rbac object
+func (instance Glance) RbacConditionsSet(c *condition.Condition) {
+	instance.Status.Conditions.Set(c)
+}
+
+// RbacNamespace - return the namespace
+func (instance Glance) RbacNamespace() string {
+	return instance.Namespace
+}
+
+// RbacResourceName - return the name to be used for rbac objects (serviceaccount, role, rolebinding)
+func (instance Glance) RbacResourceName() string {
+	return "glance-" + instance.Name
+}

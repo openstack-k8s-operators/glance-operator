@@ -107,8 +107,8 @@ spec:
         - /bin/bash
         image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: init
-      serviceAccount: glance-operator-glance
-      serviceAccountName: glance-operator-glance
+      serviceAccount: glance-glance
+      serviceAccountName: glance-glance
 status:
   availableReplicas: 1
   replicas: 1
@@ -143,8 +143,8 @@ spec:
         - /bin/bash
         image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: init
-      serviceAccount: glance-operator-glance
-      serviceAccountName: glance-operator-glance
+      serviceAccount: glance-glance
+      serviceAccountName: glance-glance
 status:
   availableReplicas: 1
   replicas: 1
