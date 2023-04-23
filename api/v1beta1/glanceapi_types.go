@@ -29,7 +29,6 @@ const (
 	DeploymentHash = "deployment"
 )
 
-
 // GlanceAPISpec defines the desired state of GlanceAPI
 type GlanceAPISpec struct {
 
@@ -102,8 +101,8 @@ type GlanceAPI struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec        GlanceAPISpec          `json:"spec,omitempty"`
-	Status      GlanceAPIStatus        `json:"status,omitempty"`
+	Spec   GlanceAPISpec   `json:"spec,omitempty"`
+	Status GlanceAPIStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

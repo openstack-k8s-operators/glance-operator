@@ -126,8 +126,12 @@ func Deployment(
 							SecurityContext: &corev1.SecurityContext{
 								RunAsUser: &runAsUser,
 							},
-							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts:   glance.GetVolumeMounts(instance.Spec.ExtraMounts, glance.GlanceAPIPropagation),
+							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts: glance.GetVolumeMounts(
+								instance.Spec.CustomServiceConfigSecrets,
+								instance.Spec.ExtraMounts,
+								glance.GlanceAPIPropagation,
+							),
 							Resources:      instance.Spec.Resources,
 							ReadinessProbe: readinessProbe,
 							LivenessProbe:  livenessProbe,
@@ -137,7 +141,13 @@ func Deployment(
 			},
 		},
 	}
-	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(instance.Name, glance.ServiceName, instance.Spec.ExtraMounts, glance.GlanceAPIPropagation)
+	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(
+		instance.Name,
+		glance.ServiceName,
+		instance.Spec.CustomServiceConfigSecrets,
+		instance.Spec.ExtraMounts,
+		glance.GlanceAPIPropagation,
+	)
 
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
@@ -161,7 +171,11 @@ func Deployment(
 		OSPSecret:            instance.Spec.Secret,
 		DBPasswordSelector:   instance.Spec.PasswordSelectors.Database,
 		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
-		VolumeMounts:         getInitVolumeMounts(instance.Spec.ExtraMounts, glance.GlanceAPIPropagation),
+		VolumeMounts: getInitVolumeMounts(
+			instance.Spec.CustomServiceConfigSecrets,
+			instance.Spec.ExtraMounts,
+			glance.GlanceAPIPropagation,
+		),
 	}
 	deployment.Spec.Template.Spec.InitContainers = glance.InitContainer(initContainerDetails)
 

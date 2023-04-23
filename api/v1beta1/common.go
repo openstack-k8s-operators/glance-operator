@@ -17,8 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // GlanceAPITemplate defines the desired state of GlanceAPI
