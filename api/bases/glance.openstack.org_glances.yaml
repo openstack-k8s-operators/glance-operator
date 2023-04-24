@@ -817,12 +817,6 @@ spec:
                 type: array
               glanceAPIExternal:
                 properties:
-                  apiType:
-                    default: external
-                    enum:
-                    - internal
-                    - external
-                    type: string
                   containerImage:
                     type: string
                   customServiceConfig:
@@ -919,12 +913,6 @@ spec:
                 type: object
               glanceAPIInternal:
                 properties:
-                  apiType:
-                    default: external
-                    enum:
-                    - internal
-                    - external
-                    type: string
                   containerImage:
                     type: string
                   customServiceConfig:

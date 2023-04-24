@@ -17,24 +17,19 @@ limitations under the License.
 package v1beta1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // GlanceAPITemplate defines the desired state of GlanceAPI
 type GlanceAPITemplate struct {
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=internal;external
-	// +kubebuilder:default=external
-	APIType string `json:"apiType"`
-
-	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Maximum=32
 	// +kubebuilder:validation:Minimum=0
 	// Replicas of glance API to run
-	Replicas int32 `json:"replicas"`
+	Replicas *int32 `json:"replicas"`
 
 	// +kubebuilder:validation:Required
 	// Glance Container Image URL (will be set to environmental default if empty)
