@@ -551,9 +551,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// deploy internal glance-api
 
 	// Regardless of what the user may have set in GlanceAPIInternal.EndpointType,
-	// we force "internal" here
-	instance.Spec.GlanceAPIInternal.APIType = glancev1.APIInternal
-	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(instance, instance.Spec.GlanceAPIInternal, helper)
+	// we force "internal" here by passing glancev1.APIInternal for the apiType arg
+	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(instance, instance.Spec.GlanceAPIInternal, glancev1.APIInternal, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -586,9 +585,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// deploy external glance-api
 
 	// Regardless of what the user may have set in GlanceAPIExternal.EndpointType,
-	// we force "external" here
-	instance.Spec.GlanceAPIExternal.APIType = glancev1.APIExternal
-	glanceAPI, op, err = r.apiDeploymentCreateOrUpdate(instance, instance.Spec.GlanceAPIExternal, helper)
+	// we force "external" here by passing glancev1.APIExternal for the apiType arg
+	glanceAPI, op, err = r.apiDeploymentCreateOrUpdate(instance, instance.Spec.GlanceAPIExternal, glancev1.APIExternal, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -619,10 +617,11 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance, apiTemplate glancev1.GlanceAPITemplate, helper *helper.Helper) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
+func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance, apiTemplate glancev1.GlanceAPITemplate, apiType string, helper *helper.Helper) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 
 	apiSpec := glancev1.GlanceAPISpec{
 		GlanceAPITemplate: apiTemplate,
+		APIType:           apiType,
 		DatabaseHostname:  instance.Status.DatabaseHostname,
 		DatabaseUser:      instance.Spec.DatabaseUser,
 		Secret:            instance.Spec.Secret,
@@ -633,7 +632,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 
 	deployment := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", instance.Name, apiTemplate.APIType),
+			Name:      fmt.Sprintf("%s-%s", instance.Name, apiType),
 			Namespace: instance.Namespace,
 		},
 	}
