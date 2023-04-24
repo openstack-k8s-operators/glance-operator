@@ -39,6 +39,7 @@ func DbSyncJob(
 	runAsUser := int64(0)
 
 	dbSyncExtraMounts := []glancev1.GlanceExtraVolMounts{}
+	secretNames := []string{}
 
 	args := []string{"-c"}
 	if instance.Spec.Debug.DBSync {
@@ -77,8 +78,12 @@ func DbSyncJob(
 							SecurityContext: &corev1.SecurityContext{
 								RunAsUser: &runAsUser,
 							},
-							Env:          env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts: GetVolumeMounts(dbSyncExtraMounts, DbsyncPropagation),
+							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts: GetVolumeMounts(
+								secretNames,
+								dbSyncExtraMounts,
+								DbsyncPropagation,
+							),
 						},
 					},
 				},
@@ -86,7 +91,13 @@ func DbSyncJob(
 		},
 	}
 
-	job.Spec.Template.Spec.Volumes = GetVolumes(instance.Name, ServiceName, dbSyncExtraMounts, DbsyncPropagation)
+	job.Spec.Template.Spec.Volumes = GetVolumes(
+		instance.Name,
+		ServiceName,
+		secretNames,
+		dbSyncExtraMounts,
+		DbsyncPropagation,
+	)
 
 	initContainerDetails := APIDetails{
 		ContainerImage:       instance.Spec.ContainerImage,
@@ -96,7 +107,11 @@ func DbSyncJob(
 		OSPSecret:            instance.Spec.Secret,
 		DBPasswordSelector:   instance.Spec.PasswordSelectors.Database,
 		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
-		VolumeMounts:         getInitVolumeMounts(dbSyncExtraMounts, DbsyncPropagation),
+		VolumeMounts: getInitVolumeMounts(
+			secretNames,
+			dbSyncExtraMounts,
+			DbsyncPropagation,
+		),
 	}
 	job.Spec.Template.Spec.InitContainers = InitContainer(initContainerDetails)
 

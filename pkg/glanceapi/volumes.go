@@ -17,12 +17,13 @@ package glanceapi
 
 import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // getInitVolumeMounts - general init task VolumeMounts
-func getInitVolumeMounts(extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.VolumeMount {
+func getInitVolumeMounts(secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.VolumeMount {
 	vm := []corev1.VolumeMount{
 		{
 			Name:      "scripts",
@@ -45,5 +46,7 @@ func getInitVolumeMounts(extraVol []glancev1.GlanceExtraVolMounts, svc []storage
 			vm = append(vm, vol.Mounts...)
 		}
 	}
+	_, secretConfig := glance.GetConfigSecretVolumes(secretNames)
+	vm = append(vm, secretConfig...)
 	return vm
 }
