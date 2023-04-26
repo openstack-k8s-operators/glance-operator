@@ -22,8 +22,6 @@ import (
 const (
 	// ServiceName -
 	ServiceName = "glance"
-	// ServiceAccount -
-	ServiceAccount = "glance-operator-glance"
 	// ServiceType -
 	ServiceType = "image"
 	// DatabaseName -

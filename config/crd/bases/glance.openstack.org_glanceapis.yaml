@@ -912,11 +912,14 @@ spec:
                 type: object
               secret:
                 type: string
+              serviceAccount:
+                type: string
               serviceUser:
                 default: glance
                 type: string
             required:
             - containerImage
+            - serviceAccount
             type: object
           status:
             properties:
