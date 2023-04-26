@@ -29,8 +29,6 @@ const (
 	// DatabaseName -
 	DatabaseName = "glance"
 
-	// GlanceAdminPort -
-	GlanceAdminPort int32 = 9292
 	// GlancePublicPort -
 	GlancePublicPort int32 = 9292
 	// GlanceInternalPort -
