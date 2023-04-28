@@ -374,11 +374,19 @@ func (r *GlanceReconciler) reconcileInit(
 		instance.Status.Hash = map[string]string{}
 	}
 
+	// Define new deployment secret
+	err = r.GenDeploymentSecret(ctx, helper, instance, glance.DeploymentSecretName)
+	if err != nil {
+		return ctrlResult, err
+	}
+
+	secrets := []string{glance.DeploymentSecretName}
+
 	//
 	// run Glance db sync
 	//
 	dbSyncHash := instance.Status.Hash[glancev1.DbSyncHash]
-	jobDef := glance.DbSyncJob(instance, serviceLabels, serviceAnnotations)
+	jobDef := glance.DbSyncJob(instance, serviceLabels, serviceAnnotations, secrets)
 	dbSyncjob := job.NewJob(
 		jobDef,
 		glancev1.DbSyncHash,
@@ -500,7 +508,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	//
 	// create Configmap required for glance input
-	// - %-scripts configmap holding scripts to e.g. bootstrap the service
 	// - %-config configmap holding minimal glance config required to get the service up, user can add additional files to be added to the service
 	// - parameters which has passwords gets added from the OpenStack secret via the init container
 	//
@@ -716,10 +723,7 @@ func (r *GlanceReconciler) generateServiceConfigMaps(
 
 	//
 	// create Configmap/Secret required for glance input
-	// - %-scripts configmap holding scripts to e.g. bootstrap the service
 	// - %-config configmap holding minimal glance config required to get the service up, user can add additional files to be added to the service
-	// - parameters which has passwords gets added from the ospSecret via the init container
-	//
 
 	cmLabels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
 
@@ -733,15 +737,6 @@ func (r *GlanceReconciler) generateServiceConfigMaps(
 	}
 
 	cms := []util.Template{
-		// ScriptsConfigMap
-		{
-			Name:         fmt.Sprintf("%s-scripts", instance.Name),
-			Namespace:    instance.Namespace,
-			Type:         util.TemplateTypeScripts,
-			InstanceType: instance.Kind,
-			Labels:       cmLabels,
-		},
-		// ConfigMap
 		{
 			Name:         fmt.Sprintf("%s-config-data", instance.Name),
 			Namespace:    instance.Namespace,
@@ -751,10 +746,62 @@ func (r *GlanceReconciler) generateServiceConfigMaps(
 			Labels:       cmLabels,
 		},
 	}
+
 	err := configmap.EnsureConfigMaps(ctx, h, instance, cms, envVars)
 
 	if err != nil {
-		return nil
+		return err
+	}
+
+	return nil
+}
+
+// GenDeploymentSecret - a function that produces a basic 01-deployment-secret
+func (r *GlanceReconciler) GenDeploymentSecret(
+	ctx context.Context,
+	helper *helper.Helper,
+	instance *glancev1.Glance,
+	deploymentSecret string,
+) error {
+
+	//Get parameters
+	deploymentParameters := make(map[string]interface{})
+
+	ospSecret, _, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
+	if err != nil {
+		return err
+	}
+
+	// Collect values we need to build 01-deployment-secret
+	deploymentParameters["DBUser"] = instance.Spec.DatabaseUser
+	deploymentParameters["DBHost"] = instance.Status.DatabaseHostname
+	deploymentParameters["Database"] = glance.DatabaseName
+	deploymentParameters["DBPassword"] = string(ospSecret.Data[instance.Spec.PasswordSelectors.Database])
+	deploymentParameters["Password"] = string(ospSecret.Data[instance.Spec.PasswordSelectors.Service])
+
+	// Process 01-deployment template
+	deplTmpl, err := glance.GetDeploymentConfigData(deploymentParameters, deploymentSecret)
+
+	if err != nil {
+		return err
+	}
+
+	// Define the new secret
+	s := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      deploymentSecret,
+			Namespace: instance.Namespace,
+		},
+		Data: map[string][]byte{
+			deploymentSecret + ".conf": deplTmpl,
+		},
+	}
+
+	// Create 01-deployment-glance-secret
+	_, _, err = oko_secret.CreateOrPatchSecret(ctx, helper, instance, &s)
+
+	if err != nil {
+		return err
 	}
 
 	return nil

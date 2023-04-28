@@ -52,6 +52,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GlanceAPIReconciler reconciles a GlanceAPI object
@@ -398,7 +399,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 
 	//
 	// create Configmap required for glance input
-	// - %-scripts configmap holding scripts to e.g. bootstrap the service
 	// - %-config configmap holding minimal glance config required to get the service up, user can add additional files to be added to the service
 	// - parameters which has passwords gets added from the OpenStack secret via the init container
 	//
@@ -499,8 +499,41 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// normal reconcile tasks
 	//
 
+	// 01-deployment-secret is created by the Umbrella glance and referenced
+	// here
+	secrets := []string{glance.DeploymentSecretName}
+
 	// Define a new Deployment object
-	deplDef := glanceapi.Deployment(instance, inputHash, serviceLabels, serviceAnnotations)
+	confSecrets := []corev1.Secret{}
+	for _, name := range instance.Spec.CustomServiceConfigSecrets {
+		r.Log.Info(fmt.Sprintf("Retrieving Secret %s", name))
+		confSecret, _, err := oko_secret.GetSecret(ctx, helper, name, instance.Namespace)
+
+		if err != nil {
+			// Secret not found or unable to retrieve the secret, returning err
+			return ctrlResult, err
+		}
+		confSecrets = append(confSecrets, *confSecret)
+	}
+
+	if len(confSecrets) > 0 {
+		//TODO: (fpantano) check the potential errors
+		_ = r.GenConfigSecret(ctx, helper, instance, confSecrets, glance.AdditionalSecretName)
+
+		// Collect all the secrets we need, for now this is just one
+		// but in the future this can be customized and an arbitrary
+		// number of secrets can be accepted
+		secrets = append(secrets, glance.AdditionalSecretName)
+	}
+
+	// Define the glanceAPI deployment and inject the configSecret
+	deplDef := glanceapi.Deployment(
+		instance,
+		inputHash,
+		serviceLabels,
+		serviceAnnotations,
+		secrets,
+	)
 	depl := deployment.NewDeployment(
 		deplDef,
 		time.Duration(5)*time.Second,
@@ -565,9 +598,7 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 ) error {
 	//
 	// create Configmap/Secret required for glance input
-	// - %-scripts configmap holding scripts to e.g. bootstrap the service
 	// - %-config configmap holding minimal glance config required to get the service up, user can add additional files to be added to the service
-	// - parameters which has passwords gets added from the ospSecret via the init container
 	//
 
 	cmLabels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
@@ -610,15 +641,6 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	}
 
 	cms := []util.Template{
-		// ScriptsConfigMap
-		{
-			Name:         fmt.Sprintf("%s-scripts", instance.Name),
-			Namespace:    instance.Namespace,
-			Type:         util.TemplateTypeScripts,
-			InstanceType: instance.Kind,
-			Labels:       cmLabels,
-		},
-		// ConfigMap
 		{
 			Name:          fmt.Sprintf("%s-config-data", instance.Name),
 			Namespace:     instance.Namespace,
@@ -653,4 +675,41 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 		r.Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
 	}
 	return hash, changed, nil
+}
+
+// GenConfigSecret is a function that iterates over the provided secrets and
+// generates a single secret rendered as volumeMount as 04-secrets.conf
+func (r *GlanceAPIReconciler) GenConfigSecret(
+	ctx context.Context,
+	helper *helper.Helper,
+	instance *glancev1.GlanceAPI,
+	secrets []corev1.Secret,
+	secretName string,
+) error {
+
+	var mergedData []byte
+
+	for _, secret := range secrets {
+
+		// merge all the content coming from the referenced secret
+		data := secret.Data
+		for _, v := range data {
+			mergedData = append(mergedData, v...)
+		}
+
+	}
+	// Define the new secret
+	s := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: instance.Namespace,
+		},
+		Data: map[string][]byte{
+			secretName + ".conf": mergedData,
+		},
+	}
+
+	_, _, err := oko_secret.CreateOrPatchSecret(ctx, helper, instance, &s)
+
+	return err
 }
