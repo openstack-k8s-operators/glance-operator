@@ -41,6 +41,7 @@ func Deployment(
 	configHash string,
 	labels map[string]string,
 	annotations map[string]string,
+	confSecrets []string,
 ) *appsv1.Deployment {
 	runAsUser := int64(0)
 
@@ -128,9 +129,9 @@ func Deployment(
 							},
 							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts: glance.GetVolumeMounts(
-								instance.Spec.CustomServiceConfigSecrets,
 								instance.Spec.ExtraMounts,
 								glance.GlanceAPIPropagation,
+								confSecrets,
 							),
 							Resources:      instance.Spec.Resources,
 							ReadinessProbe: readinessProbe,
@@ -144,9 +145,9 @@ func Deployment(
 	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(
 		instance.Name,
 		glance.ServiceName,
-		instance.Spec.CustomServiceConfigSecrets,
 		instance.Spec.ExtraMounts,
 		glance.GlanceAPIPropagation,
+		confSecrets,
 	)
 
 	// If possible two pods of the same service should not
@@ -162,22 +163,6 @@ func Deployment(
 	if instance.Spec.NodeSelector != nil && len(instance.Spec.NodeSelector) > 0 {
 		deployment.Spec.Template.Spec.NodeSelector = instance.Spec.NodeSelector
 	}
-
-	initContainerDetails := glance.APIDetails{
-		ContainerImage:       instance.Spec.ContainerImage,
-		DatabaseHost:         instance.Spec.DatabaseHostname,
-		DatabaseUser:         instance.Spec.DatabaseUser,
-		DatabaseName:         glance.DatabaseName,
-		OSPSecret:            instance.Spec.Secret,
-		DBPasswordSelector:   instance.Spec.PasswordSelectors.Database,
-		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
-		VolumeMounts: getInitVolumeMounts(
-			instance.Spec.CustomServiceConfigSecrets,
-			instance.Spec.ExtraMounts,
-			glance.GlanceAPIPropagation,
-		),
-	}
-	deployment.Spec.Template.Spec.InitContainers = glance.InitContainer(initContainerDetails)
 
 	return deployment
 }

@@ -35,6 +35,18 @@ const (
 	// KollaConfig -
 	KollaConfig = "/var/lib/config-data/merged/glance-api-config.json"
 
+	// DeploymentConfigDir is the directory used to store
+	// the GlanceAPI config secrets
+	DeploymentConfigDir = "/var/lib/config-data/deployment/"
+
+	// DeploymentSecretName defines the deployment secret that should be used
+	// at deployment time
+	DeploymentSecretName = "01-deployment-secret-" + ServiceName
+
+	// AdditionalSecretName defines the sensitive config snippets that should
+	// be injected to the service at deployment time
+	AdditionalSecretName = "04-secrets-" + ServiceName
+
 	// GlanceExtraVolTypeUndefined can be used to label an extraMount which
 	// is not associated with a specific backend
 	GlanceExtraVolTypeUndefined storage.ExtraVolType = "Undefined"

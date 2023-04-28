@@ -8,6 +8,31 @@
         "perm": "0750"
       },
       {
+        "source": "/var/lib/config-data/merged/glance-api.conf",
+        "dest": "/etc/glance/glance.conf.d/00-default.conf",
+        "owner": "glance",
+        "perm": "0600"
+      },
+      {
+        "source": "/var/lib/config-data/deployment/01-deployment-secret-glance.conf",
+        "dest": "/etc/glance/glance.conf.d/01-deployment-secret-glance.conf",
+        "owner": "glance",
+        "perm": "0600"
+      },
+      {
+        "source": "/var/lib/config-data/merged/custom.conf",
+        "dest": "/etc/glance/glance.conf.d/02-service.conf",
+        "owner": "glance",
+        "perm": "0640"
+      },
+      {
+        "source": "/var/lib/config-data/deployment/04-secrets-glance.conf",
+        "dest": "/etc/glance/glance.conf.d/04-secrets-glance.conf",
+        "owner": "glance",
+        "perm": "0600",
+        "optional": true
+      },
+      {
         "source": "/var/lib/config-data/merged/glance-image-import.conf",
         "dest": "/etc/glance/glance.conf.d/glance-image-import.conf",
         "owner": "glance",
@@ -21,7 +46,7 @@
       },
       {
         "source": "/var/lib/config-data/merged/logging.conf",
-        "dest": "/etc/glance/logging.conf",
+        "dest": "/etc/glance/glance.conf.d/logging.conf",
         "owner": "glance",
         "perm": "0600"
       }
