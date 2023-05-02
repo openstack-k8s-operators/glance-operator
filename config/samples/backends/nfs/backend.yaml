@@ -1,0 +1,41 @@
+# Sample using File/NFS as a glance backend
+# Requires a filepath ('/var/lib/glance/image/') is mounted on NFS share
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  serviceUser: glance
+  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
+  customServiceConfig: |
+    [DEFAULT]
+    enabled_backends = default_backend:file
+    [glance_store]
+    default_backend = default_backend
+    [default_backend]
+    filesystem_store_datadir = /var/lib/glance/images/
+  databaseInstance: openstack
+  databaseUser: glance
+  glanceAPIInternal:
+    debug:
+      service: false
+    preserveJobs: false
+    replicas: 1
+  glanceAPIExternal:
+    debug:
+      service: false
+    preserveJobs: false
+    replicas: 1
+  extraMounts:
+    - extraVol:
+      - propagation:
+        - Glance
+      - extraVolType: Nfs
+        mounts:
+          - mountPath: /var/lib/glance/images
+            name: nfs
+        volumes:
+          - name: nfs
+        nfs:
+          path: /var/nfs
+          server: 192.168.130.20
