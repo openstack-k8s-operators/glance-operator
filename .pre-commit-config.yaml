@@ -7,11 +7,11 @@ repos:
       entry: make
       args: ["tidy"]
       pass_filenames: false
-    - id: make-manifests
-      name: make-manifests
+    - id: make-bundle
+      name: make-bundle
       language: system
       entry: make
-      args: ['manifests']
+      args: ['bundle']
       pass_filenames: false
     - id: make-generate
       name: make-generate
