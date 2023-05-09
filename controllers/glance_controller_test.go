@@ -17,14 +17,16 @@ limitations under the License.
 package controllers
 
 import (
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Glance controller", func() {
 	When("Glance is created", func() {
-		It("initialize the status fields", func() {
-			Expect(true).To(BeFalse())
+		It("initializes the status fields", func() {
+			namespace := uuid.New().String()
+			th.CreateNamespace(namespace)
+			DeferCleanup(th.DeleteNamespace, namespace)
 		})
 	})
 })

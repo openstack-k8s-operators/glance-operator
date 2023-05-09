@@ -13,6 +13,8 @@ require (
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230523062001-d41eddbb4da6
 	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20230523062001-d41eddbb4da6
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230523062001-d41eddbb4da6
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.0.0-20230523062001-d41eddbb4da6 // indirect
+	github.com/openstack-k8s-operators/lib-common/modules/test-operators v0.0.0-20230523062001-d41eddbb4da6
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20230517052836-8478be8b3aaa
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3
@@ -45,7 +47,7 @@ require (
 	github.com/google/gnostic v0.6.9 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.3.0
 	github.com/gophercloud/gophercloud v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect; indirect // indirect // indirect
 	github.com/josharian/intern v1.0.0 // indirect

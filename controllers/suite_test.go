@@ -17,14 +17,20 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/go-logr/logr"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/openstack-k8s-operators/lib-common/modules/test-operators/helpers"
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -37,9 +43,21 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
+const (
+	timeout = 10 * time.Second
+	// have maximum 100 retries before the timeout hits
+	interval = timeout / 100
+)
+
+var (
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	th        *TestHelper
+	ctx       context.Context
+	cancel    context.CancelFunc
+	logger    logr.Logger
+)
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -49,6 +67,8 @@ func TestAPIs(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+
+	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -67,9 +87,14 @@ var _ = BeforeSuite(func() {
 
 	//+kubebuilder:scaffold:scheme
 
+	logger = ctrl.Log.WithName("---Test---")
+
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
+
+	th = NewTestHelper(ctx, k8sClient, timeout, interval, logger)
+	Expect(th).NotTo(BeNil())
 
 })
 
