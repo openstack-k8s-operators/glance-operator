@@ -141,11 +141,11 @@ test: manifests generate fmt vet envtest ## Run tests.
 build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
-
 .PHONY: run
 run: export ENABLE_WEBHOOKS?=false
 run: export OPERATOR_TEMPLATES=./templates/
 run: manifests generate fmt vet ## Run a controller from your host.
+	/bin/bash hack/clean_local_webhook.sh
 	go run ./main.go
 
 .PHONY: docker-build
@@ -349,7 +349,6 @@ operator-lint: gowork ## Runs operator-lint
 # $oc delete -n openstack mutatingwebhookconfiguration/mglance.kb.io
 SKIP_CERT ?=false
 .PHONY: run-with-webhook
-run-with-webhook: export GLANCE_API_IMAGE_URL_DEFAULT=quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
 run-with-webhook: manifests generate fmt vet ## Run a controller from your host.
 	/bin/bash hack/configure_local_webhook.sh
 	go run ./main.go

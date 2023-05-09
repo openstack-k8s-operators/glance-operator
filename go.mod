@@ -10,21 +10,21 @@ require (
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-20230214113709-e7aaf807942a
 	github.com/openstack-k8s-operators/infra-operator/apis v0.0.0-20230210143210-6e3aad14c3aa
 	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230213213445-659162f165cb
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230427065458-ec1b923df88c
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230505090059-1db7d191885e
 	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20230215134634-d31141e5bbba
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230215134634-d31141e5bbba
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20230214100853-24ae9d6ebdf2
-	k8s.io/api v0.26.2
-	k8s.io/apimachinery v0.26.2
-	k8s.io/client-go v0.26.2
-	sigs.k8s.io/controller-runtime v0.14.5
+	k8s.io/api v0.26.3
+	k8s.io/apimachinery v0.26.3
+	k8s.io/client-go v0.26.3
+	sigs.k8s.io/controller-runtime v0.14.6
 )
 
 require github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
 
 require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
-	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect
+	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	golang.org/x/tools v0.8.0 // indirect
 )
 
@@ -32,7 +32,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
+	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/zapr v1.2.3 // indirect
@@ -51,7 +51,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.2 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
