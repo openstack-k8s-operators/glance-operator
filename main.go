@@ -120,12 +120,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Acquire environmental defaults and initialize Glance and GlanceAPI defaults with them
-	glanceDefaults := glancev1.GlanceDefaults{
-		ContainerImageURL: os.Getenv("GLANCE_API_IMAGE_URL_DEFAULT"),
-	}
-
-	glancev1.SetupGlanceDefaults(glanceDefaults)
+	// Acquire environmental defaults and initialize operator defaults with them
+	glancev1.SetupDefaults()
 
 	// Setup webhooks if requested
 	if strings.ToLower(os.Getenv("ENABLE_WEBHOOKS")) != "false" {

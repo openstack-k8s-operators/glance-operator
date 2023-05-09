@@ -18,7 +18,15 @@ package v1beta1
 
 import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	// Container image fall-back defaults
+
+	// GlanceAPIContainerImage is the fall-back container image for GlanceAPI
+	GlanceAPIContainerImage = "quay.io/podified-antelope-centos9/openstack-glance-api:current-podified"
 )
 
 // GlanceAPITemplate defines the desired state of GlanceAPI
@@ -107,4 +115,14 @@ type MetalLBConfig struct {
 	// +kubebuilder:validation:Optional
 	// LoadBalancerIPs, request given IPs from the pool if available. Using a list to allow dual stack (IPv4/IPv6) support
 	LoadBalancerIPs []string `json:"loadBalancerIPs,omitempty"`
+}
+
+// SetupDefaults - initializes any CRD field defaults based on environment variables (the defaulting mechanism itself is implemented via webhooks)
+func SetupDefaults() {
+	// Acquire environmental defaults and initialize Glance defaults with them
+	glanceDefaults := GlanceDefaults{
+		ContainerImageURL: util.GetEnvVar("GLANCE_API_IMAGE_URL_DEFAULT", GlanceAPIContainerImage),
+	}
+
+	SetupGlanceDefaults(glanceDefaults)
 }
