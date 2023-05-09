@@ -27,6 +27,19 @@ var _ = Describe("Glance controller", func() {
 			namespace := uuid.New().String()
 			th.CreateNamespace(namespace)
 			DeferCleanup(th.DeleteNamespace, namespace)
+
+			glanceName := "glance"
+
+			raw := map[string]interface{}{
+				"apiVersion": "glance.openstack.org/v1beta1",
+				"kind":       "Glance",
+				"metadata": map[string]interface{}{
+					"name":      glanceName,
+					"namespace": namespace,
+				},
+				"spec": map[string]interface{}{},
+			}
+			th.CreateUnstructured(raw)
 		})
 	})
 })
