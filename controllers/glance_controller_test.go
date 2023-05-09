@@ -17,6 +17,8 @@ limitations under the License.
 package controllers
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -37,9 +39,27 @@ var _ = Describe("Glance controller", func() {
 					"name":      glanceName,
 					"namespace": namespace,
 				},
-				"spec": map[string]interface{}{},
+				"spec": map[string]interface{}{
+					// We shouldn't need to specify this as it is expected
+					// to be defaulted by the webhook. However we did not
+					// enable the webhook to run in the test *yet*.
+					"containerImage":   "test-image-glance",
+					"databaseInstance": "openstack",
+					"storageRequest":   "10G",
+					"glanceAPIExternal": map[string]interface{}{
+						// I'm wondering what is the reason we have containerImage
+						// on the top level and per GlanceAPI as well. Does
+						// the top level overwrites the per API image?
+						"containerImage": "test-image-glance-api-external",
+					},
+					"glanceAPIInternal": map[string]interface{}{
+						"containerImage": "test-image-glance-api-internal",
+					},
+				},
 			}
 			th.CreateUnstructured(raw)
+
+			time.Sleep(10 * time.Second)
 		})
 	})
 })
