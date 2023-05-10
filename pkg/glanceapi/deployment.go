@@ -176,6 +176,7 @@ func Deployment(
 			instance.Spec.ExtraMounts,
 			glance.GlanceAPIPropagation,
 		),
+		QuotaEnabled: instance.Spec.Quota,
 	}
 	deployment.Spec.Template.Spec.InitContainers = glance.InitContainer(initContainerDetails)
 

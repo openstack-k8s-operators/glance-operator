@@ -49,6 +49,7 @@ import (
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	"github.com/openstack-k8s-operators/lib-common/modules/database"
+	"github.com/openstack-k8s-operators/lib-common/modules/openstack"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -245,6 +246,13 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 			// util.LogForObject(helper, fmt.Sprintf("Deleted GlanceAPI %s", glanceAPI.Name), glanceAPI)
 		}
 	}
+
+	/* TODO: if the CR is removed (Glance undeployed/cleaned up), we usually
+	* clean the resources created in the OpenStackControlPlane (e.g., we remove
+	* the database from mariadb, delete the service and the endpoints in
+	* keystone). We should delete the limits created for the Glance service,
+	* and do not leave leftovers in the controlplane.
+	 */
 
 	// Service is deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
@@ -593,7 +601,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	// Regardless of what the user may have set in GlanceAPIInternal.EndpointType,
 	// we force "internal" here by passing glancev1.APIInternal for the apiType arg
-	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(instance, instance.Spec.GlanceAPIInternal, glancev1.APIInternal, helper)
+	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIInternal, glancev1.APIInternal, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -627,7 +635,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	// Regardless of what the user may have set in GlanceAPIExternal.EndpointType,
 	// we force "external" here by passing glancev1.APIExternal for the apiType arg
-	glanceAPI, op, err = r.apiDeploymentCreateOrUpdate(instance, instance.Spec.GlanceAPIExternal, glancev1.APIExternal, helper)
+	glanceAPI, op, err = r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIExternal, glancev1.APIExternal, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -658,7 +666,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance, apiTemplate glancev1.GlanceAPITemplate, apiType string, helper *helper.Helper) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
+func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, instance *glancev1.Glance, apiTemplate glancev1.GlanceAPITemplate, apiType string, helper *helper.Helper) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 
 	apiSpec := glancev1.GlanceAPISpec{
 		GlanceAPITemplate: apiTemplate,
@@ -670,6 +678,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 		PasswordSelectors: instance.Spec.PasswordSelectors,
 		ServiceUser:       instance.Spec.ServiceUser,
 		ServiceAccount:    instance.RbacResourceName(),
+		Quota:             instance.IsQuotaEnabled(),
 	}
 
 	deployment := &glancev1.GlanceAPI{
@@ -679,7 +688,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 		},
 	}
 
-	op, err := controllerutil.CreateOrUpdate(context.TODO(), r.Client, deployment, func() error {
+	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
 		deployment.Spec = apiSpec
@@ -694,6 +703,16 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 
 		if len(deployment.Spec.CustomServiceConfigSecrets) == 0 {
 			deployment.Spec.CustomServiceConfigSecrets = instance.Spec.CustomServiceConfigSecrets
+		}
+
+		// QuotaLimits are global values for Glance service in keystone, it's not
+		// supported having different quotas per Glance instances, hence we always
+		// inherit this parameter from the parent CR
+		if instance.IsQuotaEnabled() {
+			err := r.ensureRegisteredLimits(ctx, helper, instance)
+			if err != nil {
+				return err
+			}
 		}
 
 		err := controllerutil.SetControllerReference(instance, deployment, r.Scheme)
@@ -764,5 +783,49 @@ func (r *GlanceReconciler) generateServiceConfigMaps(
 		return nil
 	}
 
+	return nil
+}
+
+// ensureRegisteredLimits - create registered limits in keystone that will be
+// used by glance to enforce per-tenant quotas
+func (r *GlanceReconciler) ensureRegisteredLimits(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.Glance,
+) error {
+
+	quota := map[string]int{
+		"image_count_uploading": instance.Spec.Quotas.ImageCountUpload,
+		"image_count_total":     instance.Spec.Quotas.ImageCountTotal,
+		"image_stage_total":     instance.Spec.Quotas.ImageStageTotal,
+		"image_size_total":      instance.Spec.Quotas.ImageSizeTotal,
+	}
+
+	// get admin
+	var err error
+	keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
+
+	if err != nil {
+		return err
+	}
+	o, _, err := keystonev1.GetAdminServiceClient(ctx, h, keystoneAPI)
+	if err != nil {
+		return err
+	}
+	for lName, lValue := range quota {
+		r.Log.Info(fmt.Sprintf("Registering limit %s", lName))
+		defaultRegion := o.GetRegion()
+		m := openstack.RegisteredLimit{
+			RegionID:     defaultRegion,
+			ServiceID:    instance.Status.ServiceID,
+			Description:  "default limit for  " + lName,
+			ResourceName: lName,
+			DefaultLimit: lValue,
+		}
+		_, err = o.CreateRegisteredLimit(r.Log, m)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
