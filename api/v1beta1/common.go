@@ -86,6 +86,12 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Optional
 	// ExternalEndpoints, expose a VIP via MetalLB on the pre-created address pool
 	ExternalEndpoints []MetalLBConfig `json:"externalEndpoints,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// QuotaEnforce if true, per-tenant quotas are enforced according to the
+	// registered keystone limits
+	Quota bool `json:"quota"`
 }
 
 // MetalLBConfig to configure the MetalLB loadbalancer service

@@ -873,6 +873,9 @@ spec:
                 type: object
               pvc:
                 type: string
+              quota:
+                default: false
+                type: boolean
               replicas:
                 default: 1
                 format: int32

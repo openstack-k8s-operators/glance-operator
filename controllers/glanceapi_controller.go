@@ -597,6 +597,7 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	templateParameters := make(map[string]interface{})
 	templateParameters["ServiceUser"] = instance.Spec.ServiceUser
 	templateParameters["KeystoneAuthURL"] = keystonePublicURL
+	templateParameters["QuotaEnabled"] = instance.Spec.Quota
 
 	// Configure the internal GlanceAPI to provide image location data, and the
 	// external version to *not* provide it.
