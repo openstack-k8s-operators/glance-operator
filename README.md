@@ -50,7 +50,7 @@ There are many ways get an OpenShift cluster, and our recommendation for the
 time being is to use [OpenShift Local](https://access.redhat.com/documentation/en-us/red_hat_openshift_local/2.5/html/getting_started_guide/index)
 (formerly known as CRC / Code Ready Containers).
 
-To help with the deployment we have [companion development tools](https://github.com/openstack-k8s-operators/install_yamls/blob/master/devsetup)
+To help with the deployment we have [companion development tools](https://github.com/openstack-k8s-operators/install_yamls/blob/main/devsetup)
 available that will install OpenShift Local for you and will also help with
 later steps.
 
@@ -92,7 +92,7 @@ oc get clusterversion
 ```
 
 If you are running OCP on a different machine you'll need additional steps to
-[access its dashboard from an external system](https://github.com/openstack-k8s-operators/install_yamls/tree/master/devsetup#access-ocp-from-external-systems).
+[access its dashboard from an external system](https://github.com/openstack-k8s-operators/install_yamls/tree/main/devsetup#access-ocp-from-external-systems).
 
 ### Storage
 
