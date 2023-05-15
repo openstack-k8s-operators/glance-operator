@@ -175,7 +175,7 @@ make fmt
 ```
 
 Pull Requests are expected to have passed the formatting tool before committing
-the code and submitting the PR. [pre-commit](https://github.com/openstack-k8s-operators/glance-operator/blob/master/.pre-commit-config.yaml)
+the code and submitting the PR. [pre-commit](https://github.com/openstack-k8s-operators/glance-operator/blob/main/.pre-commit-config.yaml)
 and other related git hook can be used to check locally if patch is going to
 pass related checks (job).
 
