@@ -5,12 +5,11 @@ metadata:
   namespace: system
   labels:
     control-plane: controller-manager
-    app.kubernetes.io/name: glance-operator
-    app.kubernetes.io/component: glance
+    openstack.org/operator-name: glance
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: glance-operator
+      openstack.org/operator-name: glance
   replicas: 1
   template:
     metadata:
@@ -18,8 +17,7 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: controller-manager
-        app.kubernetes.io/name: glance-operator
-        app.kubernetes.io/component: glance
+        openstack.org/operator-name: glance
     spec:
       securityContext:
         runAsNonRoot: true
