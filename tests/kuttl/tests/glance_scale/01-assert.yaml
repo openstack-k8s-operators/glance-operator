@@ -219,7 +219,7 @@ kind: TestAssert
 namespaced: true
 commands:
   - script: |
-      template='{{.status.apiEndpoint.internal}}{{":"}}{{.status.apiEndpoint.public}}{{"\n"}}'
+      template='{{.status.apiEndpoints.internal}}{{":"}}{{.status.apiEndpoints.public}}{{"\n"}}'
       regex="http:\/\/glance-internal.openstack.*:http:\/\/glance-public-openstack\.apps.*"
       apiEndpoints=$(oc get -n openstack Glance glance -o go-template="$template")
       matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")

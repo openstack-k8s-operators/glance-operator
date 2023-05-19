@@ -143,7 +143,7 @@ type GlanceStatus struct {
 	Hash map[string]string `json:"hash,omitempty"`
 
 	// API endpoint
-	APIEndpoints map[string]string `json:"apiEndpoint,omitempty"`
+	APIEndpoints map[string]string `json:"apiEndpoints,omitempty"`
 
 	// ServiceID
 	ServiceID string `json:"serviceID,omitempty"`

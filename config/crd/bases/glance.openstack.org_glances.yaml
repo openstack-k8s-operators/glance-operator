@@ -1044,7 +1044,7 @@ spec:
             type: object
           status:
             properties:
-              apiEndpoint:
+              apiEndpoints:
                 additionalProperties:
                   type: string
                 type: object
