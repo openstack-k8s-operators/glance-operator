@@ -27,7 +27,7 @@ import (
 
 const (
 	// DBSyncCommand -
-	DBSyncCommand = "/usr/local/bin/kolla_set_configs && su -s /bin/sh -c \"glance-manage db sync\" glance"
+	DBSyncCommand = "/usr/local/bin/kolla_set_configs && su -s /bin/sh -c \"glance-manage db sync\" glance && glance-manage db_load_metadefs"
 )
 
 // DbSyncJob func
