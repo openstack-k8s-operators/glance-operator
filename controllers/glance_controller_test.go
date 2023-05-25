@@ -108,5 +108,38 @@ var _ = Describe("Glance controller", func() {
 				"Input data resources missing",
 			)
 		})
+
+		It("creates service account, role and rolebindig", func() {
+			th.ExpectCondition(
+				glanceName,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.ServiceAccountReadyCondition,
+				corev1.ConditionTrue,
+			)
+			sa := th.GetServiceAccount(types.NamespacedName{Namespace: namespace, Name: "glance-" + glanceName.Name})
+
+			th.ExpectCondition(
+				glanceName,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.RoleReadyCondition,
+				corev1.ConditionTrue,
+			)
+			role := th.GetRole(types.NamespacedName{Namespace: namespace, Name: "glance-" + glanceName.Name + "-role"})
+			Expect(role.Rules).To(HaveLen(2))
+			Expect(role.Rules[0].Resources).To(Equal([]string{"securitycontextconstraints"}))
+			Expect(role.Rules[1].Resources).To(Equal([]string{"pods"}))
+
+			th.ExpectCondition(
+				glanceName,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.RoleBindingReadyCondition,
+				corev1.ConditionTrue,
+			)
+			binding := th.GetRoleBinding(types.NamespacedName{Namespace: namespace, Name: "glance-" + glanceName.Name + "-rolebinding"})
+			Expect(binding.RoleRef.Name).To(Equal(role.Name))
+			Expect(binding.Subjects).To(HaveLen(1))
+			Expect(binding.Subjects[0].Name).To(Equal(sa.Name))
+		})
+
 	})
 })
