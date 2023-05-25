@@ -14,11 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package functional_test
 
 import (
 	"github.com/google/uuid"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -35,35 +34,6 @@ var (
 	namespace  string
 	glanceName types.NamespacedName
 )
-
-func GetGlance(name types.NamespacedName) *glancev1.Glance {
-	instance := &glancev1.Glance{}
-	Eventually(func(g Gomega) {
-		g.Expect(k8sClient.Get(ctx, name, instance)).Should(Succeed())
-	}, timeout, interval).Should(Succeed())
-	return instance
-}
-
-func GlanceConditionGetter(name types.NamespacedName) condition.Conditions {
-	instance := GetGlance(name)
-	return instance.Status.Conditions
-}
-
-func CreateGlance(name types.NamespacedName) client.Object {
-	raw := map[string]interface{}{
-		"apiVersion": "glance.openstack.org/v1beta1",
-		"kind":       "Glance",
-		"metadata": map[string]interface{}{
-			"name":      name.Name,
-			"namespace": name.Namespace,
-		},
-		"spec": map[string]interface{}{
-			"databaseInstance": "openstack",
-			"storageRequest":   "10G",
-		},
-	}
-	return th.CreateUnstructured(raw)
-}
 
 var _ = Describe("Glance controller", func() {
 	When("Glance is created", func() {
