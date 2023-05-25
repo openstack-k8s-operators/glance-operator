@@ -17,11 +17,31 @@ limitations under the License.
 package controllers
 
 import (
-	"time"
-
 	"github.com/google/uuid"
+
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	. "github.com/openstack-k8s-operators/lib-common/modules/test/helpers"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 )
+
+func GetGlance(name types.NamespacedName) *glancev1.Glance {
+	instance := &glancev1.Glance{}
+	Eventually(func(g Gomega) {
+		g.Expect(k8sClient.Get(ctx, name, instance)).Should(Succeed())
+	}, timeout, interval).Should(Succeed())
+	return instance
+}
+
+func GlanceConditionGetter(name types.NamespacedName) condition.Conditions {
+	instance := GetGlance(name)
+	return instance.Status.Conditions
+}
 
 var _ = Describe("Glance controller", func() {
 	When("Glance is created", func() {
@@ -30,13 +50,11 @@ var _ = Describe("Glance controller", func() {
 			th.CreateNamespace(namespace)
 			DeferCleanup(th.DeleteNamespace, namespace)
 
-			glanceName := "glance"
-
 			raw := map[string]interface{}{
 				"apiVersion": "glance.openstack.org/v1beta1",
 				"kind":       "Glance",
 				"metadata": map[string]interface{}{
-					"name":      glanceName,
+					"name":      "glance",
 					"namespace": namespace,
 				},
 				"spec": map[string]interface{}{
@@ -59,7 +77,17 @@ var _ = Describe("Glance controller", func() {
 			}
 			th.CreateUnstructured(raw)
 
-			time.Sleep(10 * time.Second)
+			glanceName := types.NamespacedName{Namespace: namespace, Name: "glance"}
+
+			th.ExpectCondition(
+				glanceName,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.InputReadyCondition,
+				corev1.ConditionFalse,
+			)
+
+			glance := GetGlance(glanceName)
+			Expect(glance.Status.Conditions).To(HaveLen(11))
 		})
 	})
 })
