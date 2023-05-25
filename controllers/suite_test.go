@@ -18,6 +18,9 @@ package controllers
 
 import (
 	"context"
+	"crypto/tls"
+	"fmt"
+	"net"
 	"path/filepath"
 	"testing"
 	"time"
@@ -96,6 +99,13 @@ var _ = BeforeSuite(func() {
 			routev1CRDs,
 		},
 		ErrorIfCRDPathMissing: true,
+		WebhookInstallOptions: envtest.WebhookInstallOptions{
+			Paths: []string{filepath.Join("..", "config", "webhook")},
+			// NOTE(gibi): if localhost is resolved to ::1 (ipv6) then starting
+			// the webhook fails as it try to parse the address as ipv4 and
+			// failing on the colons in ::1
+			LocalServingHost: "127.0.0.1",
+		},
 	}
 
 	// cfg is defined in this file globally.
@@ -126,12 +136,16 @@ var _ = BeforeSuite(func() {
 	Expect(th).NotTo(BeNil())
 
 	// Start the controller-manager in a goroutine
+	webhookInstallOptions := &testEnv.WebhookInstallOptions
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 		// NOTE(gibi): disable metrics reporting in test to allow
 		// parallel test execution. Otherwise each instance would like to
 		// bind to the same port
 		MetricsBindAddress: "0",
+		Host:               webhookInstallOptions.LocalServingHost,
+		Port:               webhookInstallOptions.LocalServingPort,
+		CertDir:            webhookInstallOptions.LocalServingCertDir,
 		LeaderElection:     false,
 	})
 	Expect(err).ToNot(HaveOccurred())
@@ -155,11 +169,30 @@ var _ = BeforeSuite(func() {
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
+	// Acquire environmental defaults and initialize operator defaults with them
+	glancev1.SetupDefaults()
+
+	err = (&glancev1.Glance{}).SetupWebhookWithManager(k8sManager)
+	Expect(err).NotTo(HaveOccurred())
+
 	go func() {
 		defer GinkgoRecover()
 		err = k8sManager.Start(ctx)
 		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
 	}()
+
+	// wait for the webhook server to get ready
+	dialer := &net.Dialer{Timeout: time.Duration(10) * time.Second}
+	addrPort := fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort)
+	Eventually(func() error {
+		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true})
+		if err != nil {
+			return err
+		}
+		conn.Close()
+		return nil
+	}).Should(Succeed())
+
 })
 
 var _ = AfterSuite(func() {

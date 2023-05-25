@@ -58,21 +58,8 @@ func CreateGlance(name types.NamespacedName) client.Object {
 			"namespace": name.Namespace,
 		},
 		"spec": map[string]interface{}{
-			// We shouldn't need to specify this as it is expected
-			// to be defaulted by the webhook. However we did not
-			// enable the webhook to run in the test *yet*.
-			"containerImage":   "test-image-glance",
 			"databaseInstance": "openstack",
 			"storageRequest":   "10G",
-			"glanceAPIExternal": map[string]interface{}{
-				// I'm wondering what is the reason we have containerImage
-				// on the top level and per GlanceAPI as well. Does
-				// the top level overwrites the per API image?
-				"containerImage": "test-image-glance-api-external",
-			},
-			"glanceAPIInternal": map[string]interface{}{
-				"containerImage": "test-image-glance-api-internal",
-			},
 		},
 	}
 	return th.CreateUnstructured(raw)
@@ -139,6 +126,13 @@ var _ = Describe("Glance controller", func() {
 			Expect(binding.RoleRef.Name).To(Equal(role.Name))
 			Expect(binding.Subjects).To(HaveLen(1))
 			Expect(binding.Subjects[0].Name).To(Equal(sa.Name))
+		})
+
+		It("defaults the containerImages", func() {
+			glance := GetGlance(glanceName)
+			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			Expect(glance.Spec.GlanceAPIInternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			Expect(glance.Spec.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 		})
 
 	})
