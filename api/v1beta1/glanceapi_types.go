@@ -135,9 +135,7 @@ func (instance GlanceAPI) GetEndpoint(endpointType endpoint.Endpoint) (string, e
 	return "", fmt.Errorf("%s endpoint not found", string(endpointType))
 }
 
-// IsReady - returns true if service is ready to server requests
+// IsReady - returns true if GlanceAPI is reconciled successfully
 func (instance GlanceAPI) IsReady() bool {
-	// Ready when:
-	// there is at least a single pod to serve the glance service
-	return instance.Status.ReadyCount >= 1
+	return instance.Status.Conditions.IsTrue(condition.ReadyCondition)
 }
