@@ -1072,10 +1072,10 @@ spec:
                 type: array
               databaseHostname:
                 type: string
-              glanceAPIReadyExternalCount:
+              glanceAPIExternalReadyCount:
                 format: int32
                 type: integer
-              glanceAPIReadyInternalCount:
+              glanceAPIInternalReadyCount:
                 format: int32
                 type: integer
               hash:

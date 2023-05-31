@@ -38,8 +38,8 @@ spec:
   storageRequest: 10G
 status:
   databaseHostname: openstack
-  glanceAPIReadyExternalCount: 1
-  glanceAPIReadyInternalCount: 1
+  glanceAPIExternalReadyCount: 1
+  glanceAPIInternalReadyCount: 1
 ---
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
