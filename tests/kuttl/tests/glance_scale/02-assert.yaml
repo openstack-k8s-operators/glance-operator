@@ -15,8 +15,8 @@ spec:
   glanceAPIExternal:
     replicas: 2
 status:
-  glanceAPIReadyExternalCount: 2
-  glanceAPIReadyInternalCount: 2
+  glanceAPIExternalReadyCount: 2
+  glanceAPIInternalReadyCount: 2
 ---
 apiVersion: apps/v1
 kind: Deployment
