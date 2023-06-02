@@ -188,11 +188,9 @@ func init() {
 	SchemeBuilder.Register(&Glance{}, &GlanceList{})
 }
 
-// IsReady - returns true if service is ready to serve requests
+// IsReady - returns true if Glance is reconciled successfully
 func (instance Glance) IsReady() bool {
-	// Ready when:
-	// - Both the internal and external API endpoints are ready (count >= 1)
-	return instance.Status.GlanceAPIInternalReadyCount >= 1 && instance.Status.GlanceAPIExternalReadyCount >= 1
+	return instance.Status.Conditions.IsTrue(condition.ReadyCondition)
 }
 
 // GlanceExtraVolMounts exposes additional parameters processed by the glance-operator
