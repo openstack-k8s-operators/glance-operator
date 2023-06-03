@@ -3,7 +3,7 @@ module github.com/openstack-k8s-operators/glance-operator/api
 go 1.19
 
 require (
-	github.com/onsi/ginkgo/v2 v2.9.5
+	github.com/onsi/ginkgo/v2 v2.9.7
 	github.com/onsi/gomega v1.27.7
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230523062001-d41eddbb4da6
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230523062001-d41eddbb4da6
