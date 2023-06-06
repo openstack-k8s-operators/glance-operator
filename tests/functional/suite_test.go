@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package functional_test
+package functional
 
 import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/google/uuid"
+	"k8s.io/apimachinery/pkg/types"
 	"net"
 	"path/filepath"
 	"testing"
@@ -29,8 +31,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
-	"github.com/openstack-k8s-operators/lib-common/modules/test"
+	. "github.com/openstack-k8s-operators/lib-common/modules/test/helpers"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -41,11 +42,13 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/controllers"
 	rabbitmqv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/test"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	//+kubebuilder:scaffold:imports
 )
@@ -56,17 +59,21 @@ import (
 const (
 	timeout = 10 * time.Second
 	// have maximum 100 retries before the timeout hits
-	interval = timeout / 100
+	interval   = timeout / 100
+	SecretName = "test-osp-secret"
 )
 
 var (
-	cfg       *rest.Config
-	k8sClient client.Client
-	testEnv   *envtest.Environment
-	th        *TestHelper
-	ctx       context.Context
-	cancel    context.CancelFunc
-	logger    logr.Logger
+	cfg        *rest.Config
+	k8sClient  client.Client
+	testEnv    *envtest.Environment
+	th         *TestHelper
+	ctx        context.Context
+	cancel     context.CancelFunc
+	logger     logr.Logger
+	namespace  string
+	glanceName types.NamespacedName
+	glanceTest GlanceTestData
 )
 
 func TestAPIs(t *testing.T) {
@@ -85,6 +92,9 @@ var _ = BeforeSuite(func() {
 	keystoneCRDs, err := test.GetCRDDirFromModule(
 		"github.com/openstack-k8s-operators/keystone-operator/api", gomod, "bases")
 	Expect(err).ShouldNot(HaveOccurred())
+	networkv1CRD, err := test.GetCRDDirFromModule(
+		"github.com/k8snetworkplumbingwg/network-attachment-definition-client", "../../go.mod", "artifacts/networks-crd.yaml")
+	Expect(err).ShouldNot(HaveOccurred())
 	mariadbCRDs, err := test.GetCRDDirFromModule(
 		"github.com/openstack-k8s-operators/mariadb-operator/api", gomod, "bases")
 	Expect(err).ShouldNot(HaveOccurred())
@@ -98,6 +108,11 @@ var _ = BeforeSuite(func() {
 			mariadbCRDs,
 			keystoneCRDs,
 			routev1CRDs,
+		},
+		CRDInstallOptions: envtest.CRDInstallOptions{
+			Paths: []string{
+				networkv1CRD,
+			},
 		},
 		ErrorIfCRDPathMissing: true,
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
@@ -123,6 +138,8 @@ var _ = BeforeSuite(func() {
 	err = keystonev1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = routev1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+	err = networkv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
@@ -201,4 +218,24 @@ var _ = AfterSuite(func() {
 	cancel()
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
+})
+
+var _ = BeforeEach(func() {
+	// NOTE(gibi): We need to create a unique namespace for each test run
+	// as namespaces cannot be deleted in a locally running envtest. See
+	// https://book.kubebuilder.io/reference/envtest.html#namespace-usage-limitation
+	namespace = uuid.New().String()
+	th.CreateNamespace(namespace)
+	// We still request the delete of the Namespace to properly cleanup if
+	// we run the test in an existing cluster.
+	glanceName = types.NamespacedName{
+		Namespace: namespace,
+		Name:      "glance",
+	}
+
+	glanceTest = GetGlanceTestData(glanceName)
+
+	DeferCleanup(th.DeleteNamespace, namespace)
+	//Let's create the osp-secret in advance (in common to all the test cases)
+	DeferCleanup(k8sClient.Delete, ctx, CreateGlanceSecret(glanceName.Namespace, SecretName))
 })

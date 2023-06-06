@@ -132,7 +132,7 @@ golangci-lint:
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.51.2
 	$(LOCALBIN)/golangci-lint run --fix
 
-PROCS?=$(shell expr $(shell nproc --ignore 2) / 2)
+PROCS?=$(shell expr $(shell nproc --ignore 2) / 4)
 PROC_CMD = --procs ${PROCS}
 
 .PHONY: test
