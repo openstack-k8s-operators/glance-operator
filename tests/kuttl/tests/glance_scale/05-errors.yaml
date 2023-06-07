@@ -1,12 +1,12 @@
 #
 # Check for:
 # - No Glance CR
-# - No GlanceAPI glance-external CR
-# - No GlanceAPI glance-internal CR
-# - No GlanceAPI glance-external-api Deployment
-# - No GlanceAPI glance-internal-api Deployment
-# - No glance-external-api Pod
-# - No glance-internal-api Pod
+# - No GlanceAPI glance-api-external CR
+# - No GlanceAPI glance-api-internal CR
+# - No GlanceAPI glance-api-external Deployment
+# - No GlanceAPI glance-api-internal Deployment
+# - No glance-api-external Pod
+# - No glance-api-internal Pod
 # - No glance-internal service
 # - No glance-public service
 # - No glance-public route
@@ -20,34 +20,34 @@ metadata:
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
 metadata:
-  name: glance-external
+  name: glance-api-external
 ---
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
 metadata:
-  name: glance-internal
+  name: glance-api-internal
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: glance-external-api
+  name: glance-api-external
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: glance-internal-api
+  name: glance-api-internal
 ---
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    service: glance-external
+    service: glance-api-external
 ---
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    service: glance-internal
+    service: glance-api-internal
 ---
 apiVersion: v1
 kind: Service

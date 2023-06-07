@@ -1,8 +1,8 @@
 #
 # Check for:
 # - Glance CR with 2 replicas for each GlanceAPI
-# - GlanceAPI glance-external-api Deployment with 2 replicas
-# - GlanceAPI glance-internal-api Deployment with 2 replicas
+# - GlanceAPI glance-api-external Deployment with 2 replicas
+# - GlanceAPI glance-api-internal Deployment with 2 replicas
 
 
 apiVersion: glance.openstack.org/v1beta1
@@ -21,7 +21,7 @@ status:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: glance-external-api
+  name: glance-api-external
 spec:
   replicas: 2
 status:
@@ -31,7 +31,7 @@ status:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: glance-internal-api
+  name: glance-api-internal
 spec:
   replicas: 2
 status:

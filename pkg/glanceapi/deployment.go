@@ -16,8 +16,6 @@ limitations under the License.
 package glanceapi
 
 import (
-	"fmt"
-
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
@@ -100,7 +98,7 @@ func Deployment(
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-api", instance.Name),
+			Name:      instance.Name,
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -155,7 +153,7 @@ func Deployment(
 	deployment.Spec.Template.Spec.Affinity = affinity.DistributePods(
 		common.AppSelector,
 		[]string{
-			glance.ServiceName,
+			labels[common.AppSelector],
 		},
 		corev1.LabelHostname,
 	)

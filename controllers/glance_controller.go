@@ -529,7 +529,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	serviceLabels := map[string]string{
-		common.AppSelector: glance.ServiceName,
+		common.AppSelector: instance.Name,
 	}
 
 	// networks to attach to
@@ -674,7 +674,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(instance *glancev1.Glance
 
 	deployment := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", instance.Name, apiType),
+			Name:      fmt.Sprintf("%s-api-%s", instance.Name, apiType),
 			Namespace: instance.Namespace,
 		},
 	}

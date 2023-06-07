@@ -1,8 +1,8 @@
 #
 # Check for:
 # - Glance CR with 0 replicas for each GlanceAPI
-# - GlanceAPI glance-external-api Deployment with 0 replicas
-# - GlanceAPI glance-internal-api Deployment with 0 replicas
+# - GlanceAPI glance-api-external Deployment with 0 replicas
+# - GlanceAPI glance-api-internal Deployment with 0 replicas
 
 
 apiVersion: glance.openstack.org/v1beta1
@@ -18,13 +18,13 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: glance-external-api
+  name: glance-api-external
 spec:
   replicas: 0
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: glance-internal-api
+  name: glance-api-internal
 spec:
   replicas: 0

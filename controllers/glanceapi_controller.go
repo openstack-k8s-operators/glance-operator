@@ -446,7 +446,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 
 	serviceLabels := map[string]string{
-		common.AppSelector: fmt.Sprintf("%s-%s", glance.ServiceName, instance.Spec.APIType),
+		common.AppSelector: instance.Name,
 	}
 
 	// networks to attach to
