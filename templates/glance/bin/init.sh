@@ -23,6 +23,7 @@ export DBHOST=${DatabaseHost:?"Please specify a DatabaseHost variable."}
 export DBUSER=${DatabaseUser:-"glance"}
 export DB=${DatabaseName:-"glance"}
 export DBPASSWORD=${DatabasePassword:?"Please specify a DatabasePassword variable."}
+export QUOTA_ENABLED=${QuotaEnabled:-"false"}
 
 
 DEFAULT_DIR=/var/lib/config-data/default
@@ -60,6 +61,15 @@ password = ${PASSWORD}
 [service_user]
 password = ${PASSWORD}
 EOF
+
+# Add oslo_limit glance password if QuotaLimits are enabled
+# https://docs.openstack.org/glance/latest/admin/quotas.html
+if [ "$QUOTA_ENABLED" == "true" ]; then
+cat <<EOF >> ${DEPLOYMENT_SECRETS}
+[oslo_limit]
+password = ${PASSWORD}
+EOF
+fi
 
 if [ -f ${DEFAULT_DIR}/custom.conf ]; then
     cp ${DEFAULT_DIR}/custom.conf ${SVC_CFG_MERGED_DIR}/02-global.conf

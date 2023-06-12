@@ -605,6 +605,11 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	templateParameters["ServiceUser"] = instance.Spec.ServiceUser
 	templateParameters["KeystoneAuthURL"] = keystonePublicURL
 
+	// If Quota values are defined in the top level spec (they are global values),
+	// each GlanceAPI instance should build the config file according to
+	// https://docs.openstack.org/glance/latest/admin/quotas.html
+	templateParameters["QuotaEnabled"] = instance.Spec.Quota
+
 	// Configure the internal GlanceAPI to provide image location data, and the
 	// external version to *not* provide it.
 	if instance.Spec.APIType == glancev1.APIInternal {

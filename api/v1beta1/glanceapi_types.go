@@ -71,6 +71,12 @@ type GlanceAPISpec struct {
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials
 	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// QuotaEnforce if true, per-tenant quotas are enforced according to the
+	// registered keystone limits
+	Quota bool `json:"quota"`
 }
 
 // GlanceAPIDebug defines the observed state of GlanceAPIDebug

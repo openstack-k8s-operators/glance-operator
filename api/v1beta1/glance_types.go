@@ -114,6 +114,11 @@ type GlanceSpec struct {
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials
 	ExtraMounts []GlanceExtraVolMounts `json:"extraMounts,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Quotas is defined, per-tenant quotas are enforced according to the
+	// registered keystone limits
+	Quotas QuotaLimits `json:"quotas,omitempty"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret
@@ -193,6 +198,19 @@ func (instance Glance) IsReady() bool {
 	return instance.Status.Conditions.IsTrue(condition.ReadyCondition)
 }
 
+// QuotaLimits - The parameters exposed to the top level glance CR that
+// represents the limits we set in keystone
+type QuotaLimits struct {
+	// +kubebuilder:default=0
+	ImageSizeTotal int `json:"imageSizeTotal"`
+	// +kubebuilder:default=0
+	ImageStageTotal int `json:"imageStageTotal"`
+	// +kubebuilder:default=0
+	ImageCountTotal int `json:"imageCountTotal"`
+	// +kubebuilder:default=0
+	ImageCountUpload int `json:"imageCountUpload"`
+}
+
 // GlanceExtraVolMounts exposes additional parameters processed by the glance-operator
 // and defines the common VolMounts structure provided by the main storage module
 type GlanceExtraVolMounts struct {
@@ -207,13 +225,10 @@ type GlanceExtraVolMounts struct {
 // Propagate is a function used to filter VolMounts according to the specified
 // PropagationType array
 func (g *GlanceExtraVolMounts) Propagate(svc []storage.PropagationType) []storage.VolMounts {
-
 	var vl []storage.VolMounts
-
 	for _, gv := range g.VolMounts {
 		vl = append(vl, gv.Propagate(svc)...)
 	}
-
 	return vl
 }
 
@@ -230,4 +245,12 @@ func (instance Glance) RbacNamespace() string {
 // RbacResourceName - return the name to be used for rbac objects (serviceaccount, role, rolebinding)
 func (instance Glance) RbacResourceName() string {
 	return "glance-" + instance.Name
+}
+
+// IsQuotaEnabled - return true if one of the QuotaLimits values is set
+func (instance Glance) IsQuotaEnabled() bool {
+	return (instance.Spec.Quotas.ImageSizeTotal > 0 ||
+		instance.Spec.Quotas.ImageCountTotal > 0 ||
+		instance.Spec.Quotas.ImageStageTotal > 0 ||
+		instance.Spec.Quotas.ImageCountUpload  > 0)
 }
