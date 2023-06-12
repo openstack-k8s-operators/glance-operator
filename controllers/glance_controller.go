@@ -808,7 +808,7 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 	if err != nil {
 		return err
 	}
-	o, _, err := keystonev1.GetAdminServiceClient(ctx, h, keystoneAPI)
+	o, _, err := glancev1.GetAdminServiceClient(ctx, h, keystoneAPI)
 	if err != nil {
 		return err
 	}
