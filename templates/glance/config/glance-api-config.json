@@ -24,6 +24,18 @@
         "dest": "/etc/glance/logging.conf",
         "owner": "glance",
         "perm": "0600"
+      },
+      {
+        "source": "/var/lib/config-data/merged/rootwrap.conf",
+        "dest": "/etc/glance/rootwrap.conf",
+        "owner": "glance",
+        "perm": "0600"
+      },
+      {
+        "source": "/var/lib/config-data/merged/rootwrap.d/glance_cinder_store.filters",
+        "dest": "/etc/glance/rootwrap.d/glance_cinder_store.filters",
+        "owner": "root",
+        "perm": "0600"
       }
     ]
 }
