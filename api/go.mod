@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/gophercloud/gophercloud v1.4.0
-	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230523051500-d40e4195d0d4
+	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230612072624-8ebcfc19377a
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230606033311-3b01713e4d45
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.0.0-20230613062027-d886a7879256
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230523062001-d41eddbb4da6
