@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	github.com/onsi/ginkgo/v2 v2.9.7 // indirect
+	github.com/onsi/ginkgo/v2 v2.10.0 // indirect
 	github.com/onsi/gomega v1.27.7 // indirect
 )
 
