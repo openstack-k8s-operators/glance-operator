@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -373,6 +374,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 
 	// ConfigMap
 	configMapVars := make(map[string]env.Setter)
+	privileged := false
 
 	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
@@ -445,6 +447,18 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// TODO check when/if Init, Update, or Upgrade should/could be skipped
 	//
 
+	// Get Enabled backends from customServiceConfig and run pre backend conditions
+	availableBackends := glance.GetEnabledBackends(instance.Spec.CustomServiceConfig)
+	// iterate over availableBackends for backend specific cases
+	for i := 0; i < len(availableBackends); i++ {
+		backendToken := strings.SplitN(availableBackends[i], ":", 2)
+		switch {
+		case backendToken[1] == "cinder":
+			// TODO: Check cinder-volume service is running or not
+			privileged = true
+		}
+	}
+
 	serviceLabels := map[string]string{
 		common.AppSelector: fmt.Sprintf("%s-%s", glance.ServiceName, instance.Spec.APIType),
 	}
@@ -507,7 +521,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 
 	// Define a new Deployment object
-	deplDef := glanceapi.Deployment(instance, inputHash, serviceLabels, serviceAnnotations)
+	deplDef := glanceapi.Deployment(instance, inputHash, serviceLabels, serviceAnnotations, privileged)
 	depl := deployment.NewDeployment(
 		deplDef,
 		time.Duration(5)*time.Second,

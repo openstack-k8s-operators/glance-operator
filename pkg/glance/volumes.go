@@ -23,7 +23,7 @@ import (
 )
 
 // GetVolumes - service volumes
-func GetVolumes(name string, pvcName string, secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.Volume {
+func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.Volume {
 	var scriptsVolumeDefaultMode int32 = 0755
 	var config0640AccessMode int32 = 0640
 
@@ -73,6 +73,32 @@ func GetVolumes(name string, pvcName string, secretNames []string, extraVol []gl
 	}
 	secretConfig, _ := GetConfigSecretVolumes(secretNames)
 	vm = append(vm, secretConfig...)
+
+	if hasCinder {
+		// Add the required volumes
+		storageVolumes := []corev1.Volume{
+			// os-brick reads the initiatorname.iscsi from theere
+			{
+				Name: "etc-iscsi",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/etc/iscsi",
+					},
+				},
+			},
+			// /dev needed for os-brick code that looks for things there and
+			// for Volume and Backup operations that access data
+			{
+				Name: "dev",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/dev",
+					},
+				},
+			},
+		}
+		vm = append(vm, storageVolumes...)
+	}
 	return vm
 }
 
@@ -107,7 +133,7 @@ func getInitVolumeMounts(secretNames []string, extraVol []glancev1.GlanceExtraVo
 }
 
 // GetVolumeMounts - general VolumeMounts
-func GetVolumeMounts(secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.VolumeMount {
+func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.VolumeMount {
 
 	vm := []corev1.VolumeMount{
 		{
@@ -134,6 +160,20 @@ func GetVolumeMounts(secretNames []string, extraVol []glancev1.GlanceExtraVolMou
 	}
 	_, secretConfig := GetConfigSecretVolumes(secretNames)
 	vm = append(vm, secretConfig...)
+	if hasCinder {
+		storageVolumeMounts := []corev1.VolumeMount{
+			{
+				Name:      "etc-iscsi",
+				MountPath: "/etc/iscsi",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "dev",
+				MountPath: "/dev",
+			},
+		}
+		vm = append(vm, storageVolumeMounts...)
+	}
 	return vm
 }
 

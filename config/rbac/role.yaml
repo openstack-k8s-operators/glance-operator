@@ -245,6 +245,7 @@ rules:
   - security.openshift.io
   resourceNames:
   - anyuid
+  - privileged
   resources:
   - securitycontextconstraints
   verbs:

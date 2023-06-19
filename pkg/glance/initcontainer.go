@@ -33,6 +33,7 @@ type APIDetails struct {
 	UserPasswordSelector string
 	VolumeMounts         []corev1.VolumeMount
 	QuotaEnabled         bool
+	Privileged           bool
 }
 
 const (
@@ -43,10 +44,19 @@ const (
 // InitContainer - init container for glance api pods
 func InitContainer(init APIDetails) []corev1.Container {
 	runAsUser := int64(0)
+	trueVar := true
 
 	args := []string{
 		"-c",
 		InitContainerCommand,
+	}
+
+	securityContext := &corev1.SecurityContext{
+		RunAsUser: &runAsUser,
+	}
+
+	if init.Privileged {
+		securityContext.Privileged = &trueVar
 	}
 
 	envVars := map[string]env.Setter{}
@@ -95,11 +105,9 @@ func InitContainer(init APIDetails) []corev1.Container {
 
 	return []corev1.Container{
 		{
-			Name:  "init",
-			Image: init.ContainerImage,
-			SecurityContext: &corev1.SecurityContext{
-				RunAsUser: &runAsUser,
-			},
+			Name:            "init",
+			Image:           init.ContainerImage,
+			SecurityContext: securityContext,
 			Command: []string{
 				"/bin/bash",
 			},
