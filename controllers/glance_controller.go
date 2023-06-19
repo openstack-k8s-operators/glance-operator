@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/go-logr/logr"
+	util_funcs "github.com/openstack-k8s-operators/glance-operator/pkg/glance/funcs"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
