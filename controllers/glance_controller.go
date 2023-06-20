@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -525,46 +524,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// Create ConfigMaps and Secrets required as input for the Service and calculate an overall hash of hashes
 	//
 
-	// Get Enabled backends from customServiceConfig and run pre backend conditions
-	availableBackends := glance.GetEnabledBackends(instance.Spec.CustomServiceConfig)
-	// iterate over availableBackends for backend specific cases
-	for i := 0; i < len(availableBackends); i++ {
-		backendToken := strings.SplitN(availableBackends[i], ":", 2)
-		if backendToken[1] == "rbd" {
-			// perform rbd specific pre-conditions
-			continue
-		} else if backendToken[1] == "file" {
-			// perform file/nfs specific pre-conditions
-			continue
-		} else if backendToken[1] == "swift" {
-			// perform swift specific pre-conditions
-			continue
-		} else if backendToken[1] == "cinder" {
-			// get admin
-			var err error
-			keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, helper, instance.Namespace, map[string]string{})
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			// perform cinder specific pre-conditions
-			o, _, err := glancev1.GetAdminServiceClient(ctx, helper, keystoneAPI)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			//Check whether cinder api/volume service is up and running
-			serviceRunning, err := o.VolumeServiceCheck(r.Log, "volume")
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			if !serviceRunning {
-				fmt.Println("Cinder volume service is not running!")
-				//retry logic here???
-			} else {
-				fmt.Println("Cinder volume service is up and running")
-				// Cinder specific further checks here
-			}
-		}
-	}
 	//
 	// create Configmap required for glance input
 	// - %-scripts configmap holding scripts to e.g. bootstrap the service
