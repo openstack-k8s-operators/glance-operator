@@ -252,5 +252,16 @@ func (instance Glance) IsQuotaEnabled() bool {
 	return (instance.Spec.Quotas.ImageSizeTotal > 0 ||
 		instance.Spec.Quotas.ImageCountTotal > 0 ||
 		instance.Spec.Quotas.ImageStageTotal > 0 ||
-		instance.Spec.Quotas.ImageCountUpload  > 0)
+		instance.Spec.Quotas.ImageCountUpload > 0)
+}
+
+// GetQuotaLimits - get the glance instance data structure containing
+// what has been set in the CR
+func (instance Glance) GetQuotaLimits() map[string]int {
+	return map[string]int{
+		"image_count_uploading": instance.Spec.Quotas.ImageCountUpload,
+		"image_count_total":     instance.Spec.Quotas.ImageCountTotal,
+		"image_stage_total":     instance.Spec.Quotas.ImageStageTotal,
+		"image_size_total":      instance.Spec.Quotas.ImageSizeTotal,
+	}
 }

@@ -254,6 +254,14 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	* and do not leave leftovers in the controlplane.
 	 */
 
+	if instance.IsQuotaEnabled() {
+		err = r.registeredLimitsDelete(ctx, helper, instance, instance.GetQuotaLimits())
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+	}
+
 	// Service is deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
@@ -709,7 +717,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 		// supported having different quotas per Glance instances, hence we always
 		// inherit this parameter from the parent CR
 		if instance.IsQuotaEnabled() {
-			err := r.ensureRegisteredLimits(ctx, helper, instance)
+			err := r.ensureRegisteredLimits(ctx, helper, instance, instance.GetQuotaLimits())
 			if err != nil {
 				return err
 			}
@@ -792,14 +800,8 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 	ctx context.Context,
 	h *helper.Helper,
 	instance *glancev1.Glance,
+	quota map[string]int,
 ) error {
-
-	quota := map[string]int{
-		"image_count_uploading": instance.Spec.Quotas.ImageCountUpload,
-		"image_count_total":     instance.Spec.Quotas.ImageCountTotal,
-		"image_stage_total":     instance.Spec.Quotas.ImageStageTotal,
-		"image_size_total":      instance.Spec.Quotas.ImageSizeTotal,
-	}
 
 	// get admin
 	var err error
@@ -813,7 +815,6 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 		return err
 	}
 	for lName, lValue := range quota {
-		r.Log.Info(fmt.Sprintf("Registering limit %s", lName))
 		defaultRegion := o.GetRegion()
 		m := openstack.RegisteredLimit{
 			RegionID:     defaultRegion,
@@ -822,7 +823,39 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 			ResourceName: lName,
 			DefaultLimit: lValue,
 		}
-		_, err = o.CreateRegisteredLimit(r.Log, m)
+		_, err = o.CreateOrUpdateRegisteredLimit(r.Log, m)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// registeredLimitsDelete - cleanup registered limits in keystone
+func (r *GlanceReconciler) registeredLimitsDelete(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.Glance,
+	quota map[string]int,
+) error {
+
+	// get admin
+	var err error
+	keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
+
+	if err != nil {
+		return err
+	}
+	o, _, err := glancev1.GetAdminServiceClient(ctx, h, keystoneAPI)
+	if err != nil {
+		return err
+	}
+	fetchRegLimits, err := o.ListRegisteredLimitsByServiceID(r.Log, instance.Status.ServiceID)
+	if err != nil {
+		return err
+	}
+	for _, l := range fetchRegLimits {
+		err = o.DeleteRegisteredLimit(r.Log, l.ID)
 		if err != nil {
 			return err
 		}

@@ -17,17 +17,17 @@ limitations under the License.
 package v1beta1
 
 import (
-	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
-	corev1 "k8s.io/api/core/v1"
-	openstack "github.com/openstack-k8s-operators/lib-common/modules/openstack"
 	"context"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
-	"time"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/gophercloud/gophercloud"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
+	openstack "github.com/openstack-k8s-operators/lib-common/modules/openstack"
+	corev1 "k8s.io/api/core/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"time"
 )
 
 const (
@@ -134,7 +134,6 @@ func SetupDefaults() {
 
 	SetupGlanceDefaults(glanceDefaults)
 }
-
 
 // GetAdminServiceClient - get an admin serviceClient for the Glance instance
 func GetAdminServiceClient(
