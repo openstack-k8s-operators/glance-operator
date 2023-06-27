@@ -3,7 +3,7 @@ module github.com/openstack-k8s-operators/glance-operator/api
 go 1.19
 
 require (
-	github.com/gophercloud/gophercloud v1.4.0
+	github.com/gophercloud/gophercloud v1.5.0
 	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230615172650-7d7aa98bc08c
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230619102827-49e72f626a11
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.0.0-20230619102827-49e72f626a11
