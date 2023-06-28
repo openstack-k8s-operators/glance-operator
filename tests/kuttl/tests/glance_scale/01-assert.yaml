@@ -94,6 +94,13 @@ spec:
       containers:
       - args:
         - -c
+        - tail -n+1 -F /var/log/glance/glance-external.log
+        command:
+        - /bin/bash
+        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
+        name: glance-external-log
+      - args:
+        - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         command:
         - /bin/bash
@@ -120,6 +127,13 @@ spec:
         service: glance-internal
     spec:
       containers:
+      - args:
+        - -c
+        - tail -n+1 -F /var/log/glance/glance-internal.log
+        command:
+        - /bin/bash
+        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
+        name: glance-internal-log
       - args:
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start

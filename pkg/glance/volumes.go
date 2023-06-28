@@ -151,3 +151,26 @@ func GetConfigSecretVolumes(secretNames []string) ([]corev1.Volume, []corev1.Vol
 
 	return secretVolumes, secretMounts
 }
+
+// GetLogVolumeMount - Returns the VolumeMount used for logging purposes
+func GetLogVolumeMount() []corev1.VolumeMount {
+	return []corev1.VolumeMount{
+		{
+			Name:      LogVolume,
+			MountPath: "/var/log/glance",
+			ReadOnly:  false,
+		},
+	}
+}
+
+// GetLogVolume - Returns the Volume used for logging purposes
+func GetLogVolume() []corev1.Volume {
+	return []corev1.Volume{
+		{
+			Name: LogVolume,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{Medium: ""},
+			},
+		},
+	}
+}
