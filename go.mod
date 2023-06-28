@@ -7,15 +7,15 @@ require (
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.8
 	github.com/openshift/api v3.9.0+incompatible
-	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-20230616201030-f376ff9e13e5
-	github.com/openstack-k8s-operators/infra-operator/apis v0.0.0-20230615131203-9a25d21f088c
-	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230615172650-7d7aa98bc08c
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230619102827-49e72f626a11
-	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20230619102827-49e72f626a11
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230619102827-49e72f626a11
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.0.0-20230619102827-49e72f626a11
-	github.com/openstack-k8s-operators/lib-common/modules/test-operators v0.0.0-20230619102827-49e72f626a11
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20230602100742-579cb85d242d
+	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-20230627165909-492d99653adb
+	github.com/openstack-k8s-operators/infra-operator/apis v0.0.0-20230626141355-6d8b643fb532
+	github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230622141005-e9220a4b3dfe
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230627132558-cd98c8b86310
+	github.com/openstack-k8s-operators/lib-common/modules/database v0.0.0-20230627132558-cd98c8b86310
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.0.0-20230627132558-cd98c8b86310
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.0.0-20230627132558-cd98c8b86310
+	github.com/openstack-k8s-operators/lib-common/modules/test-operators v0.0.0-20230627132558-cd98c8b86310
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.0.0-20230622153114-756aead1d819
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3
 	k8s.io/client-go v0.26.3
