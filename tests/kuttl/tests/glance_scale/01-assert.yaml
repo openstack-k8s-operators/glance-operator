@@ -220,8 +220,8 @@ namespaced: true
 commands:
   - script: |
       template='{{.status.apiEndpoint.internal}}{{":"}}{{.status.apiEndpoint.public}}{{"\n"}}'
-      regex="http:\/\/glance-internal.openstack.*:http:\/\/glance-public-openstack\.apps.*"
-      apiEndpoints=$(oc get -n openstack Glance glance -o go-template="$template")
+      regex="http:\/\/glance-internal.$NAMESPACE.*:http:\/\/glance-public-$NAMESPACE\.apps.*"
+      apiEndpoints=$(oc get -n $NAMESPACE Glance glance -o go-template="$template")
       matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")
       if [ -z "$matches" ]; then
         exit 0
