@@ -158,9 +158,6 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if instance.Status.Hash == nil {
 		instance.Status.Hash = map[string]string{}
 	}
-	if instance.Status.APIEndpoints == nil {
-		instance.Status.APIEndpoints = map[string]string{}
-	}
 	if instance.Status.NetworkAttachments == nil {
 		instance.Status.NetworkAttachments = map[string][]string{}
 	}
@@ -338,16 +335,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		return ctrlResult, nil
 	}
 	instance.Status.Conditions.MarkTrue(condition.ExposeServiceReadyCondition, condition.ExposeServiceReadyMessage)
-
-	//
-	// Update instance status with service endpoint url from route host information
-	//
-	// TODO: need to support https default here
-	if instance.Status.APIEndpoints == nil {
-		instance.Status.APIEndpoints = map[string]string{}
-	}
-	instance.Status.APIEndpoints = apiEndpoints
-
 	// expose service - end
 
 	//
@@ -356,7 +343,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	ksEndpointSpec := keystonev1.KeystoneEndpointSpec{
 		ServiceName: glance.ServiceName,
-		Endpoints:   instance.Status.APIEndpoints,
+		Endpoints:   apiEndpoints,
 	}
 
 	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, time.Duration(10)*time.Second)

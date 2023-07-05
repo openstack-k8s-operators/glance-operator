@@ -17,10 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
-	"fmt"
-
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -95,9 +92,6 @@ type GlanceAPIStatus struct {
 	// Map of hashes to track e.g. job status
 	Hash map[string]string `json:"hash,omitempty"`
 
-	// API endpoint
-	APIEndpoints map[string]string `json:"apiEndpoint,omitempty"`
-
 	// Conditions
 	Conditions condition.Conditions `json:"conditions,omitempty" optional:"true"`
 
@@ -131,14 +125,6 @@ type GlanceAPIList struct {
 
 func init() {
 	SchemeBuilder.Register(&GlanceAPI{}, &GlanceAPIList{})
-}
-
-// GetEndpoint - returns OpenStack endpoint url for type
-func (instance GlanceAPI) GetEndpoint(endpointType endpoint.Endpoint) (string, error) {
-	if url, found := instance.Status.APIEndpoints[string(endpointType)]; found {
-		return url, nil
-	}
-	return "", fmt.Errorf("%s endpoint not found", string(endpointType))
 }
 
 // IsReady - returns true if GlanceAPI is reconciled successfully

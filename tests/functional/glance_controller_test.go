@@ -39,7 +39,6 @@ var _ = Describe("Glance controller", func() {
 				glance := GetGlance(glanceName)
 				g.Expect(glance.Status.Conditions).To(HaveLen(11))
 				g.Expect(glance.Status.DatabaseHostname).To(Equal(""))
-				g.Expect(glance.Status.APIEndpoints).To(BeEmpty())
 				g.Expect(glance.Status.GlanceAPIExternalReadyCount).To(Equal(int32(0)))
 				g.Expect(glance.Status.GlanceAPIInternalReadyCount).To(Equal(int32(0)))
 			}, timeout, interval).Should(Succeed())
@@ -326,7 +325,6 @@ var _ = Describe("Glance controller", func() {
 			keystoneAPI := th.CreateKeystoneAPI(glanceTest.Instance.Namespace)
 			DeferCleanup(th.DeleteKeystoneAPI, keystoneAPI)
 			keystoneAPIName := th.GetKeystoneAPI(keystoneAPI)
-			keystoneAPIName.Status.APIEndpoints["internal"] = "http://keystone-internal-openstack.testing"
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Status().Update(ctx, keystoneAPIName.DeepCopy())).Should(Succeed())
 			}, timeout, interval).Should(Succeed())

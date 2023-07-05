@@ -38,7 +38,6 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
@@ -168,9 +167,6 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 	if instance.Status.Hash == nil {
 		instance.Status.Hash = map[string]string{}
-	}
-	if instance.Status.APIEndpoints == nil {
-		instance.Status.APIEndpoints = map[string]string{}
 	}
 
 	// Handle service delete
@@ -617,17 +613,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
-	// It is possible that an earlier call to update the status has also set
-	// APIEndpoints to nil (if the APIEndpoints map was not nil but was empty,
-	// saving the status unfortunately re-initializes it as nil)
-	if instance.Status.APIEndpoints == nil {
-		instance.Status.APIEndpoints = map[string]string{}
-	}
-
-	// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
-	if glanceAPI.Status.APIEndpoints != nil {
-		instance.Status.APIEndpoints = glanceAPI.Status.APIEndpoints
-	}
 	instance.Status.GlanceAPIInternalReadyCount = glanceAPI.Status.ReadyCount
 
 	// Get internal GlanceAPI's condition status for comparison with external below
@@ -649,10 +634,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
-	// Mirror external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
-	if glanceAPI.Status.APIEndpoints != nil {
-		instance.Status.APIEndpoints[string(endpoint.EndpointPublic)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
-	}
 	instance.Status.GlanceAPIExternalReadyCount = glanceAPI.Status.ReadyCount
 
 	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition

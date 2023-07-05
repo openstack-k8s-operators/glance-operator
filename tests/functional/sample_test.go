@@ -64,7 +64,6 @@ var _ = Describe("Samples", func() {
 				glance := GetGlance(name)
 				g.Expect(glance.Status.Conditions).To(HaveLen(11))
 				g.Expect(glance.Status.DatabaseHostname).To(Equal(""))
-				g.Expect(glance.Status.APIEndpoints).To(BeEmpty())
 				g.Expect(glance.Status.GlanceAPIExternalReadyCount).To(Equal(int32(0)))
 				g.Expect(glance.Status.GlanceAPIInternalReadyCount).To(Equal(int32(0)))
 			}, timeout, interval).Should(Succeed())

@@ -928,10 +928,6 @@ spec:
             type: object
           status:
             properties:
-              apiEndpoint:
-                additionalProperties:
-                  type: string
-                type: object
               conditions:
                 items:
                   properties:

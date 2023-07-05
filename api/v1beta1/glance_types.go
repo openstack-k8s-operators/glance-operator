@@ -147,9 +147,6 @@ type GlanceStatus struct {
 	// Map of hashes to track e.g. job status
 	Hash map[string]string `json:"hash,omitempty"`
 
-	// API endpoint
-	APIEndpoints map[string]string `json:"apiEndpoint,omitempty"`
-
 	// ServiceID
 	ServiceID string `json:"serviceID,omitempty"`
 
