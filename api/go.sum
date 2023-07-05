@@ -220,13 +220,11 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8m
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/onsi/ginkgo/v2 v2.11.0 h1:WgqUCUt/lT6yXoQ8Wef0fsNn5cAuMK7+KT9UFRz2tcU=
-github.com/onsi/ginkgo/v2 v2.11.0/go.mod h1:ZhrRA5XmEE3x3rhlzamx/JJvujdZoJ2uvgI7kR0iZvM=
 github.com/onsi/gomega v1.27.8 h1:gegWiwZjBsf2DgiSbf5hpokZ98JVDMcWkUiigk6/KXc=
-github.com/onsi/gomega v1.27.8/go.mod h1:2J8vzI/s+2shY9XHRApDkdgPo1TKT7P2u6fXeJKFnNQ=
 github.com/openshift/api v3.9.0+incompatible h1:fJ/KsefYuZAjmrr3+5U9yZIZbTOpVkDDLDLFresAeYs=
 github.com/openshift/api v3.9.0+incompatible/go.mod h1:dh9o4Fs58gpFXGSYfnVxGR9PnV53I8TW84pQaJDdGiY=
-github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230622141005-e9220a4b3dfe h1:NHbwjF+CqxdCKx1rY+/EjMqGr56lMoWsahzkYfTRtbk=
-github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230622141005-e9220a4b3dfe/go.mod h1:LtZ8b3DYLvX0a89RKbmJgd1q8GcxcOVf7N+bH47a9HU=
+github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230630065703-4371f9602724 h1:Fdu2Cg0SlgCLCJ3wfKAbrY9gfNFk3EcGym4vT+Qdz4k=
+github.com/openstack-k8s-operators/keystone-operator/api v0.0.0-20230630065703-4371f9602724/go.mod h1:OT4S/bnx0q88FNrL6oNc7/5SPz+AC41g2OcO8s4KSnY=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230627132558-cd98c8b86310 h1:LEtGGR0u6LGkcQVqms++XEfvUS8Vt5aJio+QKq0aaso=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.0.0-20230627132558-cd98c8b86310/go.mod h1:cAXLyeKp6TiLW8qongnw6WR63Jnsm8CeRC5y07z3TAY=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.0.0-20230627132558-cd98c8b86310 h1:yrVQq8ks4mRi2g9ot91AcQkw+ZgcqkKkNDMgpv6f/9U=
