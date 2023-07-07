@@ -41,6 +41,7 @@ func Deployment(
 	configHash string,
 	labels map[string]string,
 	annotations map[string]string,
+	privileged bool,
 ) *appsv1.Deployment {
 	runAsUser := int64(0)
 
@@ -124,11 +125,13 @@ func Deployment(
 							Args:  args,
 							Image: instance.Spec.ContainerImage,
 							SecurityContext: &corev1.SecurityContext{
-								RunAsUser: &runAsUser,
+								RunAsUser:  &runAsUser,
+								Privileged: &privileged,
 							},
 							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts: glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
+								privileged,
 								instance.Spec.ExtraMounts,
 								glance.GlanceAPIPropagation,
 							),
@@ -144,6 +147,7 @@ func Deployment(
 	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(
 		instance.Name,
 		glance.ServiceName,
+		privileged,
 		instance.Spec.CustomServiceConfigSecrets,
 		instance.Spec.ExtraMounts,
 		glance.GlanceAPIPropagation,

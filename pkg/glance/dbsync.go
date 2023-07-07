@@ -81,6 +81,7 @@ func DbSyncJob(
 							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts: GetVolumeMounts(
 								secretNames,
+								false,
 								dbSyncExtraMounts,
 								DbsyncPropagation,
 							),
@@ -94,6 +95,7 @@ func DbSyncJob(
 	job.Spec.Template.Spec.Volumes = GetVolumes(
 		instance.Name,
 		ServiceName,
+		false,
 		secretNames,
 		dbSyncExtraMounts,
 		DbsyncPropagation,
