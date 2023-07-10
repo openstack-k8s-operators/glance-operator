@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/go-logr/logr"
+	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
@@ -207,6 +208,35 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return nil
 	}
 
+	// Watch for changes to NADs
+	nadFn := func(o client.Object) []reconcile.Request {
+		result := []reconcile.Request{}
+
+		// get all GlanceAPI CRs
+		glanceAPIs := &glancev1.GlanceAPIList{}
+		listOpts := []client.ListOption{
+			client.InNamespace(o.GetNamespace()),
+		}
+		if err := r.Client.List(context.Background(), glanceAPIs, listOpts...); err != nil {
+			r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
+			return nil
+		}
+		for _, cr := range glanceAPIs.Items {
+			if util.StringInSlice(o.GetName(), cr.Spec.NetworkAttachments) {
+				name := client.ObjectKey{
+					Namespace: cr.GetNamespace(),
+					Name:      cr.GetName(),
+				}
+				r.Log.Info(fmt.Sprintf("NAD %s is used by GlanceAPI CR %s", o.GetName(), cr.GetName()))
+				result = append(result, reconcile.Request{NamespacedName: name})
+			}
+		}
+		if len(result) > 0 {
+			return result
+		}
+		return nil
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.GlanceAPI{}).
 		Owns(&keystonev1.KeystoneEndpoint{}).
@@ -217,6 +247,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&routev1.Route{}).
 		Watches(&source.Kind{Type: &corev1.Secret{}},
 			handler.EnqueueRequestsFromMapFunc(svcSecretFn)).
+		Watches(&source.Kind{Type: &networkv1.NetworkAttachmentDefinition{}},
+			handler.EnqueueRequestsFromMapFunc(nadFn)).
 		Complete(r)
 }
 
