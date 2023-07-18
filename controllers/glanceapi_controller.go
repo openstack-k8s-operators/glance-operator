@@ -22,7 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,6 +37,7 @@ import (
 	"github.com/go-logr/logr"
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	cinderv1 "github.com/openstack-k8s-operators/cinder-operator/api/v1beta1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glanceapi"
@@ -169,7 +172,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// Handle non-deleted clusters
-	return r.reconcileNormal(ctx, instance, helper)
+	return r.reconcileNormal(ctx, instance, helper, req)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -401,7 +404,7 @@ func (r *GlanceAPIReconciler) reconcileUpgrade(ctx context.Context, instance *gl
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
+func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
 	// ConfigMap
@@ -486,7 +489,17 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		backendToken := strings.SplitN(availableBackends[i], ":", 2)
 		switch {
 		case backendToken[1] == "cinder":
-			// TODO: Check cinder-volume service is running or not
+			cinder := &cinderv1.Cinder{}
+			err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: glance.CinderName}, cinder)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					// Request object not found, can't run GlanceAPI with this config
+					r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
+					return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
+				}
+			}
+			// Cinder CR is found, we can unblock glance deployment because
+			// it represents a valid backend.
 			privileged = true
 		}
 	}
