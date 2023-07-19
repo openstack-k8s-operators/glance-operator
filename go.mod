@@ -21,7 +21,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.14.6
 )
 
-require github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
+require (
+	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
+	github.com/openstack-k8s-operators/cinder-operator/api v0.0.0-20230705113934-710f05ea0097
+)
 
 require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
@@ -79,10 +82,10 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.26.2 // indirect; indirect // indirect
-	k8s.io/component-base v0.26.2 // indirect; indirect // indirect
+	k8s.io/apiextensions-apiserver v0.26.3 // indirect; indirect // indirect
+	k8s.io/component-base v0.26.3 // indirect; indirect // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20230308215209-15aac26d736a // indirect; indirect // indirect // indirect // indirect
+	k8s.io/kube-openapi v0.0.0-20230327201221-f5883ff37f0c // indirect; indirect // indirect // indirect // indirect
 	k8s.io/utils v0.0.0-20230313181309-38a27ef9d749 // indirect; indirect // indirect // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect; indirect // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect

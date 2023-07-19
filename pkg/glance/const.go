@@ -46,6 +46,8 @@ const (
 	// Glance is the global ServiceType that refers to all the components deployed
 	// by the glance operator
 	Glance storage.PropagationType = "Glance"
+	// CinderName - Cinder CR Name Glance expects to find in the namespace
+	CinderName = "cinder"
 )
 
 // DbsyncPropagation keeps track of the DBSync Service Propagation Type
