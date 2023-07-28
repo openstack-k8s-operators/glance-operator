@@ -377,7 +377,7 @@ sh-5.1# ip a
 ## Example: expose Glance to an isolated network
 
 The Glance spec can be used to configure Glance to register e.g.
-the internal endpoint to an isolated network. MetalLB is used for this
+the internal endpoint to an isolated network. MetalLB can be used for this
 scenario.
 
 As a pre requisite, MetalLB needs to be installed and worker nodes
@@ -413,13 +413,15 @@ spec:
   ...
   glanceAPIInternal:
     ...
-    externalEndpoints:
-      - endpoint: internal
-        ipAddressPool: osp-internalapi
-        loadBalancerIPs:
-        - "172.17.0.202"
-        sharedIP: true
-        sharedIPKey: ""
+    override:
+      service:
+        metadata:
+          annotations:
+            metallb.universe.tf/address-pool: internalapi
+            metallb.universe.tf/allow-shared-ip: internalapi
+            metallb.universe.tf/loadBalancerIPs: 172.17.0.202
+        spec:
+          type: LoadBalancer
     ...
 ...
 ```

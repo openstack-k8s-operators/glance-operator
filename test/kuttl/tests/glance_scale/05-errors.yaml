@@ -9,7 +9,6 @@
 # - No glance-internal-api Pod
 # - No glance-internal service
 # - No glance-public service
-# - No glance-public route
 # - No glance internal and public endpoints
 
 apiVersion: glance.openstack.org/v1beta1
@@ -56,10 +55,5 @@ metadata:
 ---
 apiVersion: v1
 kind: Service
-metadata:
-  name: glance-public
----
-apiVersion: route.openshift.io/v1
-kind: Route
 metadata:
   name: glance-public

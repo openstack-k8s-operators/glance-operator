@@ -253,9 +253,6 @@ var _ = Describe("Glance controller", func() {
 			th.AssertServiceExists(glanceTest.GlancePublicRoute)
 			th.AssertServiceExists(glanceTest.GlanceInternalRoute)
 		})
-		It("Assert Routes are created", func() {
-			th.AssertRouteExists(glanceTest.GlancePublicRoute)
-		})
 	})
 	When("Glance CR is deleted", func() {
 		BeforeEach(func() {
@@ -347,8 +344,7 @@ var _ = Describe("Glance controller", func() {
 			externalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 			// Check GlanceAPI NADs
 			Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIInternal.NetworkAttachments))
-			Expect(internalAPI.Spec.ExternalEndpoints).To(Equal(glance.Spec.GlanceAPIInternal.ExternalEndpoints))
-			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIInternal.NetworkAttachments))
+			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIExternal.NetworkAttachments))
 		})
 	})
 })
