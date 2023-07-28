@@ -185,17 +185,14 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 
 		It("exposes the service", func() {
-			// Only a Public Route is exposed outside
 			apiInstance := th.GetService(glanceTest.GlancePublicRoute)
 			Expect(apiInstance.Labels["service"]).To(Equal("glance-external"))
-			// Route is created on top of the existing service
-			th.AssertRouteExists(glanceTest.GlancePublicRoute)
 		})
 
 		It("creates KeystoneEndpoint", func() {
 			keystoneEndpoint := th.GetKeystoneEndpoint(glanceTest.GlanceExternal)
 			endpoints := keystoneEndpoint.Spec.Endpoints
-			Expect(endpoints).To(HaveKeyWithValue("public", "http:"))
+			Expect(endpoints).To(HaveKeyWithValue("public", "http://glance-public."+glanceTest.Instance.Namespace+".svc:9292"))
 			th.ExpectCondition(
 				glanceTest.GlanceExternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
@@ -235,6 +232,109 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-internal."+glanceTest.Instance.Namespace+".svc:9292"))
 			th.ExpectCondition(
 				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.KeystoneEndpointReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+	})
+
+	When("A GlanceAPI is created with service override", func() {
+		BeforeEach(func() {
+			spec := GetDefaultGlanceAPISpec(GlanceAPITypeInternal)
+			var serviceOverride interface{}
+			serviceOverride = map[string]interface{}{
+				"endpoint": "internal",
+				"metadata": map[string]map[string]string{
+					"annotations": {
+						"dnsmasq.network.openstack.org/hostname": "glance-internal.openstack.svc",
+						"metallb.universe.tf/address-pool":       "osp-internalapi",
+						"metallb.universe.tf/allow-shared-ip":    "osp-internalapi",
+						"metallb.universe.tf/loadBalancerIPs":    "internal-lb-ip-1,internal-lb-ip-2",
+					},
+					"labels": {
+						"internal": "true",
+						"service":  "glance",
+					},
+				},
+				"spec": map[string]interface{}{
+					"type": "LoadBalancer",
+				},
+			}
+
+			spec["override"] = map[string]interface{}{
+				"service": serviceOverride,
+			}
+
+			glance := CreateGlanceAPI(glanceTest.GlanceInternal, spec)
+			DeferCleanup(th.DeleteKeystoneAPI, th.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
+			th.SimulateDeploymentReplicaReady(glanceTest.GlanceInternalAPI)
+			th.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+			DeferCleanup(th.DeleteInstance, glance)
+		})
+
+		It("creates KeystoneEndpoint", func() {
+			keystoneEndpoint := th.GetKeystoneEndpoint(glanceTest.GlanceInternal)
+			endpoints := keystoneEndpoint.Spec.Endpoints
+			Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-internal."+glanceTest.GlanceInternal.Namespace+".svc:9292"))
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.KeystoneEndpointReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+
+		It("creates LoadBalancer service", func() {
+			// As the internal endpoint is configured in service overrides it
+			// gets a LoadBalancer Service with annotations
+			service := th.GetService(glanceTest.GlanceInternalRoute)
+			Expect(service.Annotations).To(
+				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "glance-internal.openstack.svc"))
+			Expect(service.Annotations).To(
+				HaveKeyWithValue("metallb.universe.tf/address-pool", "osp-internalapi"))
+			Expect(service.Annotations).To(
+				HaveKeyWithValue("metallb.universe.tf/allow-shared-ip", "osp-internalapi"))
+			Expect(service.Annotations).To(
+				HaveKeyWithValue("metallb.universe.tf/loadBalancerIPs", "internal-lb-ip-1,internal-lb-ip-2"))
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+	})
+
+	When("A GlanceAPI is created with service override endpointURL set", func() {
+		BeforeEach(func() {
+			spec := GetDefaultGlanceAPISpec(GlanceAPITypeExternal)
+			var serviceOverride interface{}
+			serviceOverride = map[string]interface{}{
+				"endpoint":    "public",
+				"endpointURL": "http://glance-openstack.apps-crc.testing",
+			}
+
+			spec["override"] = map[string]interface{}{
+				"service": serviceOverride,
+			}
+
+			glance := CreateGlanceAPI(glanceTest.GlanceExternal, spec)
+			DeferCleanup(th.DeleteKeystoneAPI, th.CreateKeystoneAPI(glanceTest.GlanceExternal.Namespace))
+			th.SimulateDeploymentReplicaReady(glanceTest.GlanceExternalAPI)
+			th.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
+			DeferCleanup(th.DeleteInstance, glance)
+		})
+
+		It("creates KeystoneEndpoint", func() {
+			keystoneEndpoint := th.GetKeystoneEndpoint(glanceTest.GlanceExternal)
+			endpoints := keystoneEndpoint.Spec.Endpoints
+			Expect(endpoints).To(HaveKeyWithValue("public", "http://glance-openstack.apps-crc.testing"))
+
+			th.ExpectCondition(
+				glanceTest.GlanceExternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.KeystoneEndpointReadyCondition,
 				corev1.ConditionTrue,

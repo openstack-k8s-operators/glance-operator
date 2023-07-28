@@ -36,7 +36,6 @@ import (
 
 	"github.com/go-logr/logr"
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
-	routev1 "github.com/openshift/api/route/v1"
 	cinderv1 "github.com/openstack-k8s-operators/cinder-operator/api/v1beta1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
@@ -52,6 +51,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -75,7 +75,6 @@ type GlanceAPIReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
-// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneendpoints,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=k8s.cni.cncf.io,resources=network-attachment-definitions,verbs=get;list;watch
@@ -247,7 +246,6 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&appsv1.Deployment{}).
-		Owns(&routev1.Route{}).
 		Watches(&source.Kind{Type: &corev1.Secret{}},
 			handler.EnqueueRequestsFromMapFunc(svcSecretFn)).
 		Watches(&source.Kind{Type: &networkv1.NetworkAttachmentDefinition{}},
@@ -288,61 +286,90 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
 
 	//
-	// expose the service (create service, route and return the created endpoint URLs)
+	// create service/s
 	//
-	ports := map[endpoint.Endpoint]endpoint.Data{}
+	glanceEndpoints := map[service.Endpoint]endpoint.Data{}
 	if instance.Spec.APIType == glancev1.APIInternal {
-		ports[endpoint.EndpointInternal] = endpoint.Data{
+		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
 		}
 	} else {
-		ports[endpoint.EndpointPublic] = endpoint.Data{
+		glanceEndpoints[service.EndpointPublic] = endpoint.Data{
 			Port: glance.GlancePublicPort,
 		}
 	}
+	apiEndpoints := make(map[string]string)
 
-	for _, metallbcfg := range instance.Spec.ExternalEndpoints {
-		portCfg := ports[metallbcfg.Endpoint]
-		portCfg.MetalLB = &endpoint.MetalLBData{
-			IPAddressPool:   metallbcfg.IPAddressPool,
-			SharedIP:        metallbcfg.SharedIP,
-			SharedIPKey:     metallbcfg.SharedIPKey,
-			LoadBalancerIPs: metallbcfg.LoadBalancerIPs,
+	for endpointType, data := range glanceEndpoints {
+		endpointName := glance.ServiceName + "-" + string(endpointType)
+		svcOverride := instance.Spec.Override.Service
+
+		exportLabels := util.MergeStringMaps(
+			serviceLabels,
+			map[string]string{
+				string(endpointType): "true",
+			},
+		)
+
+		// Create the service
+		svc, err := service.NewService(
+			service.GenericService(&service.GenericServiceDetails{
+				Name:      endpointName,
+				Namespace: instance.Namespace,
+				Labels:    exportLabels,
+				Selector:  serviceLabels,
+				Port: service.GenericServicePort{
+					Name:     endpointName,
+					Port:     data.Port,
+					Protocol: corev1.ProtocolTCP,
+				},
+			}),
+			5,
+			svcOverride,
+		)
+		if err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.ExposeServiceReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.ExposeServiceReadyErrorMessage,
+				err.Error()))
+
+			return ctrl.Result{}, err
 		}
 
-		ports[metallbcfg.Endpoint] = portCfg
-	}
+		ctrlResult, err := svc.CreateOrPatch(ctx, helper)
+		if err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.ExposeServiceReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.ExposeServiceReadyErrorMessage,
+				err.Error()))
 
-	apiEndpoints, ctrlResult, err := endpoint.ExposeEndpoints(
-		ctx,
-		helper,
-		glance.ServiceName,
-		serviceLabels,
-		ports,
-		time.Duration(5)*time.Second,
-	)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ExposeServiceReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.ExposeServiceReadyErrorMessage,
-			err.Error()))
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ExposeServiceReadyCondition,
-			condition.RequestedReason,
-			condition.SeverityInfo,
-			condition.ExposeServiceReadyRunningMessage))
-		return ctrlResult, nil
+			return ctrlResult, err
+		} else if (ctrlResult != ctrl.Result{}) {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.ExposeServiceReadyCondition,
+				condition.RequestedReason,
+				condition.SeverityInfo,
+				condition.ExposeServiceReadyRunningMessage))
+			return ctrlResult, nil
+		}
+		// create service - end
+
+		// TODO: TLS, pass in https as protocol, create TLS cert
+		apiEndpoints[string(endpointType)], err = svc.GetAPIEndpoint(
+			svcOverride, data.Protocol, data.Path)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	instance.Status.Conditions.MarkTrue(condition.ExposeServiceReadyCondition, condition.ExposeServiceReadyMessage)
 
 	//
 	// Update instance status with service endpoint url from route host information
 	//
-	// TODO: need to support https default here
 	if instance.Status.APIEndpoints == nil {
 		instance.Status.APIEndpoints = map[string]string{}
 	}
@@ -360,7 +387,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	}
 
 	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, time.Duration(10)*time.Second)
-	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
+	ctrlResult, err := ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err
 	}
