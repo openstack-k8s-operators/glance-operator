@@ -80,6 +80,31 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 					},
 				},
 			},
+			{
+				Name: "lib-modules",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/lib/modules",
+					},
+				},
+			},
+			{
+				Name: "run",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/run",
+					},
+				},
+			},
+			// /sys needed for os-brick code that looks for information there
+			{
+				Name: "sys",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys",
+					},
+				},
+			},
 			// os-brick locks need to be shared between the different volume
 			// consumers (available since OSP18)
 			{
@@ -130,6 +155,19 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 			{
 				Name:      "dev",
 				MountPath: "/dev",
+			},
+			{
+				Name:      "lib-modules",
+				MountPath: "/lib/modules",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "run",
+				MountPath: "/run",
+			},
+			{
+				Name:      "sys",
+				MountPath: "/sys",
 			},
 			{
 				Name:      "var-locks-brick",

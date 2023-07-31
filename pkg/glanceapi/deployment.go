@@ -153,6 +153,11 @@ func Deployment(
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: instance.Spec.ServiceAccount,
+					// When using Cinder we run as privileged, but also some
+					// commands need to be run on the host using nsenter (eg:
+					// iscsi commands) so we need to share the PID namespace
+					// with the host.
+					HostPID: privileged,
 					Containers: []corev1.Container{
 						{
 							Name: instance.Name + "-log",
