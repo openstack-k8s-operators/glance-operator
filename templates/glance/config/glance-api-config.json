@@ -48,6 +48,13 @@
         "dest": "/lib/udev/scsi_id",
         "owner": "root:root",
         "perm": "0755"
+      },
+      {
+        "optional": true,
+        "source": "/usr/local/bin/container-scripts/run-on-host",
+        "dest": "/usr/sbin/nvme",
+        "owner": "root:root",
+        "perm": "0755"
       }
     ],
     "permissions": [

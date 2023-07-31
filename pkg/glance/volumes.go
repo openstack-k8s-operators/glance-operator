@@ -127,6 +127,15 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 					},
 				},
 			},
+			{
+				Name: "etc-nvme",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/etc/nvme",
+						Type: &dirOrCreate,
+					},
+				},
+			},
 		}
 		vm = append(vm, storageVolumes...)
 	}
@@ -190,6 +199,10 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 				Name:      "var-locks-brick",
 				MountPath: "/var/locks/openstack/os-brick",
 				ReadOnly:  false,
+			},
+			{
+				Name:      "etc-nvme",
+				MountPath: "/etc/nvme",
 			},
 		}
 		vm = append(vm, storageVolumeMounts...)
