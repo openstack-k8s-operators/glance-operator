@@ -16,10 +16,11 @@ limitations under the License.
 package glance
 
 import (
+	"strconv"
+
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	corev1 "k8s.io/api/core/v1"
-	"strconv"
 )
 
 // GetVolumes - service volumes
@@ -56,6 +57,8 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 	vm = append(vm, secretConfig...)
 
 	if hasCinder {
+		var dirOrCreate = corev1.HostPathDirectoryOrCreate
+
 		// Add the required volumes
 		storageVolumes := []corev1.Volume{
 			// os-brick reads the initiatorname.iscsi from theere
@@ -74,6 +77,17 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
 						Path: "/dev",
+					},
+				},
+			},
+			// os-brick locks need to be shared between the different volume
+			// consumers (available since OSP18)
+			{
+				Name: "var-locks-brick",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/locks/openstack/os-brick",
+						Type: &dirOrCreate,
 					},
 				},
 			},
@@ -116,6 +130,11 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 			{
 				Name:      "dev",
 				MountPath: "/dev",
+			},
+			{
+				Name:      "var-locks-brick",
+				MountPath: "/var/locks/openstack/os-brick",
+				ReadOnly:  false,
 			},
 		}
 		vm = append(vm, storageVolumeMounts...)
