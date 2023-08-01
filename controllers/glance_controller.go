@@ -245,11 +245,6 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 					return ctrl.Result{}, err
 				}
 				util.LogForObject(helper, fmt.Sprintf("Removed finalizer from GlanceAPI %s", glanceAPI.Name), glanceAPI)
-
-				// if err = r.Delete(ctx, glanceAPI); err != nil && !k8s_errors.IsNotFound(err) {
-				// 	return ctrl.Result{}, err
-				// }
-				// util.LogForObject(helper, fmt.Sprintf("Deleted GlanceAPI %s", glanceAPI.Name), glanceAPI)
 			}
 		}
 	}
