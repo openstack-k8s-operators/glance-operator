@@ -1060,6 +1060,7 @@ spec:
             - databaseInstance
             - glanceAPIExternal
             - glanceAPIInternal
+            - secret
             - storageRequest
             type: object
           status:
