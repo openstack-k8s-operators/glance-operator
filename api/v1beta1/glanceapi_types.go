@@ -49,7 +49,7 @@ type GlanceAPISpec struct {
 	// ServiceAccount - service account name used internally to provide GlanceAPI the default SA name
 	ServiceAccount string `json:"serviceAccount"`
 
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Required
 	// DatabaseHostname - Glance Database Hostname
 	DatabaseHostname string `json:"databaseHostname"`
 
