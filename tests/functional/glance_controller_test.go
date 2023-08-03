@@ -14,44 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package functional_test
+package functional
 
 import (
-	"github.com/google/uuid"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-)
-
-var (
-	namespace  string
-	glanceName types.NamespacedName
+	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 )
 
 var _ = Describe("Glance controller", func() {
 	When("Glance is created", func() {
 		BeforeEach(func() {
-			namespace = uuid.New().String()
-			th.CreateNamespace(namespace)
-			DeferCleanup(th.DeleteNamespace, namespace)
-
-			glanceName = types.NamespacedName{Namespace: namespace, Name: "glance"}
-			DeferCleanup(th.DeleteInstance, CreateGlance(glanceName))
-
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceName))
 		})
 
 		It("initializes the status fields", func() {
 			Eventually(func(g Gomega) {
 				glance := GetGlance(glanceName)
 				g.Expect(glance.Status.Conditions).To(HaveLen(11))
-
+				g.Expect(glance.Status.DatabaseHostname).To(Equal(""))
+				g.Expect(glance.Status.APIEndpoints).To(BeEmpty())
+				g.Expect(glance.Status.GlanceAPIExternalReadyCount).To(Equal(int32(0)))
+				g.Expect(glance.Status.GlanceAPIInternalReadyCount).To(Equal(int32(0)))
 			}, timeout, interval).Should(Succeed())
 		})
 
@@ -66,6 +56,32 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 
+		It("initializes Spec fields", func() {
+			Glance := GetGlance(glanceTest.Instance)
+			Expect(Glance.Spec.DatabaseInstance).Should(Equal("openstack"))
+			Expect(Glance.Spec.DatabaseUser).Should(Equal(glanceTest.GlanceDatabaseUser))
+			Expect(Glance.Spec.ServiceUser).Should(Equal(glanceTest.GlanceServiceUser))
+			// No Keystone Quota is present, check the default is 0
+			Expect(Glance.Spec.Quotas.ImageCountUpload).To(Equal(int(0)))
+			Expect(Glance.Spec.Quotas.ImageSizeTotal).To(Equal(int(0)))
+			Expect(Glance.Spec.Quotas.ImageCountTotal).To(Equal(int(0)))
+			Expect(Glance.Spec.Quotas.ImageStageTotal).To(Equal(int(0)))
+		})
+
+		It("should have a finalizer", func() {
+			// the reconciler loop adds the finalizer so we have to wait for
+			// it to run
+			Eventually(func() []string {
+				return GetGlance(glanceTest.Instance).Finalizers
+			}, timeout, interval).Should(ContainElement("Glance"))
+		})
+
+		It("should not create a config map", func() {
+			Eventually(func() []corev1.ConfigMap {
+				return th.ListConfigMaps(glanceTest.GlanceConfigMapData.Name).Items
+			}, timeout, interval).Should(BeEmpty())
+		})
+
 		It("creates service account, role and rolebindig", func() {
 			th.ExpectCondition(
 				glanceName,
@@ -73,7 +89,7 @@ var _ = Describe("Glance controller", func() {
 				condition.ServiceAccountReadyCondition,
 				corev1.ConditionTrue,
 			)
-			sa := th.GetServiceAccount(types.NamespacedName{Namespace: namespace, Name: "glance-" + glanceName.Name})
+			sa := th.GetServiceAccount(glanceTest.GlanceSA)
 
 			th.ExpectCondition(
 				glanceName,
@@ -81,7 +97,7 @@ var _ = Describe("Glance controller", func() {
 				condition.RoleReadyCondition,
 				corev1.ConditionTrue,
 			)
-			role := th.GetRole(types.NamespacedName{Namespace: namespace, Name: "glance-" + glanceName.Name + "-role"})
+			role := th.GetRole(glanceTest.GlanceRole)
 			Expect(role.Rules).To(HaveLen(2))
 			Expect(role.Rules[0].Resources).To(Equal([]string{"securitycontextconstraints"}))
 			Expect(role.Rules[1].Resources).To(Equal([]string{"pods"}))
@@ -92,7 +108,7 @@ var _ = Describe("Glance controller", func() {
 				condition.RoleBindingReadyCondition,
 				corev1.ConditionTrue,
 			)
-			binding := th.GetRoleBinding(types.NamespacedName{Namespace: namespace, Name: "glance-" + glanceName.Name + "-rolebinding"})
+			binding := th.GetRoleBinding(glanceTest.GlanceRoleBinding)
 			Expect(binding.RoleRef.Name).To(Equal(role.Name))
 			Expect(binding.Subjects).To(HaveLen(1))
 			Expect(binding.Subjects[0].Name).To(Equal(sa.Name))
@@ -104,6 +120,251 @@ var _ = Describe("Glance controller", func() {
 			Expect(glance.Spec.GlanceAPIInternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 			Expect(glance.Spec.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 		})
+	})
+	When("Glance DB is created", func() {
+		BeforeEach(func() {
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
+			DeferCleanup(
+				th.DeleteDBService,
+				th.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+		})
+		It("Should set DBReady Condition and set DatabaseHostname Status when DB is Created", func() {
+			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			Glance := GetGlance(glanceTest.Instance)
+			Expect(Glance.Status.DatabaseHostname).To(Equal("hostname-for-openstack"))
+			th.ExpectCondition(
+				glanceName,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.DBReadyCondition,
+				corev1.ConditionTrue,
+			)
+			th.ExpectCondition(
+				glanceName,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.DBSyncReadyCondition,
+				corev1.ConditionFalse,
+			)
+		})
 
+		It("Should fail if db-sync job fails when DB is Created", func() {
+			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			th.SimulateJobFailure(glanceTest.GlanceDBSync)
+			th.ExpectCondition(
+				glanceTest.Instance,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.DBReadyCondition,
+				corev1.ConditionTrue,
+			)
+			th.ExpectCondition(
+				glanceTest.Instance,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.DBSyncReadyCondition,
+				corev1.ConditionFalse,
+			)
+		})
+		It("Does not create GlanceAPI", func() {
+			GlanceAPINotExists(glanceTest.GlanceInternal)
+			GlanceAPINotExists(glanceTest.GlanceInternal)
+		})
+	})
+	When("Glance DB is created and db-sync Job succeeded", func() {
+		BeforeEach(func() {
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
+			DeferCleanup(
+				th.DeleteDBService,
+				th.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := th.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(th.DeleteKeystoneAPI, keystoneAPI)
+			th.SimulateKeystoneServiceReady(glanceTest.Instance)
+		})
+		It("Glance DB is Ready and db-sync reports ReadyCondition", func() {
+			th.ExpectCondition(
+				glanceTest.Instance,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.DBReadyCondition,
+				corev1.ConditionTrue,
+			)
+			th.ExpectCondition(
+				glanceTest.Instance,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.DBSyncReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+		It("GlanceAPI CRs are created", func() {
+			GlanceAPIExists(glanceTest.GlanceInternal)
+			GlanceAPIExists(glanceTest.GlanceExternal)
+		})
+	})
+	When("Glance CR is created without container images defined", func() {
+		BeforeEach(func() {
+			// GlanceEmptySpec is used to provide a standard Glance CR where no
+			// field is customized
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceEmptySpec()))
+		})
+		It("has the expected container image defaults", func() {
+			glanceDefault := GetGlance(glanceTest.Instance)
+			Expect(glanceDefault.Spec.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			Expect(glanceDefault.Spec.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+		})
+	})
+	When("All the Resources are ready", func() {
+		BeforeEach(func() {
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
+			// Get Default GlanceAPI (internal/external)
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec()))
+			DeferCleanup(
+				th.DeleteDBService,
+				th.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			DeferCleanup(th.DeleteKeystoneAPI, th.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			th.SimulateKeystoneServiceReady(glanceTest.Instance)
+			th.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
+		})
+		It("Creates glanceAPI", func() {
+			GlanceAPIExists(glanceTest.GlanceInternal)
+			GlanceAPIExists(glanceTest.GlanceExternal)
+		})
+		It("Assert Services are created", func() {
+			th.AssertServiceExists(glanceTest.GlancePublicRoute)
+			th.AssertServiceExists(glanceTest.GlanceInternalRoute)
+		})
+		It("Assert Routes are created", func() {
+			th.AssertRouteExists(glanceTest.GlancePublicRoute)
+		})
+	})
+	When("Glance CR is deleted", func() {
+		BeforeEach(func() {
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
+			// Get Default GlanceAPI (internal/external)
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec()))
+			DeferCleanup(
+				th.DeleteDBService,
+				th.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			DeferCleanup(th.DeleteKeystoneAPI, th.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			th.SimulateKeystoneServiceReady(glanceTest.Instance)
+			th.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
+		})
+		It("removes the finalizers from the Glance DB", func() {
+			mDB := th.GetMariaDBDatabase(glanceTest.Instance)
+			Expect(mDB.Finalizers).To(ContainElement("Glance"))
+			th.DeleteInstance(GetGlance(glanceTest.Instance))
+
+		})
+		It("removes the ConfigMaps", func() {
+			Eventually(func() corev1.ConfigMap {
+				return *th.GetConfigMap(glanceTest.GlanceConfigMapData)
+			}, timeout, interval).ShouldNot(BeNil())
+			Eventually(func() corev1.ConfigMap {
+				return *th.GetConfigMap(glanceTest.GlanceConfigMapScripts)
+			}, timeout, interval).ShouldNot(BeNil())
+			Eventually(func() []corev1.ConfigMap {
+				return th.ListConfigMaps(glanceTest.GlanceConfigMapData.Name).Items
+			}, timeout, interval).Should(BeEmpty())
+			Eventually(func() []corev1.ConfigMap {
+				return th.ListConfigMaps(glanceTest.GlanceConfigMapScripts.Name).Items
+			}, timeout, interval).Should(BeEmpty())
+		})
+	})
+	When("Glance CR instance is built w/ NAD", func() {
+		BeforeEach(func() {
+			nad := th.CreateNetworkAttachmentDefinition(glanceTest.InternalAPINAD)
+			DeferCleanup(th.DeleteInstance, nad)
+			var externalEndpoints []interface{}
+			externalEndpoints = append(
+				externalEndpoints, map[string]interface{}{
+					"endpoint":        "internal",
+					"ipAddressPool":   "osp-internalapi",
+					"loadBalancerIPs": []string{"10.1.0.1", "10.1.0.2"},
+				},
+			)
+			rawSpec := map[string]interface{}{
+				"storageRequest":   glanceTest.GlancePVCSize,
+				"secret":           SecretName,
+				"databaseInstance": "openstack",
+				"glanceAPIInternal": map[string]interface{}{
+					"containerImage":     glancev1.GlanceAPIContainerImage,
+					"networkAttachments": []string{"internalapi"},
+					"externalEndpoints":  externalEndpoints,
+				},
+				"glanceAPIExternal": map[string]interface{}{
+					"containerImage":     glancev1.GlanceAPIContainerImage,
+					"networkAttachments": []string{"internalapi"},
+				},
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(
+				th.DeleteDBService,
+				th.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := th.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(th.DeleteKeystoneAPI, keystoneAPI)
+			keystoneAPIName := th.GetKeystoneAPI(keystoneAPI)
+			keystoneAPIName.Status.APIEndpoints["internal"] = "http://keystone-internal-openstack.testing"
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Status().Update(ctx, keystoneAPIName.DeepCopy())).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+			th.SimulateKeystoneServiceReady(glanceTest.Instance)
+		})
+		It("Check the resulting endpoints of the generated sub-CRs", func() {
+			th.SimulateDeploymentReadyWithPods(
+				glanceTest.GlanceInternalAPI,
+				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
+			)
+			th.SimulateDeploymentReadyWithPods(
+				glanceTest.GlanceExternalAPI,
+				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
+			)
+			// Retrieve the generated resources
+			glance := GetGlance(glanceTest.Instance)
+			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+			externalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+			// Check GlanceAPI NADs
+			Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIInternal.NetworkAttachments))
+			Expect(internalAPI.Spec.ExternalEndpoints).To(Equal(glance.Spec.GlanceAPIInternal.ExternalEndpoints))
+			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIInternal.NetworkAttachments))
+		})
 	})
 })

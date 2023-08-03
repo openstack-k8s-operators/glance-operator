@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package functional_test
+package functional
 
 import (
+	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
@@ -34,12 +36,25 @@ func GetGlance(name types.NamespacedName) *glancev1.Glance {
 	return instance
 }
 
+func GetGlanceAPI(name types.NamespacedName) *glancev1.GlanceAPI {
+	instance := &glancev1.GlanceAPI{}
+	Eventually(func(g Gomega) {
+		g.Expect(k8sClient.Get(ctx, name, instance)).Should(Succeed())
+	}, timeout, interval).Should(Succeed())
+	return instance
+}
+
 func GlanceConditionGetter(name types.NamespacedName) condition.Conditions {
 	instance := GetGlance(name)
 	return instance.Status.Conditions
 }
 
-func CreateGlance(name types.NamespacedName) client.Object {
+func GlanceAPIConditionGetter(name types.NamespacedName) condition.Conditions {
+	instance := GetGlanceAPI(name)
+	return instance.Status.Conditions
+}
+
+func CreateDefaultGlance(name types.NamespacedName) client.Object {
 	raw := map[string]interface{}{
 		"apiVersion": "glance.openstack.org/v1beta1",
 		"kind":       "Glance",
@@ -49,8 +64,121 @@ func CreateGlance(name types.NamespacedName) client.Object {
 		},
 		"spec": map[string]interface{}{
 			"databaseInstance": "openstack",
-			"storageRequest":   "10G",
+			"storageRequest":   glanceTest.GlancePVCSize,
 		},
 	}
 	return th.CreateUnstructured(raw)
+}
+
+func GetGlanceEmptySpec() map[string]interface{} {
+	return map[string]interface{}{
+		"secret": SecretName,
+		"spec": map[string]interface{}{
+			"databaseInstance": "openstack",
+			"storageRequest":   glanceTest.GlancePVCSize,
+		},
+	}
+}
+
+func GetGlanceDefaultSpec() map[string]interface{} {
+	return map[string]interface{}{
+		"databaseInstance":  "openstack",
+		"databaseUser":      glanceTest.GlanceDatabaseUser,
+		"serviceUser":       glanceName.Name,
+		"secret":            SecretName,
+		"glanceAPIInternal": GetGlanceAPIDefaultSpec(GlanceAPITypeInternal),
+		"glanceAPIExternal": GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
+		"storageRequest":    glanceTest.GlancePVCSize,
+	}
+}
+
+func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
+	return map[string]interface{}{
+		"databaseInstance":  "openstack",
+		"databaseUser":      glanceTest.GlanceDatabaseUser,
+		"serviceUser":       glanceName.Name,
+		"secret":            SecretName,
+		"glanceAPIInternal": GetGlanceAPIDefaultSpec(GlanceAPITypeInternal),
+		"glanceAPIExternal": GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
+		"storageRequest":    glanceTest.GlancePVCSize,
+		"quotas":            glanceTest.GlanceQuotas,
+	}
+}
+
+func GetGlanceAPIDefaultSpec(apiType APIType) map[string]interface{} {
+	return map[string]interface{}{
+		"replicas": 1,
+	}
+}
+
+func CreateGlance(name types.NamespacedName, spec map[string]interface{}) client.Object {
+
+	raw := map[string]interface{}{
+		"apiVersion": "glance.openstack.org/v1beta1",
+		"kind":       "Glance",
+		"metadata": map[string]interface{}{
+			"name":      name.Name,
+			"namespace": name.Namespace,
+		},
+		"spec": spec,
+	}
+	return th.CreateUnstructured(raw)
+}
+
+func CreateGlanceAPI(name types.NamespacedName, spec map[string]interface{}) client.Object {
+	raw := map[string]interface{}{
+		"apiVersion": "glance.openstack.org/v1beta1",
+		"kind":       "GlanceAPI",
+		"metadata": map[string]interface{}{
+			"name":      name.Name,
+			"namespace": name.Namespace,
+		},
+		"spec": spec,
+	}
+	return th.CreateUnstructured(raw)
+}
+
+func CreateGlanceSecret(namespace string, name string) *corev1.Secret {
+	return th.CreateSecret(
+		types.NamespacedName{Namespace: namespace, Name: name},
+		map[string][]byte{
+			"GlancePassword":         []byte(glanceTest.GlancePassword),
+			"GlanceDatabasePassword": []byte(glanceTest.GlancePassword),
+		},
+	)
+}
+
+func GetDefaultGlanceSpec() map[string]interface{} {
+	return map[string]interface{}{
+		"databaseInstance":  "openstack",
+		"secret":            SecretName,
+		"glanceAPIInternal": GetDefaultGlanceAPISpec(),
+		"glanceAPIExternal": GetDefaultGlanceAPISpec(),
+	}
+}
+
+func GetDefaultGlanceAPISpec() map[string]interface{} {
+	return map[string]interface{}{
+		"secret":           SecretName,
+		"replicas":         1,
+		"containerImage":   "test://glance",
+		"serviceAccount":   glanceTest.GlanceSA.Name,
+		"databaseInstance": "openstack",
+	}
+}
+
+func GlanceAPINotExists(name types.NamespacedName) {
+	Consistently(func(g Gomega) {
+		instance := &glancev1.GlanceAPI{}
+		err := k8sClient.Get(ctx, name, instance)
+		g.Expect(k8s_errors.IsNotFound(err)).To(BeTrue())
+	}, timeout, interval).Should(Succeed())
+}
+
+func GlanceAPIExists(name types.NamespacedName) {
+	Consistently(func(g Gomega) {
+		instance := &glancev1.GlanceAPI{}
+		err := k8sClient.Get(ctx, name, instance)
+		g.Expect(k8s_errors.IsNotFound(err)).To(BeFalse())
+	}, timeout, interval).Should(Succeed())
 }
