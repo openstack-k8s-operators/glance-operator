@@ -229,7 +229,8 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			// Get Default GlanceAPI (internal/external)
-			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec()))
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec(GlanceAPITypeExternal)))
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(
 				th.DeleteDBService,
 				th.CreateDBService(
@@ -262,7 +263,7 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			// Get Default GlanceAPI (internal/external)
-			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec()))
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec(GlanceAPITypeExternal)))
 			DeferCleanup(
 				th.DeleteDBService,
 				th.CreateDBService(

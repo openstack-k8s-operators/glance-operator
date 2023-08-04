@@ -152,18 +152,18 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 	return map[string]interface{}{
 		"databaseInstance":  "openstack",
 		"secret":            SecretName,
-		"glanceAPIInternal": GetDefaultGlanceAPISpec(),
-		"glanceAPIExternal": GetDefaultGlanceAPISpec(),
+		"glanceAPIInternal": GetDefaultGlanceAPISpec(GlanceAPITypeInternal),
+		"glanceAPIExternal": GetDefaultGlanceAPISpec(GlanceAPITypeExternal),
 	}
 }
 
-func GetDefaultGlanceAPISpec() map[string]interface{} {
+func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 	return map[string]interface{}{
-		"secret":           SecretName,
-		"replicas":         1,
-		"containerImage":   "test://glance",
-		"serviceAccount":   glanceTest.GlanceSA.Name,
-		"databaseInstance": "openstack",
+		"secret":         SecretName,
+		"replicas":       1,
+		"containerImage": glanceTest.ContainerImage,
+		"serviceAccount": glanceTest.GlanceSA.Name,
+		"apiType":        apiType,
 	}
 }
 

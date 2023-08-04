@@ -28,25 +28,29 @@ const (
 )
 
 type GlanceTestData struct {
-	GlanceDatabaseUser     string
-	GlancePassword         string
-	GlanceServiceUser      string
-	GlancePVCSize          string
-	GlanceQuotas           map[string]interface{}
-	Instance               types.NamespacedName
-	GlanceInternal         types.NamespacedName
-	GlanceExternal         types.NamespacedName
-	GlanceRole             types.NamespacedName
-	GlanceRoleBinding      types.NamespacedName
-	GlanceSA               types.NamespacedName
-	GlanceDBSync           types.NamespacedName
-	GlancePublicRoute      types.NamespacedName
-	GlanceInternalRoute    types.NamespacedName
-	GlanceConfigMapData    types.NamespacedName
-	GlanceConfigMapScripts types.NamespacedName
-	GlanceInternalAPI      types.NamespacedName
-	GlanceExternalAPI      types.NamespacedName
-	InternalAPINAD         types.NamespacedName
+	ContainerImage              string
+	GlanceDatabaseUser          string
+	GlancePassword              string
+	GlanceServiceUser           string
+	GlancePVCSize               string
+	GlancePort                  string
+	GlanceQuotas                map[string]interface{}
+	Instance                    types.NamespacedName
+	GlanceInternal              types.NamespacedName
+	GlanceExternal              types.NamespacedName
+	GlanceRole                  types.NamespacedName
+	GlanceRoleBinding           types.NamespacedName
+	GlanceSA                    types.NamespacedName
+	GlanceDBSync                types.NamespacedName
+	GlancePublicRoute           types.NamespacedName
+	GlanceInternalRoute         types.NamespacedName
+	GlanceService               types.NamespacedName
+	GlanceConfigMapData         types.NamespacedName
+	GlanceInternalConfigMapData types.NamespacedName
+	GlanceConfigMapScripts      types.NamespacedName
+	GlanceInternalAPI           types.NamespacedName
+	GlanceExternalAPI           types.NamespacedName
+	InternalAPINAD              types.NamespacedName
 }
 
 // GetGlanceTestData is a function that initialize the GlanceTestData
@@ -97,14 +101,22 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "scripts"),
 		},
-		GlancePublicRoute: types.NamespacedName{
+		GlanceInternalConfigMapData: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-public", glanceName.Name),
+			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "internal-config-data"),
+		},
+		GlanceService: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      "image",
 		},
 		// Also used to identify GlanceKeystoneService
 		GlanceInternalRoute: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-internal", glanceName.Name),
+		},
+		GlancePublicRoute: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-public", glanceName.Name),
 		},
 		GlanceQuotas: map[string]interface{}{
 			"imageSizeTotal":   1000,
@@ -121,5 +133,7 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		GlancePassword:    "12345678",
 		GlanceServiceUser: "glance",
 		GlancePVCSize:     "10G",
+		ContainerImage:    "test://glance",
+		GlancePort:        "9292",
 	}
 }
