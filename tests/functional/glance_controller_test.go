@@ -221,8 +221,8 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("has the expected container image defaults", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)
-			Expect(glanceDefault.Spec.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
-			Expect(glanceDefault.Spec.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			Expect(glanceDefault.Spec.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			Expect(glanceDefault.Spec.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
 		})
 	})
 	When("All the Resources are ready", func() {
