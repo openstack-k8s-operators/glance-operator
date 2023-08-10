@@ -4,6 +4,7 @@ metadata:
   name: glanceapi
 spec:
   serviceUser: glance
+  serviceAccount: glance
   containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   customServiceConfig: |
     [DEFAULT]
