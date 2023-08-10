@@ -693,7 +693,8 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 
 	// 00-default.conf will be regenerated as we have a ln -s of the
 	// templates/glance/config directory
-	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, false)
+	// TODO: Make the scripts be a top level secret since they are shared for all the glanceapis
+	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, true)
 }
 
 // createHashOfInputHashes - creates a hash of hashes which gets added to the resources which requires a restart

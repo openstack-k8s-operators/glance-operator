@@ -25,7 +25,7 @@ import (
 
 // GetVolumes - service volumes
 func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.Volume {
-	//var scriptsVolumeDefaultMode int32 = 0755
+	var scriptsVolumeDefaultMode int32 = 0755
 	var config0644AccessMode int32 = 0644
 
 	vm := []corev1.Volume{
@@ -61,6 +61,17 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 
 		// Add the required volumes
 		storageVolumes := []corev1.Volume{
+			// TODO: Scripts have no reason to be secrets, should move to configmap
+			// For now scripts only exist for Cinder backend
+			{
+				Name: "scripts",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						DefaultMode: &scriptsVolumeDefaultMode,
+						SecretName:  name + "-scripts",
+					},
+				},
+			},
 			// os-brick reads the initiatorname.iscsi from theere
 			{
 				Name: "etc-iscsi",
@@ -147,6 +158,12 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 	vm = append(vm, secretConfig...)
 	if hasCinder {
 		storageVolumeMounts := []corev1.VolumeMount{
+			// For now scripts only exist for Cinder backend
+			{
+				Name:      "scripts",
+				MountPath: "/usr/local/bin/container-scripts",
+				ReadOnly:  true,
+			},
 			{
 				Name:      "etc-iscsi",
 				MountPath: "/etc/iscsi",
