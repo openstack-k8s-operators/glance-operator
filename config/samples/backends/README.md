@@ -20,11 +20,12 @@ Currently available samples are:
 - Ceph
 - NFS
 - CEPH + NFS
-- Cinder backend
+- Cinder backends
 
 The following Cinder backend examples are available:
 
 - Cinder using LVM iSCSI
+- Cinder backend using LVM NVMe-TCP
 
 For these the file structure is different, as the glance configuration is the
 same for them all and only the Cinder configuration changes.
