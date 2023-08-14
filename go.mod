@@ -28,6 +28,7 @@ require (
 
 require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
+	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/mod v0.10.0 // indirect
@@ -86,7 +87,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.26.7 //indirect
 	k8s.io/component-base v0.26.7 //indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20230327201221-f5883ff37f0c //indirect
+	k8s.io/kube-openapi v0.0.0-20230811205723-7ac0aad8c58d //indirect
 	k8s.io/utils v0.0.0-20230711102312-30195339c3c7 //indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd //indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
