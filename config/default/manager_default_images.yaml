@@ -11,5 +11,5 @@ spec:
       containers:
       - name: manager
         env:
-        - name: GLANCE_API_IMAGE_URL_DEFAULT
+        - name: RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT
           value: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
