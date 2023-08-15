@@ -147,6 +147,12 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 			ReadOnly:  false,
 		},
 		{
+			Name:      "config-data-merged",
+			MountPath: "/var/lib/kolla/config_files/config.json",
+			SubPath:   "glance-api-config.json",
+			ReadOnly:  true,
+		},
+		{
 			Name:      "lib-data",
 			MountPath: "/var/lib/glance",
 			ReadOnly:  false,

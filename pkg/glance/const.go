@@ -32,9 +32,6 @@ const (
 	// GlanceInternalPort -
 	GlanceInternalPort int32 = 9292
 
-	// KollaConfig -
-	KollaConfig = "/var/lib/config-data/merged/glance-api-config.json"
-
 	// GlanceExtraVolTypeUndefined can be used to label an extraMount which
 	// is not associated with a specific backend
 	GlanceExtraVolTypeUndefined storage.ExtraVolType = "Undefined"
