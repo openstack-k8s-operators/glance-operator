@@ -608,11 +608,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// normal reconcile tasks
 	//
 
-	// deploy internal glance-api
-	if instance.Spec.GlanceAPIInternal.NodeSelector == nil {
-		instance.Spec.GlanceAPIInternal.NodeSelector = instance.Spec.NodeSelector
-	}
-
 	// Regardless of what the user may have set in GlanceAPIInternal.EndpointType,
 	// we force "internal" here by passing glancev1.APIInternal for the apiType arg
 	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIInternal, glancev1.APIInternal, helper)
@@ -644,11 +639,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	// Get internal GlanceAPI's condition status for comparison with external below
 	internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
-
-	// deploy external glance-api
-	if instance.Spec.GlanceAPIExternal.NodeSelector == nil {
-		instance.Spec.GlanceAPIExternal.NodeSelector = instance.Spec.NodeSelector
-	}
 
 	// Regardless of what the user may have set in GlanceAPIExternal.EndpointType,
 	// we force "external" here by passing glancev1.APIExternal for the apiType arg
@@ -696,6 +686,10 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 		ServiceUser:       instance.Spec.ServiceUser,
 		ServiceAccount:    instance.RbacResourceName(),
 		Quota:             instance.IsQuotaEnabled(),
+	}
+
+	if apiSpec.GlanceAPITemplate.NodeSelector == nil {
+		apiSpec.GlanceAPITemplate.NodeSelector = instance.Spec.NodeSelector
 	}
 
 	deployment := &glancev1.GlanceAPI{
