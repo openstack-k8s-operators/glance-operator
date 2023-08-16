@@ -221,32 +221,31 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	}
 
 	if err == nil {
-		controllerutil.RemoveFinalizer(keystoneService, helper.GetFinalizer())
-		if err = helper.GetClient().Update(ctx, keystoneService); err != nil && !k8s_errors.IsNotFound(err) {
-			return ctrl.Result{}, err
+		if controllerutil.RemoveFinalizer(keystoneService, helper.GetFinalizer()) {
+			err = r.Update(ctx, keystoneService)
+			if err != nil && !k8s_errors.IsNotFound(err) {
+				return ctrl.Result{}, err
+			}
+			util.LogForObject(helper, "Removed finalizer from our KeystoneService", instance)
 		}
-		util.LogForObject(helper, "Removed finalizer from our KeystoneService", instance)
 	}
 
 	// Remove finalizers from any existing child GlanceAPIs
 	for _, apiType := range []string{glancev1.APIInternal, glancev1.APIExternal} {
 		glanceAPI := &glancev1.GlanceAPI{}
-		err = helper.GetClient().Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", instance.Name, apiType), Namespace: instance.Namespace}, glanceAPI)
+		err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", instance.Name, apiType), Namespace: instance.Namespace}, glanceAPI)
 		if err != nil && !k8s_errors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
 
 		if err == nil {
-			controllerutil.RemoveFinalizer(glanceAPI, helper.GetFinalizer())
-			if err = helper.GetClient().Update(ctx, glanceAPI); err != nil && !k8s_errors.IsNotFound(err) {
-				return ctrl.Result{}, err
+			if controllerutil.RemoveFinalizer(glanceAPI, helper.GetFinalizer()) {
+				err = r.Update(ctx, glanceAPI)
+				if err != nil && !k8s_errors.IsNotFound(err) {
+					return ctrl.Result{}, err
+				}
+				util.LogForObject(helper, fmt.Sprintf("Removed finalizer from GlanceAPI %s", glanceAPI.Name), glanceAPI)
 			}
-			util.LogForObject(helper, fmt.Sprintf("Removed finalizer from GlanceAPI %s", glanceAPI.Name), glanceAPI)
-
-			// if err = helper.GetClient().Delete(ctx, glanceAPI); err != nil && !k8s_errors.IsNotFound(err) {
-			// 	return ctrl.Result{}, err
-			// }
-			// util.LogForObject(helper, fmt.Sprintf("Deleted GlanceAPI %s", glanceAPI.Name), glanceAPI)
 		}
 	}
 

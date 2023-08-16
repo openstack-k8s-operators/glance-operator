@@ -265,11 +265,13 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 	}
 
 	if err == nil {
-		controllerutil.RemoveFinalizer(keystoneEndpoint, helper.GetFinalizer())
-		if err = helper.GetClient().Update(ctx, keystoneEndpoint); err != nil && !k8s_errors.IsNotFound(err) {
-			return ctrl.Result{}, err
+		if controllerutil.RemoveFinalizer(keystoneEndpoint, helper.GetFinalizer()) {
+			err = r.Update(ctx, keystoneEndpoint)
+			if err != nil && !k8s_errors.IsNotFound(err) {
+				return ctrl.Result{}, err
+			}
+			util.LogForObject(helper, "Removed finalizer from our KeystoneEndpoint", instance)
 		}
-		util.LogForObject(helper, "Removed finalizer from our KeystoneEndpoint", instance)
 	}
 
 	// Endpoints are deleted so remove the finalizer.
