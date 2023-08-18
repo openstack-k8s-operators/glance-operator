@@ -44,13 +44,13 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/configmap"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/deployment"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 
@@ -71,7 +71,6 @@ type GlanceAPIReconciler struct {
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
-// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
@@ -245,7 +244,6 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&keystonev1.KeystoneEndpoint{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
-		Owns(&corev1.ConfigMap{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&routev1.Route{}).
 		Watches(&source.Kind{Type: &corev1.Secret{}},
@@ -409,8 +407,7 @@ func (r *GlanceAPIReconciler) reconcileUpgrade(ctx context.Context, instance *gl
 func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
-	// ConfigMap
-	configMapVars := make(map[string]env.Setter)
+	configVars := make(map[string]env.Setter)
 	privileged := false
 
 	//
@@ -434,21 +431,15 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			err.Error()))
 		return ctrl.Result{}, err
 	}
-	configMapVars[ospSecret.Name] = env.SetValue(hash)
+	configVars[ospSecret.Name] = env.SetValue(hash)
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
 	//
-	// Create ConfigMaps and Secrets required as input for the Service and calculate an overall hash of hashes
+	// Create Secrets required as input for the Service and calculate an overall hash of hashes
 	//
 
-	//
-	// create Configmap required for glance input
-	// - %-scripts configmap holding scripts to e.g. bootstrap the service
-	// - %-config configmap holding minimal glance config required to get the service up, user can add additional files to be added to the service
-	// - parameters which has passwords gets added from the OpenStack secret via the init container
-	//
-	err = r.generateServiceConfigMaps(ctx, helper, instance, &configMapVars)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -463,7 +454,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// create hash over all the different input resources to identify if any those changed
 	// and a restart/recreate is required.
 	//
-	inputHash, hashChanged, err := r.createHashOfInputHashes(ctx, instance, configMapVars)
+	inputHash, hashChanged, err := r.createHashOfInputHashes(ctx, instance, configVars)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -478,7 +469,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrl.Result{}, nil
 	}
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
-	// Create ConfigMaps and Secrets - end
+	// Create Secrets - end
 
 	//
 	// TODO check when/if Init, Update, or Upgrade should/could be skipped
@@ -623,31 +614,34 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	return ctrl.Result{}, nil
 }
 
-// generateServiceConfigMaps - create create configmaps which hold scripts and service configuration
-// TODO add DefaultConfigOverwrite
-func (r *GlanceAPIReconciler) generateServiceConfigMaps(
+// generateServiceConfig - create create secrets which hold scripts and service configuration
+func (r *GlanceAPIReconciler) generateServiceConfig(
 	ctx context.Context,
 	h *helper.Helper,
 	instance *glancev1.GlanceAPI,
 	envVars *map[string]env.Setter,
 ) error {
-	//
-	// create Configmap/Secret required for glance input
-	// - %-scripts configmap holding scripts to e.g. bootstrap the service
-	// - %-config configmap holding minimal glance config required to get the service up, user can add additional files to be added to the service
-	// - parameters which has passwords gets added from the ospSecret via the init container
-	//
 
-	cmLabels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
+	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
 
-	// customData hold any customization for the service.
-	// custom.conf is going to /etc/<service>/<service>.conf.d
-	// all other files get placed into /etc/<service> to allow overwrite of e.g. logging.conf or policy.json
-	// TODO: make sure custom.conf can not be overwritten
-	customData := map[string]string{common.CustomServiceConfigFileName: instance.Spec.CustomServiceConfig}
+	// 02-config.conf
+	customData := map[string]string{glance.CustomServiceConfigFileName: instance.Spec.CustomServiceConfig}
 	for key, data := range instance.Spec.DefaultConfigOverwrite {
 		customData[key] = data
 	}
+
+	// 03-config.conf
+	customSecrets := ""
+	for _, secretName := range instance.Spec.CustomServiceConfigSecrets {
+		secret, _, err := secret.GetSecret(ctx, h, secretName, instance.Namespace)
+		if err != nil {
+			return err
+		}
+		for _, data := range secret.Data {
+			customSecrets += string(data) + "\n"
+		}
+	}
+	customData[glance.CustomServiceConfigSecretsFileName] = customSecrets
 
 	keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
 	// KeystoneAPI not available we should not aggregate the error and continue
@@ -662,9 +656,23 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 	if err != nil {
 		return err
 	}
-	templateParameters := make(map[string]interface{})
-	templateParameters["ServiceUser"] = instance.Spec.ServiceUser
-	templateParameters["KeystoneAuthURL"] = keystonePublicURL
+
+	ospSecret, _, err := secret.GetSecret(ctx, h, instance.Spec.Secret, instance.Namespace)
+	if err != nil {
+		return err
+	}
+
+	templateParameters := map[string]interface{}{
+		"ServiceUser":     instance.Spec.ServiceUser,
+		"ServicePassword": string(ospSecret.Data[instance.Spec.PasswordSelectors.Service]),
+		"KeystoneAuthURL": keystonePublicURL,
+		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s",
+			instance.Spec.DatabaseUser,
+			string(ospSecret.Data[instance.Spec.PasswordSelectors.Database]),
+			instance.Spec.DatabaseHostname,
+			glance.DatabaseName,
+		),
+	}
 
 	// If Quota values are defined in the top level spec (they are global values),
 	// each GlanceAPI instance should build the config file according to
@@ -682,27 +690,9 @@ func (r *GlanceAPIReconciler) generateServiceConfigMaps(
 		templateParameters["ShowMultipleLocations"] = false
 	}
 
-	cms := []util.Template{
-		// ScriptsConfigMap
-		{
-			Name:         fmt.Sprintf("%s-scripts", instance.Name),
-			Namespace:    instance.Namespace,
-			Type:         util.TemplateTypeScripts,
-			InstanceType: instance.Kind,
-			Labels:       cmLabels,
-		},
-		// ConfigMap
-		{
-			Name:          fmt.Sprintf("%s-config-data", instance.Name),
-			Namespace:     instance.Namespace,
-			Type:          util.TemplateTypeConfig,
-			InstanceType:  instance.Kind,
-			CustomData:    customData,
-			ConfigOptions: templateParameters,
-			Labels:        cmLabels,
-		},
-	}
-	return configmap.EnsureConfigMaps(ctx, h, instance, cms, envVars)
+	// 00-default.conf will be regenerated as we have a ln -s of the
+	// templates/glance/config directory
+	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, false)
 }
 
 // createHashOfInputHashes - creates a hash of hashes which gets added to the resources which requires a restart

@@ -44,15 +44,13 @@ func Deployment(
 	privileged bool,
 ) *appsv1.Deployment {
 	runAsUser := int64(0)
+	var config0644AccessMode int32 = 0644
 
 	livenessProbe := &corev1.Probe{
-		// TODO might need tuning
-		TimeoutSeconds:      5,
 		PeriodSeconds:       3,
 		InitialDelaySeconds: 3,
 	}
 	readinessProbe := &corev1.Probe{
-		// TODO might need tuning
 		TimeoutSeconds:      5,
 		PeriodSeconds:       5,
 		InitialDelaySeconds: 5,
@@ -98,6 +96,26 @@ func Deployment(
 	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
 
+	apiVolumes := []corev1.Volume{
+		{
+			Name: "config-data-custom",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					DefaultMode: &config0644AccessMode,
+					SecretName:  instance.Name + "-config-data",
+				},
+			},
+		},
+	}
+	apiVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "config-data",
+			MountPath: "/var/lib/kolla/config_files/config.json",
+			SubPath:   "glance-api-config.json",
+			ReadOnly:  true,
+		},
+	}
+
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-api", instance.Name),
@@ -128,11 +146,12 @@ func Deployment(
 								Privileged: &privileged,
 							},
 							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts: glance.GetVolumeMounts(
+							VolumeMounts: append(glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
 								privileged,
 								instance.Spec.ExtraMounts,
-								glance.GlanceAPIPropagation,
+								glance.GlanceAPIPropagation),
+								apiVolumeMounts...,
 							),
 							Resources:      instance.Spec.Resources,
 							ReadinessProbe: readinessProbe,
@@ -143,14 +162,14 @@ func Deployment(
 			},
 		},
 	}
-	deployment.Spec.Template.Spec.Volumes = glance.GetVolumes(
+	deployment.Spec.Template.Spec.Volumes = append(glance.GetVolumes(
 		instance.Name,
 		glance.ServiceName,
 		privileged,
 		instance.Spec.CustomServiceConfigSecrets,
 		instance.Spec.ExtraMounts,
-		glance.GlanceAPIPropagation,
-	)
+		glance.GlanceAPIPropagation),
+		apiVolumes...)
 
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
@@ -165,23 +184,6 @@ func Deployment(
 	if instance.Spec.NodeSelector != nil && len(instance.Spec.NodeSelector) > 0 {
 		deployment.Spec.Template.Spec.NodeSelector = instance.Spec.NodeSelector
 	}
-
-	initContainerDetails := glance.APIDetails{
-		ContainerImage:       instance.Spec.ContainerImage,
-		DatabaseHost:         instance.Spec.DatabaseHostname,
-		DatabaseUser:         instance.Spec.DatabaseUser,
-		DatabaseName:         glance.DatabaseName,
-		OSPSecret:            instance.Spec.Secret,
-		DBPasswordSelector:   instance.Spec.PasswordSelectors.Database,
-		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
-		VolumeMounts: getInitVolumeMounts(
-			instance.Spec.CustomServiceConfigSecrets,
-			instance.Spec.ExtraMounts,
-			glance.GlanceAPIPropagation,
-		),
-		QuotaEnabled: instance.Spec.Quota,
-	}
-	deployment.Spec.Template.Spec.InitContainers = glance.InitContainer(initContainerDetails)
 
 	return deployment
 }

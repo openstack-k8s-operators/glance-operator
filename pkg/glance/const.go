@@ -32,6 +32,15 @@ const (
 	// GlanceInternalPort -
 	GlanceInternalPort int32 = 9292
 
+	// DefaultsConfigFileName -
+	DefaultsConfigFileName = "00-config.conf"
+	// CustomConfigFileName -
+	CustomConfigFileName = "01-config.conf"
+	// CustomServiceConfigFileName -
+	CustomServiceConfigFileName = "02-config.conf"
+	// CustomServiceConfigSecretsFileName -
+	CustomServiceConfigSecretsFileName = "03-config.conf"
+
 	// GlanceExtraVolTypeUndefined can be used to label an extraMount which
 	// is not associated with a specific backend
 	GlanceExtraVolTypeUndefined storage.ExtraVolType = "Undefined"

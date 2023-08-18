@@ -229,8 +229,6 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			// Get Default GlanceAPI (internal/external)
-			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec(GlanceAPITypeExternal)))
-			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(
 				th.DeleteDBService,
 				th.CreateDBService(
@@ -263,7 +261,6 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			// Get Default GlanceAPI (internal/external)
-			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.Instance, GetDefaultGlanceAPISpec(GlanceAPITypeExternal)))
 			DeferCleanup(
 				th.DeleteDBService,
 				th.CreateDBService(
@@ -286,22 +283,8 @@ var _ = Describe("Glance controller", func() {
 			th.DeleteInstance(GetGlance(glanceTest.Instance))
 
 		})
-		It("removes the ConfigMaps", func() {
-			Eventually(func() corev1.ConfigMap {
-				return *th.GetConfigMap(glanceTest.GlanceConfigMapData)
-			}, timeout, interval).ShouldNot(BeNil())
-			Eventually(func() corev1.ConfigMap {
-				return *th.GetConfigMap(glanceTest.GlanceConfigMapScripts)
-			}, timeout, interval).ShouldNot(BeNil())
-			Eventually(func() []corev1.ConfigMap {
-				return th.ListConfigMaps(glanceTest.GlanceConfigMapData.Name).Items
-			}, timeout, interval).Should(BeEmpty())
-			Eventually(func() []corev1.ConfigMap {
-				return th.ListConfigMaps(glanceTest.GlanceConfigMapScripts.Name).Items
-			}, timeout, interval).Should(BeEmpty())
-		})
 	})
-	When("Glance CR instance is built w/ NAD", func() {
+	When("Glance CR instance is built with NAD", func() {
 		BeforeEach(func() {
 			nad := th.CreateNetworkAttachmentDefinition(glanceTest.InternalAPINAD)
 			DeferCleanup(th.DeleteInstance, nad)

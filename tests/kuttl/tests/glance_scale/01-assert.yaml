@@ -99,14 +99,6 @@ spec:
         - /bin/bash
         image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-api
-      initContainers:
-      - args:
-        - -c
-        - /usr/local/bin/container-scripts/init.sh
-        command:
-        - /bin/bash
-        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
-        name: init
       serviceAccount: glance-glance
       serviceAccountName: glance-glance
 status:
@@ -135,14 +127,6 @@ spec:
         - /bin/bash
         image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-api
-      initContainers:
-      - args:
-        - -c
-        - /usr/local/bin/container-scripts/init.sh
-        command:
-        - /bin/bash
-        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
-        name: init
       serviceAccount: glance-glance
       serviceAccountName: glance-glance
 status:

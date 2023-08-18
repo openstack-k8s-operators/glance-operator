@@ -27,7 +27,7 @@ import (
 
 const (
 	// DBSyncCommand -
-	DBSyncCommand = "/usr/local/bin/kolla_set_configs && su -s /bin/sh -c \"glance-manage db sync\" glance && glance-manage db_load_metadefs"
+	DBSyncCommand = "/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start"
 )
 
 // DbSyncJob func
@@ -40,7 +40,46 @@ func DbSyncJob(
 
 	dbSyncExtraMounts := []glancev1.GlanceExtraVolMounts{}
 	secretNames := []string{}
+	var config0644AccessMode int32 = 0644
 
+	// Unlike the individual glanceAPI services, the DbSyncJob doesn't need a
+	// secret that contains all of the config snippets required by every
+	// service, The two snippet files that it does need (DefaultsConfigFileName
+	// and CustomConfigFileName) can be extracted from the top-level glance
+	// config-data secret.
+	dbSyncVolume := corev1.Volume{
+		Name: "db-sync-config-data",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				DefaultMode: &config0644AccessMode,
+				SecretName:  instance.Name + "-config-data",
+				Items: []corev1.KeyToPath{
+					{
+						Key:  DefaultsConfigFileName,
+						Path: DefaultsConfigFileName,
+					},
+					{
+						Key:  CustomConfigFileName,
+						Path: CustomConfigFileName,
+					},
+				},
+			},
+		},
+	}
+
+	dbSyncMounts := []corev1.VolumeMount{
+		{
+			Name:      "db-sync-config-data",
+			MountPath: "/etc/glance/glance.conf.d",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/var/lib/kolla/config_files/config.json",
+			SubPath:   "db-sync-config.json",
+			ReadOnly:  true,
+		},
+	}
 	args := []string{"-c"}
 	if instance.Spec.Debug.DBSync {
 		args = append(args, common.DebugCommand)
@@ -78,12 +117,10 @@ func DbSyncJob(
 								RunAsUser: &runAsUser,
 							},
 							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts: GetVolumeMounts(
-								secretNames,
-								false,
-								dbSyncExtraMounts,
-								DbsyncPropagation,
-							),
+							VolumeMounts: append(GetVolumeMounts(
+								secretNames, false,
+								dbSyncExtraMounts, DbsyncPropagation),
+								dbSyncMounts...),
 						},
 					},
 				},
@@ -91,30 +128,15 @@ func DbSyncJob(
 		},
 	}
 
-	job.Spec.Template.Spec.Volumes = GetVolumes(
+	job.Spec.Template.Spec.Volumes = append(GetVolumes(
 		instance.Name,
 		ServiceName,
 		false,
 		secretNames,
 		dbSyncExtraMounts,
-		DbsyncPropagation,
+		DbsyncPropagation),
+		dbSyncVolume,
 	)
-
-	initContainerDetails := APIDetails{
-		ContainerImage:       instance.Spec.ContainerImage,
-		DatabaseHost:         instance.Status.DatabaseHostname,
-		DatabaseUser:         instance.Spec.DatabaseUser,
-		DatabaseName:         DatabaseName,
-		OSPSecret:            instance.Spec.Secret,
-		DBPasswordSelector:   instance.Spec.PasswordSelectors.Database,
-		UserPasswordSelector: instance.Spec.PasswordSelectors.Service,
-		VolumeMounts: getInitVolumeMounts(
-			secretNames,
-			dbSyncExtraMounts,
-			DbsyncPropagation,
-		),
-	}
-	job.Spec.Template.Spec.InitContainers = InitContainer(initContainerDetails)
 
 	return job
 }
