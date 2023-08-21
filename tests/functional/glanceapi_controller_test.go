@@ -141,7 +141,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(1))
 
 			container := ss.Spec.Template.Spec.Containers[0]
-			Expect(container.VolumeMounts).To(HaveLen(3))
+			Expect(container.VolumeMounts).To(HaveLen(4))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
@@ -157,7 +157,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(1))
 
 			container := ss.Spec.Template.Spec.Containers[0]
-			Expect(container.VolumeMounts).To(HaveLen(3))
+			Expect(container.VolumeMounts).To(HaveLen(4))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
