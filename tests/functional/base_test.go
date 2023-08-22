@@ -17,6 +17,8 @@ limitations under the License.
 package functional
 
 import (
+	"golang.org/x/exp/maps"
+
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -152,19 +154,27 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 	return map[string]interface{}{
 		"databaseInstance":  "openstack",
 		"secret":            SecretName,
-		"glanceAPIInternal": GetDefaultGlanceAPISpec(GlanceAPITypeInternal),
-		"glanceAPIExternal": GetDefaultGlanceAPISpec(GlanceAPITypeExternal),
+		"glanceAPIInternal": GetDefaultGlanceAPITemplate(GlanceAPITypeInternal),
+		"glanceAPIExternal": GetDefaultGlanceAPITemplate(GlanceAPITypeExternal),
 	}
 }
 
-func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
+func GetDefaultGlanceAPITemplate(apiType APIType) map[string]interface{} {
 	return map[string]interface{}{
-		"secret":         SecretName,
 		"replicas":       1,
 		"containerImage": glanceTest.ContainerImage,
 		"serviceAccount": glanceTest.GlanceSA.Name,
 		"apiType":        apiType,
 	}
+}
+
+func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
+	spec := GetDefaultGlanceAPITemplate(apiType)
+	maps.Copy(spec, map[string]interface{}{
+		"databaseHostname": "openstack",
+		"secret":           SecretName,
+	})
+	return spec
 }
 
 func GlanceAPINotExists(name types.NamespacedName) {
