@@ -28,5 +28,12 @@
         "perm": "0600",
         "optional": true
       }
+    ],
+    "permissions": [
+        {
+            "path": "/var/log/glance",
+            "owner": "glance:glance",
+            "recurse": true
+        }
     ]
 }

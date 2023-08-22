@@ -672,12 +672,12 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 			instance.Spec.DatabaseHostname,
 			glance.DatabaseName,
 		),
+		// If Quota values are defined in the top level spec (they are global values),
+		// each GlanceAPI instance should build the config file according to
+		// https://docs.openstack.org/glance/latest/admin/quotas.html
+		"QuotaEnabled": instance.Spec.Quota,
+		"LogFile":      fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
 	}
-
-	// If Quota values are defined in the top level spec (they are global values),
-	// each GlanceAPI instance should build the config file according to
-	// https://docs.openstack.org/glance/latest/admin/quotas.html
-	templateParameters["QuotaEnabled"] = instance.Spec.Quota
 
 	// Configure the internal GlanceAPI to provide image location data, and the
 	// external version to *not* provide it.

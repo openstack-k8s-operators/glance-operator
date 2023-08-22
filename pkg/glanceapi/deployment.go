@@ -46,6 +46,10 @@ func Deployment(
 	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
 
+	startupProbe := &corev1.Probe{
+		FailureThreshold: 6,
+		PeriodSeconds:    10,
+	}
 	livenessProbe := &corev1.Probe{
 		PeriodSeconds:       3,
 		InitialDelaySeconds: 3,
@@ -59,6 +63,11 @@ func Deployment(
 	args := []string{"-c"}
 	if instance.Spec.Debug.Service {
 		args = append(args, common.DebugCommand)
+		startupProbe.Exec = &corev1.ExecAction{
+			Command: []string{
+				"/bin/true",
+			},
+		}
 		livenessProbe.Exec = &corev1.ExecAction{
 			Command: []string{
 				"/bin/true",
@@ -90,6 +99,11 @@ func Deployment(
 			Path: "/healthcheck",
 			Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
 		}
+		startupProbe.Exec = &corev1.ExecAction{
+			Command: []string{
+				"/bin/true",
+			},
+		}
 	}
 
 	envVars := map[string]env.Setter{}
@@ -107,6 +121,9 @@ func Deployment(
 			},
 		},
 	}
+	// Append LogVolume to the apiVolumes: this will be used to stream
+	// logging
+	apiVolumes = append(apiVolumes, glance.GetLogVolume()...)
 	apiVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "config-data",
@@ -115,6 +132,9 @@ func Deployment(
 			ReadOnly:  true,
 		},
 	}
+	// Append LogVolume to the apiVolumes: this will be used to stream
+	// logging
+	apiVolumeMounts = append(apiVolumeMounts, glance.GetLogVolumeMount()...)
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -135,6 +155,23 @@ func Deployment(
 					ServiceAccountName: instance.Spec.ServiceAccount,
 					Containers: []corev1.Container{
 						{
+							Name: instance.Name + "-log",
+							Command: []string{
+								"/bin/bash",
+							},
+							Args:  []string{"-c", "tail -n+1 -F " + glance.GlanceLogPath + instance.Name + ".log"},
+							Image: instance.Spec.ContainerImage,
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser: &runAsUser,
+							},
+							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts:   glance.GetLogVolumeMount(),
+							Resources:      instance.Spec.Resources,
+							StartupProbe:   startupProbe,
+							ReadinessProbe: readinessProbe,
+							LivenessProbe:  livenessProbe,
+						},
+						{
 							Name: glance.ServiceName + "-api",
 							Command: []string{
 								"/bin/bash",
@@ -154,6 +191,7 @@ func Deployment(
 								apiVolumeMounts...,
 							),
 							Resources:      instance.Spec.Resources,
+							StartupProbe:   startupProbe,
 							ReadinessProbe: readinessProbe,
 							LivenessProbe:  livenessProbe,
 						},
