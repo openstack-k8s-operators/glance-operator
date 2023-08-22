@@ -20,13 +20,6 @@
         "owner": "glance",
         "perm": "0640",
         "optional": true
-      },
-      {
-        "source": "/var/lib/config-data/default/policy.yaml",
-        "dest": "/etc/glance/glance.conf.d/policy.yaml",
-        "owner": "glance",
-        "perm": "0600",
-        "optional": true
       }
     ],
     "permissions": [
