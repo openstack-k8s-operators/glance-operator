@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,7 +38,6 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/configmap"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
@@ -191,7 +191,6 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&keystonev1.KeystoneService{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
 		Owns(&batchv1.Job{}).
-		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.Role{}).
@@ -491,8 +490,12 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return rbacResult, nil
 	}
 
-	// ConfigMap
-	configMapVars := make(map[string]env.Setter)
+	configVars := make(map[string]env.Setter)
+
+	// ServiceLabels
+	serviceLabels := map[string]string{
+		common.AppSelector: glance.ServiceName,
+	}
 
 	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
@@ -515,21 +518,16 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 			err.Error()))
 		return ctrl.Result{}, err
 	}
-	configMapVars[ospSecret.Name] = env.SetValue(hash)
+	configVars[ospSecret.Name] = env.SetValue(hash)
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
 	//
-	// Create ConfigMaps and Secrets required as input for the Service and calculate an overall hash of hashes
+	// Create Secrets required as input for the Service and calculate an overall hash of hashes
 	//
 
 	//
-	// create Configmap required for glance input
-	// - %-scripts configmap holding scripts to e.g. bootstrap the service
-	// - %-config configmap holding minimal glance config required to get the service up, user can add additional files to be added to the service
-	// - parameters which has passwords gets added from the OpenStack secret via the init container
-	//
-	err = r.generateServiceConfigMaps(ctx, helper, instance, &configMapVars)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -540,15 +538,11 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return ctrl.Result{}, err
 	}
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
-	// Create ConfigMaps and Secrets - end
+	// Create Secrets - end
 
 	//
 	// TODO check when/if Init, Update, or Upgrade should/could be skipped
 	//
-
-	serviceLabels := map[string]string{
-		common.AppSelector: glance.ServiceName,
-	}
 
 	// networks to attach to
 	for _, netAtt := range instance.Spec.GlanceAPIInternal.NetworkAttachments {
@@ -739,61 +733,38 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 	return deployment, op, err
 }
 
-// generateServiceConfigMaps - create create configmaps which hold scripts and service configuration (*used for DBSync only*)
-// TODO add DefaultConfigOverwrite
-func (r *GlanceReconciler) generateServiceConfigMaps(
+// generateServiceConfig - create secrets which hold scripts and service configuration (*used for DBSync only*)
+func (r *GlanceReconciler) generateServiceConfig(
 	ctx context.Context,
 	h *helper.Helper,
 	instance *glancev1.Glance,
 	envVars *map[string]env.Setter,
 ) error {
-	// TODO: Since these CMs are only used for the DBSync, is there further pruning that
-	//       could be done here?
+	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
 
-	//
-	// create Configmap/Secret required for glance input
-	// - %-scripts configmap holding scripts to e.g. bootstrap the service
-	// - %-config configmap holding minimal glance config required to get the service up, user can add additional files to be added to the service
-	// - parameters which has passwords gets added from the ospSecret via the init container
-	//
+	ospSecret, _, err := secret.GetSecret(ctx, h, instance.Spec.Secret, instance.Namespace)
+	if err != nil {
+		return err
+	}
 
-	cmLabels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
+	// We only need a minimal 00-config.conf that is only used by db-sync job,
+	// hence only passing the database related parameters
+	templateParameters := map[string]interface{}{
+		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s",
+			instance.Spec.DatabaseUser,
+			string(ospSecret.Data[instance.Spec.PasswordSelectors.Database]),
+			instance.Status.DatabaseHostname,
+			glance.DatabaseName,
+		),
+	}
+	customData := map[string]string{glance.CustomConfigFileName: instance.Spec.CustomServiceConfig}
 
-	// customData hold any customization for the service.
-	// custom.conf is going to /etc/<service>/<service>.conf.d
-	// all other files get placed into /etc/<service> to allow overwrite of e.g. logging.conf or policy.json
-	// TODO: make sure custom.conf can not be overwritten
-	customData := map[string]string{common.CustomServiceConfigFileName: instance.Spec.CustomServiceConfig}
 	for key, data := range instance.Spec.DefaultConfigOverwrite {
 		customData[key] = data
 	}
 
-	cms := []util.Template{
-		// ScriptsConfigMap
-		{
-			Name:         fmt.Sprintf("%s-scripts", instance.Name),
-			Namespace:    instance.Namespace,
-			Type:         util.TemplateTypeScripts,
-			InstanceType: instance.Kind,
-			Labels:       cmLabels,
-		},
-		// ConfigMap
-		{
-			Name:         fmt.Sprintf("%s-config-data", instance.Name),
-			Namespace:    instance.Namespace,
-			Type:         util.TemplateTypeConfig,
-			InstanceType: instance.Kind,
-			CustomData:   customData,
-			Labels:       cmLabels,
-		},
-	}
-	err := configmap.EnsureConfigMaps(ctx, h, instance, cms, envVars)
+	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, false)
 
-	if err != nil {
-		return nil
-	}
-
-	return nil
 }
 
 // ensureRegisteredLimits - create registered limits in keystone that will be

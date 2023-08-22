@@ -24,36 +24,17 @@ import (
 
 // GetVolumes - service volumes
 func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.Volume {
-	var scriptsVolumeDefaultMode int32 = 0755
-	var config0640AccessMode int32 = 0640
+	//var scriptsVolumeDefaultMode int32 = 0755
+	var config0644AccessMode int32 = 0644
 
 	vm := []corev1.Volume{
 		{
-			Name: "scripts",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					DefaultMode: &scriptsVolumeDefaultMode,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: name + "-scripts",
-					},
-				},
-			},
-		},
-		{
 			Name: "config-data",
 			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					DefaultMode: &config0640AccessMode,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: name + "-config-data",
-					},
+				Secret: &corev1.SecretVolumeSource{
+					DefaultMode: &config0644AccessMode,
+					SecretName:  name + "-config-data",
 				},
-			},
-		},
-		{
-			Name: "config-data-merged",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{Medium: ""},
 			},
 		},
 		{
@@ -102,54 +83,13 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 	return vm
 }
 
-// getInitVolumeMounts - general init task VolumeMounts
-func getInitVolumeMounts(secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.VolumeMount {
-	vm := []corev1.VolumeMount{
-		{
-			Name:      "scripts",
-			MountPath: "/usr/local/bin/container-scripts",
-			ReadOnly:  true,
-		},
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/config-data/default",
-			ReadOnly:  true,
-		},
-		{
-			Name:      "config-data-merged",
-			MountPath: "/var/lib/config-data/merged",
-			ReadOnly:  false,
-		},
-	}
-
-	for _, exv := range extraVol {
-		for _, vol := range exv.Propagate(svc) {
-			vm = append(vm, vol.Mounts...)
-		}
-	}
-	_, secretConfig := GetConfigSecretVolumes(secretNames)
-	vm = append(vm, secretConfig...)
-	return vm
-}
-
 // GetVolumeMounts - general VolumeMounts
 func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.VolumeMount {
 
 	vm := []corev1.VolumeMount{
 		{
-			Name:      "scripts",
-			MountPath: "/usr/local/bin/container-scripts",
-			ReadOnly:  true,
-		},
-		{
-			Name:      "config-data-merged",
-			MountPath: "/var/lib/config-data/merged",
-			ReadOnly:  false,
-		},
-		{
-			Name:      "config-data-merged",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "glance-api-config.json",
+			Name:      "config-data",
+			MountPath: "/var/lib/config-data/default",
 			ReadOnly:  true,
 		},
 		{
