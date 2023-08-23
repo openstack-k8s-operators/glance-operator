@@ -922,6 +922,8 @@ spec:
                 type: string
             required:
             - containerImage
+            - databaseHostname
+            - secret
             - serviceAccount
             type: object
           status:

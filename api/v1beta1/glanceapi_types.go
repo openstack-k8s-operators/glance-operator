@@ -49,7 +49,7 @@ type GlanceAPISpec struct {
 	// ServiceAccount - service account name used internally to provide GlanceAPI the default SA name
 	ServiceAccount string `json:"serviceAccount"`
 
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Required
 	// DatabaseHostname - Glance Database Hostname
 	DatabaseHostname string `json:"databaseHostname"`
 
@@ -59,7 +59,7 @@ type GlanceAPISpec struct {
 	// TODO: -> implement needs work in mariadb-operator, right now only glance
 	DatabaseUser string `json:"databaseUser"`
 
-	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Required
 	// Secret containing OpenStack password information for glance AdminPassword
 	Secret string `json:"secret"`
 
