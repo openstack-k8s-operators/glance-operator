@@ -52,6 +52,14 @@ rules:
   - update
   - watch
 - apiGroups:
+  - cinder.openstack.org
+  resources:
+  - cinders
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - ""
   resources:
   - persistentvolumeclaims

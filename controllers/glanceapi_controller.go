@@ -70,6 +70,7 @@ type GlanceAPIReconciler struct {
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update
+// +kubebuilder:rbac:groups=cinder.openstack.org,resources=cinders,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete;
