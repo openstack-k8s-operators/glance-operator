@@ -68,3 +68,43 @@ spec:
 
 As a follow up work, tha Glance operator might rely on the existing `webhooks`
 to enforce the `Quota` Limits values.
+
+## Cinder backend
+
+When using the Cinder backend the Glance containers need to run with higher
+privileges than with other backends, this is due to the usage of os-brick to
+connect to volumes.
+
+Some of the things that the operator does when using Cinder as a backend are:
+
+- Run containers as privileged
+- Mount for r/w more directories
+- Pod shares the PID namespace with the host
+- Run CLI commands with the binaries present in the host
+
+OpenShift deployments are different from TripleO deployments.  For example, in
+TripleO we run iscsid and multipathd daemons in containers and their client
+side commands are in sync (version-wise) in the service containers.  It is also
+required that there are no other daemons running in the host or other
+containers.
+
+In the OpenShift world this is different, iscsid and multipathd run on the host
+and therefore their version won't be in sync with the one in the openstack
+service containers, which means that they won't work correctly.
+
+The reason why OpenShift runs iscsid and multipathd in the host is so that they
+can be shared between the different things that may need it: OpenShift itself,
+CSI plugins, and in this case also OpenStack services.
+
+The way to use the host iscsi and multipath services is by exiting the pod
+namespace and running the commands on the host namespace using `nsenter`. Even
+if this may look nasty/weird, this is the recommended way by the storage
+OpenShift team and what CSI plugins do.
+
+We are using `nsenter` through the `templates/glance/bin/run-on-host` script.
+This `run-on-host` script supports 2 ways of replacing commands: being copied
+or symlinked. In our case we instruct kolla to use the copying mechanism in
+`templates/glance/config/glance-api-config.json`.
+
+To be able to use `nsenter` the pod needs to share the PID namespace with the
+host.
