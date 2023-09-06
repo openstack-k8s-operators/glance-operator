@@ -1,0 +1,8 @@
+# ATTENTION: After applying this OpenShift nodes will reboot, because of the `MachineConfig` changes and will take a while to recover.
+resources:
+  # Whole OpenStack deployment using a Cinder iSCSI LVM backend
+  - https://github.com/openstack-k8s-operators/cinder-operator//config/samples/backends/lvm/iscsi
+  # For testing purposes we can use our own repo and branch instead
+  # - https://github.com/Akrog/cinder-operator//config/samples/backends/lvm/iscsi?ref=more-backend-samples
+components:
+  - ../glance-common

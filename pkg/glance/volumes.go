@@ -16,15 +16,16 @@ limitations under the License.
 package glance
 
 import (
+	"strconv"
+
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	corev1 "k8s.io/api/core/v1"
-	"strconv"
 )
 
 // GetVolumes - service volumes
 func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.Volume {
-	//var scriptsVolumeDefaultMode int32 = 0755
+	var scriptsVolumeDefaultMode int32 = 0755
 	var config0644AccessMode int32 = 0644
 
 	vm := []corev1.Volume{
@@ -56,8 +57,21 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 	vm = append(vm, secretConfig...)
 
 	if hasCinder {
+		var dirOrCreate = corev1.HostPathDirectoryOrCreate
+
 		// Add the required volumes
 		storageVolumes := []corev1.Volume{
+			// TODO: Scripts have no reason to be secrets, should move to configmap
+			// For now scripts only exist for Cinder backend
+			{
+				Name: "scripts",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						DefaultMode: &scriptsVolumeDefaultMode,
+						SecretName:  name + "-scripts",
+					},
+				},
+			},
 			// os-brick reads the initiatorname.iscsi from theere
 			{
 				Name: "etc-iscsi",
@@ -74,6 +88,51 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
 						Path: "/dev",
+					},
+				},
+			},
+			{
+				Name: "lib-modules",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/lib/modules",
+					},
+				},
+			},
+			{
+				Name: "run",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/run",
+					},
+				},
+			},
+			// /sys needed for os-brick code that looks for information there
+			{
+				Name: "sys",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/sys",
+					},
+				},
+			},
+			// os-brick locks need to be shared between the different volume
+			// consumers (available since OSP18)
+			{
+				Name: "var-locks-brick",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/var/locks/openstack/os-brick",
+						Type: &dirOrCreate,
+					},
+				},
+			},
+			{
+				Name: "etc-nvme",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{
+						Path: "/etc/nvme",
+						Type: &dirOrCreate,
 					},
 				},
 			},
@@ -108,6 +167,12 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 	vm = append(vm, secretConfig...)
 	if hasCinder {
 		storageVolumeMounts := []corev1.VolumeMount{
+			// For now scripts only exist for Cinder backend
+			{
+				Name:      "scripts",
+				MountPath: "/usr/local/bin/container-scripts",
+				ReadOnly:  true,
+			},
 			{
 				Name:      "etc-iscsi",
 				MountPath: "/etc/iscsi",
@@ -116,6 +181,28 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 			{
 				Name:      "dev",
 				MountPath: "/dev",
+			},
+			{
+				Name:      "lib-modules",
+				MountPath: "/lib/modules",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "run",
+				MountPath: "/run",
+			},
+			{
+				Name:      "sys",
+				MountPath: "/sys",
+			},
+			{
+				Name:      "var-locks-brick",
+				MountPath: "/var/locks/openstack/os-brick",
+				ReadOnly:  false,
+			},
+			{
+				Name:      "etc-nvme",
+				MountPath: "/etc/nvme",
 			},
 		}
 		vm = append(vm, storageVolumeMounts...)

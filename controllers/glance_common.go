@@ -48,6 +48,7 @@ func GenerateConfigsGeneric(
 			Labels:        cmLabels,
 		},
 	}
+	// TODO: Scripts have no reason to be secrets, should move to configmap
 	if scripts {
 		cms = append(cms, util.Template{
 			Name:         fmt.Sprintf("%s-scripts", instance.GetName()),

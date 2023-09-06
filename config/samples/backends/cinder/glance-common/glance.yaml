@@ -1,0 +1,36 @@
+# Requires a running cinder volume service and the credentials to access it
+# should be in a secret called osp-glance-cinder-secret (in our case it's in
+# cinder-secret.yaml).
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:cinder
+        debug = true
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        rootwrap_config = /etc/glance/rootwrap.conf
+        description = Default cinder backend
+        cinder_catalog_info = volumev3::internalURL
+        cinder_use_multipath = true
+      customServiceConfigSecrets:
+        - osp-glance-cinder-secret
+      databaseInstance: openstack
+      glanceAPIInternal:
+        debug:
+          service: false
+        preserveJobs: false
+        replicas: 1
+      glanceAPIExternal:
+        debug:
+          service: false
+        preserveJobs: false
+        replicas: 1
+      storageClass: ""
+      storageRequest: 1G
