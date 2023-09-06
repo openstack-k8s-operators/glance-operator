@@ -56,7 +56,6 @@ func CreateGlanceAPIFromSample(sampleFileName string, name types.NamespacedName)
 // file has all the required field with proper types. But it does not
 // validate that using a sample file will result in a working deployment.
 var _ = Describe("Samples", func() {
-
 	When("glance_v1beta1_glance.yaml sample is applied", func() {
 		It("Glance is created", func() {
 			Eventually(func(g Gomega) {
@@ -72,7 +71,7 @@ var _ = Describe("Samples", func() {
 	})
 	When("glance_v1beta1_glance_quota.yaml sample is applied", func() {
 		It("Glance is created", func() {
-			name := CreateGlanceFromSample("glance_v1beta1_glance_quota.yaml", glanceTest.Instance)
+			name := CreateGlanceFromSample("quotas/glance_v1beta1_glance_quota.yaml", glanceTest.Instance)
 			GetGlance(name)
 		})
 	})
