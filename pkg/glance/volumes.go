@@ -68,7 +68,8 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
 						DefaultMode: &scriptsVolumeDefaultMode,
-						SecretName:  name + "-scripts",
+						// -scripts are inherited from top level CR
+						SecretName: ServiceName + "-scripts",
 					},
 				},
 			},

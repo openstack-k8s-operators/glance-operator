@@ -762,8 +762,8 @@ func (r *GlanceReconciler) generateServiceConfig(
 	for key, data := range instance.Spec.DefaultConfigOverwrite {
 		customData[key] = data
 	}
-
-	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, false)
+	// Generate both default 00-config.conf and -scripts
+	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, true)
 
 }
 
