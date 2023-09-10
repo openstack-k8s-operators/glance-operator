@@ -8,12 +8,12 @@ require (
 	github.com/onsi/gomega v1.27.10
 	github.com/openshift/api v3.9.0+incompatible
 	github.com/openstack-k8s-operators/glance-operator/api v0.1.2-0.20230904092048-ae90414f6e25
-	github.com/openstack-k8s-operators/infra-operator/apis v0.1.1-0.20230829092744-a3dd5edba332
+	github.com/openstack-k8s-operators/infra-operator/apis v0.1.1-0.20230905074428-c6aefc16dd01
 	github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230830083045-d73d07cca617
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20230824094610-976b18ca2875
 	github.com/openstack-k8s-operators/lib-common/modules/database v0.1.1-0.20230824094610-976b18ca2875
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.1.1-0.20230824094610-976b18ca2875
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.1.1-0.20230823144333-b9363c5be8d2
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.1.1-0.20230905141738-de0804f52e09
 	k8s.io/api v0.26.8
 	k8s.io/apimachinery v0.26.8
 	k8s.io/client-go v0.26.8
@@ -22,7 +22,7 @@ require (
 
 require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.1.2-0.20230904185016-c3f3b79f0e7f
+	github.com/openstack-k8s-operators/cinder-operator/api v0.1.2-0.20230908154401-1b1e4ed9fe97
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.1.2-0.20230824094610-976b18ca2875
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 )
