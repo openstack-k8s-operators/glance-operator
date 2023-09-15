@@ -83,6 +83,8 @@ github.com/flowstack/go-jsonschema v0.1.1/go.mod h1:yL7fNggx1o8rm9RlgXv7hTBWxdBM
 github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4HY=
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
+github.com/gibizer/lib-common/modules/common v0.0.0-20230915133809-cfc58e681399 h1:3AZ65Bhul6S2YgPDykJPas8ylyPmRA4cLRFEhfbK9oY=
+github.com/gibizer/lib-common/modules/common v0.0.0-20230915133809-cfc58e681399/go.mod h1:bG2JdbaO4bR4u8rtXZ7MgmMELuEseTkL2BPgk9JBYmY=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200222043503-6f7a984d4dc4/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
@@ -243,8 +245,6 @@ github.com/openstack-k8s-operators/infra-operator/apis v0.1.1-0.20230905074428-c
 github.com/openstack-k8s-operators/infra-operator/apis v0.1.1-0.20230905074428-c6aefc16dd01/go.mod h1:14D4OyzE7A5S3IkfXhU3B43mobM4QfdyQCCqLNLR4No=
 github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230830083045-d73d07cca617 h1:+Sz5kbF6QzXgKROXp3S+X22ZHdt68zvj1tBOu94OGKU=
 github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230830083045-d73d07cca617/go.mod h1:CmUe4tHh990eRUj6Ou8gD9JE0PQ38LGnUu3kaaP8K50=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20230824094610-976b18ca2875 h1:pj22n6PQy/XAmV5m6XaarMY6X1lvxAh16oVT5ZSVoNI=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20230824094610-976b18ca2875/go.mod h1:Mqg9hyHpWPda62750vqmk5TajxP3zbYPDP1rtSH7mg0=
 github.com/openstack-k8s-operators/lib-common/modules/database v0.1.1-0.20230824094610-976b18ca2875 h1:Hqzy5HbNS98ZyVxNmLnOgoPjWPMm0eOHx1lHIoN/5UM=
 github.com/openstack-k8s-operators/lib-common/modules/database v0.1.1-0.20230824094610-976b18ca2875/go.mod h1:Z5qA6F9H/4iYPjcqehlFJ1I68icwBKIVMB00ruNLKaM=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.1.1-0.20230824094610-976b18ca2875 h1:aUlwELsLYWQ3FL+/nRG/1uGVNW86c3MhtLrHNVDd57k=
