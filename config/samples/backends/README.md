@@ -21,6 +21,7 @@ Currently available samples are:
 - NFS
 - CEPH + NFS
 - Cinder backends
+- Swift
 
 The following Cinder backend examples are available:
 
@@ -68,6 +69,62 @@ Be aware that the Cinder examples will reboot your OpenShift cluster because
 they use `MachineConfig` manifests that require a reboot to be applied.  This
 means that the deployment takes longer and the cluster will stop responding for
 a bit.
+
+## Swift example
+
+Once `crc` is up and running you can build an OpenStack control plane with
+Swift as a backend:
+
+```
+$ cd install_yamls
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/swift > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
+In case RGW is used in place of swift, it's possible to reuse the same `Glance`
+configuration to interact with an `object-store` endpoint that points to an RGW
+instance.
+A variation of the procedure described above allows to deploy `Glance` with a
+`Swift` backend where behind the scenes `RGW` acts as `object-store` backend:
+
+```
+$ cd install_yamls
+$ make ceph TIMEOUT=90
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/swift > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
+
+Before start using `Glance` with `RGW` in place of `Swift`, a few additional
+resources should be created in the deployed control plane. Run the following
+commands on an already deployed OpenStack control plane to create users and
+roles as they will be used by the RGW instances to interact with keystone.
+
+```
+openstack service create --name swift --description "OpenStack Object Storage" object-store
+openstack user create --project service --password $SWIFT_PASSWORD swift
+openstack role create swiftoperator
+openstack role create ResellerAdmin
+openstack role add --user swift --project service member
+openstack role add --user swift --project service admin
+
+export RGW_ENDPOINT=192.168.122.3
+for i in public internal; do
+    openstack endpoint create --region regionOne object-store $i http://$RGW_ENDPOINT:8080/swift/v1/AUTH_%\(tenant_id\)s;
+done
+
+openstack role add --project admin --user admin swiftoperator
+```
+
+- Replace `$SWIFT_PASSWORD` with the password that should be assigned to the swift user.
+- Replace 192.168.122.3 with the IP address reserved as `$RGW_ENDPOINT`. If
+  network isolation is used make sure the reserved address can be reached by the
+  swift client that starts the connection.
+
+Additional details on the `Ceph RGW` configuration are described in the
+[openstack-k8s-operators/docs repo](https://github.com/openstack-k8s-operators/docs/blob/main/ceph.md#configure-swift-with-a-rgw-backend).
 
 ## Adding new samples
 
