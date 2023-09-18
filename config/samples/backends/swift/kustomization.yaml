@@ -1,0 +1,6 @@
+resources:
+  - glance-swift-secret.yaml
+  - ../base/openstack
+
+patches:
+  - glance.yaml
