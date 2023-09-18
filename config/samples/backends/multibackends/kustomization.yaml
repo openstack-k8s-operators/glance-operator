@@ -1,3 +1,5 @@
-## Append samples you want in your CSV to this file as resources ##
 resources:
-- multibackends.yaml
+ - ../base/openstack
+
+patches:
+  - multibackend.yaml
