@@ -108,3 +108,79 @@ or symlinked. In our case we instruct kolla to use the copying mechanism in
 
 To be able to use `nsenter` the pod needs to share the PID namespace with the
 host.
+
+## GlanceAPI deployment
+
+When a Glance CR is created, at last two `GlanceAPI` deployments are triggered:
+
+```
+...
+...
+spec:
+  serviceUser: glance
+  databaseInstance: openstack
+  databaseUser: glance
+  glanceAPIInternal:
+    ..
+  glanceAPIExternal:
+    ..
+  secret: osp-secret
+  storageClass: ""
+...
+...
+```
+
+Both `GlanceAPI` internal and external subCRs are generated, resulting in two
+different k8s `Deployment` objects.
+The Status and the definition of the GlanceAPI services within the control plane
+can be retrieved with the following commands:
+
+```
+$ oc get Glance
+
+NAME     STATUS   MESSAGE
+glance   True     Setup complete
+
+$ oc get GlanceAPI
+
+NAME              NETWORKATTACHMENTS   STATUS   MESSAGE
+glance-external                        True     Setup complete
+glance-internal                        True     Setup complete
+```
+
+and they can be inspected as regular k8s objects.
+Each GlanceAPI deployment resulting from the process above will deploy three
+containers within the same Pod:
+
+```
++-------------------------------------+
+| GlanceAPI:Pod                       |
+|                                     |
+|   +-----------------------+         |
+|   |   +------------+      |         |
+|   |   | glance-log | -------------------> It streams the glance-api logs
+|   |   +------------+      |         |     in /var/log/glance
+|   +-----------------------+         |
+|   +-----------------------+         |
+|   |   +--------------+    |         |
+|   |   | glance-httpd | ---|-------------> It intercepts requests on 9292 and
+|   |   +-+------------+    |         |     do the ProxyPass to the process
+|   |     |                 |         |     behind on 127.0.0.1:9293
+|   |   +-+----------+      |         |
+|   |   | glance-api | -----|-------------> Runs the glance-api process on 9293
+|   |   +------------+      |         |
+|   +-----+-----------------+         |
++---------|-----------------------------+
+          |
+          +-> GlanceAPI = (httpd + glance-api)
+```
+
+The reason about having an additional httpd layer relies on the fact that
+`TLS` is not natively supported in Glance.
+Even though Glance it's not supported in production as regular wsgi process
+run by httpd, this scenario sees httpd configured in a way that executes
+`ProxyPass` for the requests coming from the associated endpoint to the
+glance-api service.
+
+More details about this can be found in the
+[upstream documentation](https://docs.openstack.org/glance/latest/admin/apache-httpd.html).

@@ -262,3 +262,21 @@ func GetLogVolume() []corev1.Volume {
 		},
 	}
 }
+
+// GetHttpdVolumeMount - Returns the VolumeMounts used by the httpd sidecar
+func GetHttpdVolumeMount() []corev1.VolumeMount {
+	return []corev1.VolumeMount{
+		{
+			Name:      "config-data",
+			MountPath: "/etc/httpd/conf/httpd.conf",
+			SubPath:   "httpd.conf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/httpd/conf.d/10-glance.conf",
+			SubPath:   "10-glance-httpd.conf",
+			ReadOnly:  true,
+		},
+	}
+}
