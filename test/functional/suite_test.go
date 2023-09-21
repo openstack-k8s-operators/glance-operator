@@ -20,12 +20,13 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/google/uuid"
-	"k8s.io/apimachinery/pkg/types"
 	"net"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/go-logr/logr"
 
@@ -43,7 +44,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
-	routev1 "github.com/openshift/api/route/v1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/controllers"
 	rabbitmqv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
@@ -98,8 +98,6 @@ var _ = BeforeSuite(func() {
 	mariadbCRDs, err := test.GetCRDDirFromModule(
 		"github.com/openstack-k8s-operators/mariadb-operator/api", gomod, "bases")
 	Expect(err).ShouldNot(HaveOccurred())
-	routev1CRDs, err := test.GetOpenShiftCRDDir("route/v1", gomod)
-	Expect(err).ShouldNot(HaveOccurred())
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -107,7 +105,6 @@ var _ = BeforeSuite(func() {
 			filepath.Join("..", "..", "config", "crd", "bases"),
 			mariadbCRDs,
 			keystoneCRDs,
-			routev1CRDs,
 		},
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
@@ -136,8 +133,6 @@ var _ = BeforeSuite(func() {
 	err = mariadbv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = keystonev1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-	err = routev1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = networkv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())

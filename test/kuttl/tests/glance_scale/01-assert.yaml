@@ -9,7 +9,6 @@
 # - glance-internal-api Pod
 # - glance-internal service
 # - glance-public service
-# - glance-public route
 # - glance internal and public endpoints
 
 apiVersion: glance.openstack.org/v1beta1
@@ -168,7 +167,7 @@ kind: Service
 metadata:
   name: glance-internal
   labels:
-    internal: "true"
+    endpoint: internal
     service: glance-internal
 spec:
   ports:
@@ -184,7 +183,7 @@ kind: Service
 metadata:
   name: glance-public
   labels:
-    public: "true"
+    endpoint: public
     service: glance-external
 spec:
   ports:
@@ -195,20 +194,6 @@ spec:
   selector:
     service: glance-external
 ---
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  labels:
-    public: "true"
-    service: glance-external
-  name: glance-public
-spec:
-  port:
-    targetPort: glance-public
-  to:
-    kind: Service
-    name: glance-public
----
 # the actual addresses of the apiEndpoints are platform specific, so we can't rely on
 # kuttl asserts to check them. This short script gathers the addresses and checks that
 # the three endpoints are defined and their addresses follow the default pattern
@@ -218,7 +203,7 @@ namespaced: true
 commands:
   - script: |
       template='{{.status.apiEndpoint.internal}}{{":"}}{{.status.apiEndpoint.public}}{{"\n"}}'
-      regex="http:\/\/glance-internal.$NAMESPACE.*:http:\/\/glance-public-$NAMESPACE\.apps.*"
+      regex="http:\/\/glance-internal.$NAMESPACE.*:http:\/\/glance-public.$NAMESPACE.*"
       apiEndpoints=$(oc get -n $NAMESPACE Glance glance -o go-template="$template")
       matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")
       if [ -z "$matches" ]; then
