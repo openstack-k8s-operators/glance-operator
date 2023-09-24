@@ -224,8 +224,8 @@ github.com/onsi/ginkgo/v2 v2.12.0 h1:UIVDowFPwpg6yMUpPjGkYvf06K3RAiJXUhCxEwQVHRI
 github.com/onsi/gomega v1.27.10 h1:naR28SdDFlqrG6kScpT8VWpu1xWY5nJRCF3XaYyBjhI=
 github.com/openshift/api v0.0.0-20230414143018-3367bc7e6ac7 h1:rncLxJBpFGqBztyxCMwNRnMjhhIDOWHJowi6q8G6koI=
 github.com/openshift/api v0.0.0-20230414143018-3367bc7e6ac7/go.mod h1:ctXNyWanKEjGj8sss1KjjHQ3ENKFm33FFnS5BKaIPh4=
-github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230914163026-da9aa9de960a h1:MFYwi2Xk9r3OMPToCSbvqYVNrm7P+aFzGDN0eVNpgu8=
-github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230914163026-da9aa9de960a/go.mod h1:nxrbUOIGMJ1h2pNlawhURdt/XJ95dW2wZGedmOVo2aw=
+github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230920085319-92ae0260bbf3 h1:6VCz/ZBTJEQJTx4+z8UxLv3WITa4Bgx5CSP237wJ5xM=
+github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230920085319-92ae0260bbf3/go.mod h1:ta6w/29i4WuWkQp6I4cOLwMGQ5/vJI0y8Em7u+M34jo=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20230919113507-d74c2f31d216 h1:arYbQA6bLyXJkHm+6M6gPc4YpWMFjs5qkG16Yii4UDo=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20230919113507-d74c2f31d216/go.mod h1:Ge7Yf6AUmjEvJK9AIW2bT5udLzBIcK59b1QxqymncaQ=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.1.1-0.20230919113507-d74c2f31d216 h1:h76faqi4WAXBs3D2B0GLUdlCjS0dh78wRL0d5RZUwhk=

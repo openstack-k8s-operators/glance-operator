@@ -8,12 +8,12 @@ require (
 	github.com/onsi/gomega v1.27.10
 	github.com/openshift/api v3.9.0+incompatible // indirect
 	github.com/openstack-k8s-operators/glance-operator/api v0.1.2-0.20230904092048-ae90414f6e25
-	github.com/openstack-k8s-operators/infra-operator/apis v0.1.1-0.20230914145253-116f307c7875
-	github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230914163026-da9aa9de960a
+	github.com/openstack-k8s-operators/infra-operator/apis v0.1.1-0.20230920125017-2c76cd203b44
+	github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230920085319-92ae0260bbf3
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20230919113507-d74c2f31d216
 	github.com/openstack-k8s-operators/lib-common/modules/database v0.1.1-0.20230919113507-d74c2f31d216
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.1.1-0.20230919113507-d74c2f31d216
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.1.1-0.20230913081601-9e4fc8aadad5
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.1.1-0.20230918111825-8999b3b2dc3c
 	k8s.io/api v0.26.9
 	k8s.io/apimachinery v0.26.9
 	k8s.io/client-go v0.26.9
@@ -22,7 +22,7 @@ require (
 
 require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.1.2-0.20230908154401-1b1e4ed9fe97
+	github.com/openstack-k8s-operators/cinder-operator/api v0.1.2-0.20230921082510-1b9a7de3d088
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.1.2-0.20230919113507-d74c2f31d216
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 )
