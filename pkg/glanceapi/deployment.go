@@ -31,8 +31,10 @@ import (
 )
 
 const (
-	// ServiceCommand -
-	ServiceCommand = "/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start"
+	// GlanceAPIServiceCommand -
+	GlanceAPIServiceCommand = "/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start"
+	// GlanceAPIHttpdCommand
+	GlanceAPIHttpdCommand = "/usr/sbin/httpd -DFOREGROUND"
 )
 
 // Deployment func
@@ -80,7 +82,7 @@ func Deployment(
 			},
 		}
 	} else {
-		args = append(args, ServiceCommand)
+		args = append(args, GlanceAPIServiceCommand)
 		//
 		// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 		//
@@ -132,6 +134,7 @@ func Deployment(
 			ReadOnly:  true,
 		},
 	}
+
 	// Append LogVolume to the apiVolumes: this will be used to stream
 	// logging
 	apiVolumeMounts = append(apiVolumeMounts, glance.GetLogVolumeMount()...)
@@ -160,7 +163,7 @@ func Deployment(
 					HostPID: privileged,
 					Containers: []corev1.Container{
 						{
-							Name: instance.Name + "-log",
+							Name: glance.ServiceName + "-log",
 							Command: []string{
 								"/bin/bash",
 							},
@@ -171,6 +174,23 @@ func Deployment(
 							},
 							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts:   glance.GetLogVolumeMount(),
+							Resources:      instance.Spec.Resources,
+							StartupProbe:   startupProbe,
+							ReadinessProbe: readinessProbe,
+							LivenessProbe:  livenessProbe,
+						},
+						{
+							Name: glance.ServiceName + "-httpd",
+							Command: []string{
+								"/bin/bash",
+							},
+							Args:  []string{"-c", GlanceAPIHttpdCommand},
+							Image: instance.Spec.ContainerImage,
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser: &runAsUser,
+							},
+							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts:   glance.GetHttpdVolumeMount(),
 							Resources:      instance.Spec.Resources,
 							StartupProbe:   startupProbe,
 							ReadinessProbe: readinessProbe,

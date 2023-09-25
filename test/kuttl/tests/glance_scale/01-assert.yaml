@@ -97,7 +97,14 @@ spec:
         command:
         - /bin/bash
         image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
-        name: glance-external-log
+        name: glance-log
+      - args:
+        - -c
+        - /usr/sbin/httpd -DFOREGROUND
+        command:
+        - /bin/bash
+        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
+        name: glance-httpd
       - args:
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
@@ -132,7 +139,14 @@ spec:
         command:
         - /bin/bash
         image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
-        name: glance-internal-log
+        name: glance-log
+      - args:
+        - -c
+        - /usr/sbin/httpd -DFOREGROUND
+        command:
+        - /bin/bash
+        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
+        name: glance-httpd
       - args:
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
