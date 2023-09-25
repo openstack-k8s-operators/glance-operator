@@ -190,9 +190,9 @@ var _ = Describe("Glance controller", func() {
 			)
 			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
-			keystoneAPI := th.CreateKeystoneAPI(glanceTest.Instance.Namespace)
-			DeferCleanup(th.DeleteKeystoneAPI, keystoneAPI)
-			th.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 		})
 		It("Glance DB is Ready and db-sync reports ReadyCondition", func() {
 			th.ExpectCondition(
@@ -239,11 +239,11 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
-			DeferCleanup(th.DeleteKeystoneAPI, th.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
 			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
-			th.SimulateKeystoneServiceReady(glanceTest.Instance)
-			th.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
+			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
 		})
 		It("Creates glanceAPI", func() {
 			GlanceAPIExists(glanceTest.GlanceInternal)
@@ -268,11 +268,11 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
-			DeferCleanup(th.DeleteKeystoneAPI, th.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
 			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
-			th.SimulateKeystoneServiceReady(glanceTest.Instance)
-			th.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
+			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
 		})
 		It("removes the finalizers from the Glance DB", func() {
 			mDB := th.GetMariaDBDatabase(glanceTest.Instance)
@@ -320,14 +320,14 @@ var _ = Describe("Glance controller", func() {
 			)
 			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
-			keystoneAPI := th.CreateKeystoneAPI(glanceTest.Instance.Namespace)
-			DeferCleanup(th.DeleteKeystoneAPI, keystoneAPI)
-			keystoneAPIName := th.GetKeystoneAPI(keystoneAPI)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystoneAPIName := keystone.GetKeystoneAPI(keystoneAPI)
 			keystoneAPIName.Status.APIEndpoints["internal"] = "http://keystone-internal-openstack.testing"
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Status().Update(ctx, keystoneAPIName.DeepCopy())).Should(Succeed())
 			}, timeout, interval).Should(Succeed())
-			th.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 		})
 		It("Check the resulting endpoints of the generated sub-CRs", func() {
 			th.SimulateDeploymentReadyWithPods(
