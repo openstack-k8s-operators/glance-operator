@@ -248,19 +248,20 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 		}
 	}
 
-	/* TODO: if the CR is removed (Glance undeployed/cleaned up), we usually
-	* clean the resources created in the OpenStackControlPlane (e.g., we remove
-	* the database from mariadb, delete the service and the endpoints in
-	* keystone). We should delete the limits created for the Glance service,
-	* and do not leave leftovers in the controlplane.
-	 */
+	// If the CR is removed (Glance undeployed/cleaned up), we usually
+	// clean the resources created in the OpenStackControlPlane (e.g.,
+	// we remove the database from mariadb, delete the service and the
+	// endpoints in keystone). We should delete the limits created for
+	// the Glance service, and do not leave leftovers in the ctlplane.
 
-	if instance.IsQuotaEnabled() {
+	// do not attempt to remove limits if keystoneAPI are not available
+	_, err = keystonev1.GetKeystoneAPI(ctx, helper, instance.Namespace, map[string]string{})
+
+	if err == nil && instance.IsQuotaEnabled() {
 		err = r.registeredLimitsDelete(ctx, helper, instance, instance.GetQuotaLimits())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-
 	}
 
 	// Service is deleted so remove the finalizer.
