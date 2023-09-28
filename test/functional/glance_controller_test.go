@@ -125,8 +125,8 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			DeferCleanup(
-				th.DeleteDBService,
-				th.CreateDBService(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
 					glanceName.Namespace,
 					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
@@ -136,7 +136,7 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 		It("Should set DBReady Condition and set DatabaseHostname Status when DB is Created", func() {
-			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			Glance := GetGlance(glanceTest.Instance)
 			Expect(Glance.Status.DatabaseHostname).To(Equal("hostname-for-openstack"))
@@ -155,7 +155,7 @@ var _ = Describe("Glance controller", func() {
 		})
 
 		It("Should fail if db-sync job fails when DB is Created", func() {
-			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobFailure(glanceTest.GlanceDBSync)
 			th.ExpectCondition(
 				glanceTest.Instance,
@@ -179,8 +179,8 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			DeferCleanup(
-				th.DeleteDBService,
-				th.CreateDBService(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
 					glanceName.Namespace,
 					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
@@ -188,7 +188,7 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
-			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
@@ -230,8 +230,8 @@ var _ = Describe("Glance controller", func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			// Get Default GlanceAPI (internal/external)
 			DeferCleanup(
-				th.DeleteDBService,
-				th.CreateDBService(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
 					GetGlance(glanceName).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
@@ -240,7 +240,7 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
-			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
@@ -259,8 +259,8 @@ var _ = Describe("Glance controller", func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			// Get Default GlanceAPI (internal/external)
 			DeferCleanup(
-				th.DeleteDBService,
-				th.CreateDBService(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
 					GetGlance(glanceName).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
@@ -269,13 +269,13 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
-			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
 		})
 		It("removes the finalizers from the Glance DB", func() {
-			mDB := th.GetMariaDBDatabase(glanceTest.Instance)
+			mDB := mariadb.GetMariaDBDatabase(glanceTest.Instance)
 			Expect(mDB.Finalizers).To(ContainElement("Glance"))
 			th.DeleteInstance(GetGlance(glanceTest.Instance))
 
@@ -309,8 +309,8 @@ var _ = Describe("Glance controller", func() {
 			}
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
 			DeferCleanup(
-				th.DeleteDBService,
-				th.CreateDBService(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
 					GetGlance(glanceName).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
@@ -318,7 +318,7 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
-			th.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
