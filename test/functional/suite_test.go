@@ -34,6 +34,7 @@ import (
 	. "github.com/onsi/gomega"
 	keystone_test "github.com/openstack-k8s-operators/keystone-operator/api/test/helpers"
 	common_test "github.com/openstack-k8s-operators/lib-common/modules/test/helpers"
+	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -70,6 +71,7 @@ var (
 	testEnv    *envtest.Environment
 	th         *common_test.TestHelper
 	keystone   *keystone_test.TestHelper
+	mariadb    *mariadb_test.TestHelper
 	ctx        context.Context
 	cancel     context.CancelFunc
 	logger     logr.Logger
@@ -150,7 +152,9 @@ var _ = BeforeSuite(func() {
 	th = common_test.NewTestHelper(ctx, k8sClient, timeout, interval, logger)
 	Expect(th).NotTo(BeNil())
 	keystone = keystone_test.NewTestHelper(ctx, k8sClient, timeout, interval, logger)
-	Expect(th).NotTo(BeNil())
+	Expect(keystone).NotTo(BeNil())
+	mariadb = mariadb_test.NewTestHelper(ctx, k8sClient, timeout, interval, logger)
+	Expect(mariadb).NotTo(BeNil())
 
 	// Start the controller-manager in a goroutine
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
