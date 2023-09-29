@@ -62,7 +62,7 @@ var _ = Describe("Samples", func() {
 			Eventually(func(g Gomega) {
 				name := CreateGlanceFromSample("glance_v1beta1_glance.yaml", glanceTest.Instance)
 				glance := GetGlance(name)
-				g.Expect(glance.Status.Conditions).To(HaveLen(11))
+				g.Expect(glance.Status.Conditions).To(HaveLen(12))
 				g.Expect(glance.Status.DatabaseHostname).To(Equal(""))
 				g.Expect(glance.Status.APIEndpoints).To(BeEmpty())
 				g.Expect(glance.Status.GlanceAPIExternalReadyCount).To(Equal(int32(0)))
