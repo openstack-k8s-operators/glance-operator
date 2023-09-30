@@ -104,12 +104,9 @@ type GlanceSpec struct {
 	StorageRequest string `json:"storageRequest"`
 
 	// +kubebuilder:validation:Required
-	// GlanceAPIInternal - Spec definition for the internal and admin API service of this Glance deployment
-	GlanceAPIInternal GlanceAPITemplate `json:"glanceAPIInternal"`
-
-	// +kubebuilder:validation:Required
-	// GlanceAPIExternal - Spec definition for the external API service of this Glance deployment
-	GlanceAPIExternal GlanceAPITemplate `json:"glanceAPIExternal"`
+	// GlanceAPIInstance - Spec definition for a GlanceAPI instance that can be
+	// composed by Internal and External APIs
+	GlanceAPIs GlanceAPIInstance `json:"glanceapis"`
 
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials
@@ -125,6 +122,18 @@ type GlanceSpec struct {
 	// +kubebuilder:default=""
 	ImageCacheSize string `json:"imageCacheSize"`
 }
+
+
+// GlanceAPIInstance - Defines two GlanceAPI instances related to a specific deployment
+type GlanceAPIInstance struct {
+	// +kubebuilder:validation:Required
+	// GlanceAPIInternal - Spec definition for the internal and admin API service of this Glance deployment
+	GlanceAPIInternal GlanceAPITemplate `json:"glanceAPIInternal"`
+	// +kubebuilder:validation:Required
+	// GlanceAPIExternal - Spec definition for the external API service of this Glance deployment
+	GlanceAPIExternal GlanceAPITemplate `json:"glanceAPIExternal"`
+}
+
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret
 type PasswordSelector struct {

@@ -63,12 +63,12 @@ func (spec *GlanceSpec) Default() {
 		spec.ContainerImage = glanceDefaults.ContainerImageURL
 	}
 
-	if spec.GlanceAPIExternal.ContainerImage == "" {
-		spec.GlanceAPIExternal.ContainerImage = glanceDefaults.ContainerImageURL
+	if spec.GlanceAPIs.GlanceAPIExternal.ContainerImage == "" {
+		spec.GlanceAPIs.GlanceAPIExternal.ContainerImage = glanceDefaults.ContainerImageURL
 	}
 
-	if spec.GlanceAPIInternal.ContainerImage == "" {
-		spec.GlanceAPIInternal.ContainerImage = glanceDefaults.ContainerImageURL
+	if spec.GlanceAPIs.GlanceAPIInternal.ContainerImage == "" {
+		spec.GlanceAPIs.GlanceAPIInternal.ContainerImage = glanceDefaults.ContainerImageURL
 	}
 }
 

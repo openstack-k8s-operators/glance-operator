@@ -531,7 +531,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	// networks to attach to
-	for _, netAtt := range instance.Spec.GlanceAPIInternal.NetworkAttachments {
+	for _, netAtt := range instance.Spec.GlanceAPIs.GlanceAPIInternal.NetworkAttachments {
 		_, err := nad.GetNADWithName(ctx, helper, netAtt, instance.Namespace)
 		if err != nil {
 			if k8s_errors.IsNotFound(err) {
@@ -553,10 +553,10 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		}
 	}
 
-	serviceAnnotations, err := nad.CreateNetworksAnnotation(instance.Namespace, instance.Spec.GlanceAPIInternal.NetworkAttachments)
+	serviceAnnotations, err := nad.CreateNetworksAnnotation(instance.Namespace, instance.Spec.GlanceAPIs.GlanceAPIInternal.NetworkAttachments)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed create network annotation from %s: %w",
-			instance.Spec.GlanceAPIInternal.NetworkAttachments, err)
+			instance.Spec.GlanceAPIs.GlanceAPIInternal.NetworkAttachments, err)
 	}
 
 	// Handle service init
@@ -584,12 +584,21 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	}
 
 	//
-	// normal reconcile tasks
+	// Reconcile the GlanceAPI deployment
 	//
+
+	err = r.apiDeployment(ctx, instance, instance.Spec.GlanceAPIs, helper)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1.Glance, current glancev1.GlanceAPIInstance, helper *helper.Helper) error {
 
 	// Regardless of what the user may have set in GlanceAPIInternal.EndpointType,
 	// we force "internal" here by passing glancev1.APIInternal for the apiType arg
-	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIInternal, glancev1.APIInternal, helper)
+	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, current.GlanceAPIInternal, glancev1.APIInternal, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -597,7 +606,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 			condition.SeverityWarning,
 			glancev1.GlanceAPIReadyErrorMessage,
 			err.Error()))
-		return ctrl.Result{}, err
+		//return ctrl.Result{}, err
+		return err
 	}
 	if op != controllerutil.OperationResultNone {
 		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
@@ -620,7 +630,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	// Regardless of what the user may have set in GlanceAPIExternal.EndpointType,
 	// we force "external" here by passing glancev1.APIExternal for the apiType arg
-	glanceAPI, op, err = r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIExternal, glancev1.APIExternal, helper)
+	glanceAPI, op, err = r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIs.GlanceAPIExternal, glancev1.APIExternal, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -628,7 +638,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 			condition.SeverityWarning,
 			glancev1.GlanceAPIReadyErrorMessage,
 			err.Error()))
-		return ctrl.Result{}, err
+		//return ctrl.Result{}, err
+		return err
 	}
 	if op != controllerutil.OperationResultNone {
 		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
@@ -664,7 +675,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// create CronJob - end
 
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
-	return ctrl.Result{}, nil
+	//return ctrl.Result{}, nil
+	return nil
 }
 
 func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, instance *glancev1.Glance, apiTemplate glancev1.GlanceAPITemplate, apiType string, helper *helper.Helper) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {

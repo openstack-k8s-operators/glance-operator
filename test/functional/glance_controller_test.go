@@ -108,8 +108,8 @@ var _ = Describe("Glance controller", func() {
 		It("defaults the containerImages", func() {
 			glance := GetGlance(glanceName)
 			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
-			Expect(glance.Spec.GlanceAPIInternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
-			Expect(glance.Spec.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			Expect(glance.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			Expect(glance.Spec.GlanceAPIs.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 		})
 		It("should not have a pvc yet", func() {
 			AssertPVCDoesNotExist(glanceTest.Instance)
@@ -214,8 +214,8 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("has the expected container image defaults", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)
-			Expect(glanceDefault.Spec.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
-			Expect(glanceDefault.Spec.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
 		})
 	})
 	When("All the Resources are ready", func() {
@@ -341,8 +341,8 @@ var _ = Describe("Glance controller", func() {
 			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 			externalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 			// Check GlanceAPI NADs
-			Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIInternal.NetworkAttachments))
-			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIExternal.NetworkAttachments))
+			Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIs.GlanceAPIInternal.NetworkAttachments))
+			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIs.GlanceAPIExternal.NetworkAttachments))
 		})
 	})
 })
