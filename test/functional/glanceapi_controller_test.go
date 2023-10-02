@@ -253,7 +253,8 @@ var _ = Describe("Glanceapi controller", func() {
 	When("A GlanceAPI is created with service override", func() {
 		BeforeEach(func() {
 			spec := GetDefaultGlanceAPISpec(GlanceAPITypeInternal)
-			serviceOverride := map[string]interface{}{
+			serviceOverride := map[string]interface{}{}
+			serviceOverride["internal"] = map[string]interface{}{
 				"endpoint": "internal",
 				"metadata": map[string]map[string]string{
 					"annotations": {
@@ -321,7 +322,8 @@ var _ = Describe("Glanceapi controller", func() {
 	When("A GlanceAPI is created with service override endpointURL set", func() {
 		BeforeEach(func() {
 			spec := GetDefaultGlanceAPISpec(GlanceAPITypeExternal)
-			serviceOverride := map[string]interface{}{
+			serviceOverride := map[string]interface{}{}
+			serviceOverride["public"] = map[string]interface{}{
 				"endpoint":    "public",
 				"endpointURL": "http://glance-openstack.apps-crc.testing",
 			}

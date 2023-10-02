@@ -106,9 +106,9 @@ type GlanceSpec struct {
 	StorageRequest string `json:"storageRequest"`
 
 	// +kubebuilder:validation:Required
-	// GlanceAPIInstance - Spec definition for a GlanceAPI instance that can be
-	// composed by Internal and External APIs
-	GlanceAPIs GlanceAPIInstance `json:"glanceapis"`
+	// GlanceAPI - Spec definition for the API service of this Glance deployment
+	// +kubebuilder:default={}
+	GlanceAPI GlanceAPITemplate `json:"glanceAPI"`
 
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials
@@ -123,16 +123,6 @@ type GlanceSpec struct {
 	// Local storage request, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
 	// +kubebuilder:default=""
 	ImageCacheSize string `json:"imageCacheSize"`
-}
-
-// GlanceAPIInstance - Defines two GlanceAPI instances related to a specific deployment
-type GlanceAPIInstance struct {
-	// +kubebuilder:validation:Required
-	// GlanceAPIInternal - Spec definition for the internal and admin API service of this Glance deployment
-	GlanceAPI GlanceAPITemplate `json:"glanceAPI"`
-	// +kubebuilder:validation:Enum=split;single
-	// +kubebuilder:default:=split
-	Type string `json:"type,omitempty"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret

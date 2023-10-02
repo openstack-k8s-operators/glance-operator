@@ -59,17 +59,13 @@ func (r *Glance) Default() {
 
 // Default - set defaults for this Glance spec
 func (spec *GlanceSpec) Default() {
-	if spec.ContainerImage == "" {
+	if len(spec.ContainerImage) == 0 {
 		spec.ContainerImage = glanceDefaults.ContainerImageURL
 	}
-
-	if spec.GlanceAPIs.GlanceAPI.ContainerImage == "" {
-		spec.GlanceAPIs.GlanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
+	// Check the sub-cr ContainerImage parameter
+	if len(spec.GlanceAPI.ContainerImage) == 0 {
+		spec.GlanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
 	}
-
-	/*if spec.GlanceAPIs.GlanceAPIInternal.ContainerImage == "" {
-		spec.GlanceAPIs.GlanceAPIInternal.ContainerImage = glanceDefaults.ContainerImageURL
-	}*/
 }
 
 //+kubebuilder:webhook:path=/validate-glance-openstack-org-v1beta1-glance,mutating=false,failurePolicy=fail,sideEffects=None,groups=glance.openstack.org,resources=glances,verbs=create;update,versions=v1beta1,name=vglance.kb.io,admissionReviewVersions=v1

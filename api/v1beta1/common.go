@@ -102,12 +102,17 @@ type GlanceAPITemplate struct {
 
 	// StorageRequest
 	StorageRequest string `json:"storageRequest"`
+
+	// +kubebuilder:validation:Enum=split;single
+	// +kubebuilder:default:=split
+	Type string `json:"type,omitempty"`
 }
 
 // APIOverrideSpec to override the generated manifest of several child resources.
 type APIOverrideSpec struct {
 	// Override configuration for the Service created to serve traffic to the cluster.
-	Service *service.RoutedOverrideSpec `json:"service,omitempty"`
+	// The key must be the endpoint type (public, internal)
+	Service map[service.Endpoint]service.RoutedOverrideSpec `json:"service,omitempty"`
 }
 
 // SetupDefaults - initializes any CRD field defaults based on environment variables (the defaulting mechanism itself is implemented via webhooks)

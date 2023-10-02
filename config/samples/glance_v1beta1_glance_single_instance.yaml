@@ -2,11 +2,10 @@ apiVersion: glance.openstack.org/v1beta1
 kind: Glance
 metadata:
   name: glance
+  namespace: openstack
 spec:
   serviceUser: glance
-  customServiceConfig: |
-    [DEFAULT]
-    debug = true
+  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   databaseInstance: openstack
   databaseUser: glance
   glanceAPI:
@@ -15,6 +14,7 @@ spec:
       service: false
     preserveJobs: false
     replicas: 1
+  type: "single"
   secret: osp-secret
-  storageClass: ""
+  storageClass: local-storage
   storageRequest: 10G

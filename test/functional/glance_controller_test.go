@@ -108,7 +108,7 @@ var _ = Describe("Glance controller", func() {
 		It("defaults the containerImages", func() {
 			glance := GetGlance(glanceName)
 			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
-			Expect(glance.Spec.GlanceAPIs.GlanceAPI.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			Expect(glance.Spec.GlanceAPI.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 			//Expect(glance.Spec.GlanceAPIs.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 		})
 		It("should not have a pvc yet", func() {
@@ -213,7 +213,7 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("has the expected container image defaults", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)
-			Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPI.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			Expect(glanceDefault.Spec.GlanceAPI.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
 			//Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
 		})
 	})
@@ -334,7 +334,7 @@ var _ = Describe("Glance controller", func() {
 			glance := GetGlance(glanceTest.Instance)
 			externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
 			// Check GlanceAPI NADs
-			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIs.GlanceAPI.NetworkAttachments))
+			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPI.NetworkAttachments))
 		})
 	})
 })
