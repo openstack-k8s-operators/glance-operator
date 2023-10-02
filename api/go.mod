@@ -3,11 +3,11 @@ module github.com/openstack-k8s-operators/glance-operator/api
 go 1.19
 
 require (
-	github.com/gophercloud/gophercloud v1.6.0
-	github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20230927105404-11cb6a68c984
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20230927082538-4f614f333d17
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.1.1-0.20230927082538-4f614f333d17
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.1.1-0.20230927082538-4f614f333d17
+	github.com/gophercloud/gophercloud v1.7.0
+	github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20231001084639-804f0f7cc39a
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20231001084618-12369665b166
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.1.1-0.20231001084618-12369665b166
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.1.1-0.20231001084618-12369665b166
 	k8s.io/api v0.26.9
 	k8s.io/apimachinery v0.26.9
 	sigs.k8s.io/controller-runtime v0.14.6
