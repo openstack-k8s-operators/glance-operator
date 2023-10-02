@@ -63,13 +63,13 @@ func (spec *GlanceSpec) Default() {
 		spec.ContainerImage = glanceDefaults.ContainerImageURL
 	}
 
-	if spec.GlanceAPIs.GlanceAPIExternal.ContainerImage == "" {
-		spec.GlanceAPIs.GlanceAPIExternal.ContainerImage = glanceDefaults.ContainerImageURL
+	if spec.GlanceAPIs.GlanceAPI.ContainerImage == "" {
+		spec.GlanceAPIs.GlanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
 	}
 
-	if spec.GlanceAPIs.GlanceAPIInternal.ContainerImage == "" {
+	/*if spec.GlanceAPIs.GlanceAPIInternal.ContainerImage == "" {
 		spec.GlanceAPIs.GlanceAPIInternal.ContainerImage = glanceDefaults.ContainerImageURL
-	}
+	}*/
 }
 
 //+kubebuilder:webhook:path=/validate-glance-openstack-org-v1beta1-glance,mutating=false,failurePolicy=fail,sideEffects=None,groups=glance.openstack.org,resources=glances,verbs=create;update,versions=v1beta1,name=vglance.kb.io,admissionReviewVersions=v1

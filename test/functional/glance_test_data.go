@@ -46,6 +46,7 @@ type GlanceTestData struct {
 	GlanceSA                    types.NamespacedName
 	GlanceDBSync                types.NamespacedName
 	GlancePublicRoute           types.NamespacedName
+	GlancePublicSvc             types.NamespacedName
 	GlanceInternalRoute         types.NamespacedName
 	GlanceService               types.NamespacedName
 	GlanceConfigMapData         types.NamespacedName
@@ -119,6 +120,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Name:      fmt.Sprintf("%s-internal", glanceName.Name),
 		},
 		GlancePublicRoute: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-external", glanceName.Name),
+		},
+		GlancePublicSvc: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-public", glanceName.Name),
 		},

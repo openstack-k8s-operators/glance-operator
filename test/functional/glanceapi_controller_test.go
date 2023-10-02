@@ -196,7 +196,7 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 
 		It("exposes the service", func() {
-			apiInstance := th.GetService(glanceTest.GlancePublicRoute)
+			apiInstance := th.GetService(glanceTest.GlancePublicSvc)
 			Expect(apiInstance.Labels["service"]).To(Equal("glance-external"))
 		})
 

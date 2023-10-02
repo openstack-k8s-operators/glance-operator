@@ -531,7 +531,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	// networks to attach to
-	for _, netAtt := range instance.Spec.GlanceAPIs.GlanceAPIInternal.NetworkAttachments {
+	for _, netAtt := range instance.Spec.GlanceAPIs.GlanceAPI.NetworkAttachments {
 		_, err := nad.GetNADWithName(ctx, helper, netAtt, instance.Namespace)
 		if err != nil {
 			if k8s_errors.IsNotFound(err) {
@@ -553,10 +553,10 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		}
 	}
 
-	serviceAnnotations, err := nad.CreateNetworksAnnotation(instance.Namespace, instance.Spec.GlanceAPIs.GlanceAPIInternal.NetworkAttachments)
+	serviceAnnotations, err := nad.CreateNetworksAnnotation(instance.Namespace, instance.Spec.GlanceAPIs.GlanceAPI.NetworkAttachments)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed create network annotation from %s: %w",
-			instance.Spec.GlanceAPIs.GlanceAPIInternal.NetworkAttachments, err)
+			instance.Spec.GlanceAPIs.GlanceAPI.NetworkAttachments, err)
 	}
 
 	// Handle service init
@@ -596,41 +596,9 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1.Glance, current glancev1.GlanceAPIInstance, helper *helper.Helper) error {
 
-	// Regardless of what the user may have set in GlanceAPIInternal.EndpointType,
-	// we force "internal" here by passing glancev1.APIInternal for the apiType arg
-	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, current.GlanceAPIInternal, glancev1.APIInternal, helper)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			glancev1.GlanceAPIReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			glancev1.GlanceAPIReadyErrorMessage,
-			err.Error()))
-		//return ctrl.Result{}, err
-		return err
-	}
-	if op != controllerutil.OperationResultNone {
-		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
-	}
-
-	// It is possible that an earlier call to update the status has also set
-	// APIEndpoints to nil (if the APIEndpoints map was not nil but was empty,
-	// saving the status unfortunately re-initializes it as nil)
-	if instance.Status.APIEndpoints == nil {
-		instance.Status.APIEndpoints = map[string]string{}
-	}
-
-	// Mirror internal GlanceAPI status' APIEndpoints to this parent CR
-	if glanceAPI.Status.APIEndpoints != nil {
-		instance.Status.APIEndpoints = glanceAPI.Status.APIEndpoints
-	}
-
-	// Get internal GlanceAPI's condition status for comparison with external below
-	internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
-
 	// Regardless of what the user may have set in GlanceAPIExternal.EndpointType,
 	// we force "external" here by passing glancev1.APIExternal for the apiType arg
-	glanceAPI, op, err = r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIs.GlanceAPIExternal, glancev1.APIExternal, helper)
+	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIs.GlanceAPI, glancev1.APIExternal, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -638,7 +606,6 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 			condition.SeverityWarning,
 			glancev1.GlanceAPIReadyErrorMessage,
 			err.Error()))
-		//return ctrl.Result{}, err
 		return err
 	}
 	if op != controllerutil.OperationResultNone {
@@ -651,31 +618,47 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 	}
 
 	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition
-	externalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
-	apiCondition := condition.GetHigherPrioCondition(internalAPICondition, externalAPICondition).DeepCopy()
+	apiCondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
+
+	if current.Type == "split" {
+		// Regardless of what the user may have set in GlanceAPIInternal.EndpointType,
+		// we force "internal" here by passing glancev1.APIInternal for the apiType arg
+		glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, current.GlanceAPI, glancev1.APIInternal, helper)
+		if err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				glancev1.GlanceAPIReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				glancev1.GlanceAPIReadyErrorMessage,
+				err.Error()))
+			return err
+		}
+		if op != controllerutil.OperationResultNone {
+			r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
+		}
+
+		// It is possible that an earlier call to update the status has also set
+		// APIEndpoints to nil (if the APIEndpoints map was not nil but was empty,
+		// saving the status unfortunately re-initializes it as nil)
+		if instance.Status.APIEndpoints == nil {
+			instance.Status.APIEndpoints = map[string]string{}
+		}
+
+		// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
+		if glanceAPI.Status.APIEndpoints != nil {
+			instance.Status.APIEndpoints = glanceAPI.Status.APIEndpoints
+		}
+
+		// Get internal GlanceAPI's condition status for comparison with external below
+		internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
+		apiCondition = condition.GetHigherPrioCondition(internalAPICondition, apiCondition).DeepCopy()
+	}
+
 	if apiCondition != nil {
 		instance.Status.Conditions.Set(apiCondition)
 	}
 
-	// create CronJobs: DBPurge (always), CacheCleaner and CachePruner if image-cache
-	// is enabled
-
-	ctrlResult, err = r.ensureCronJobs(ctx, helper, instance, serviceLabels, serviceAnnotations)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.CronJobReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.CronJobReadyErrorMessage,
-			err.Error()))
-		return ctrlResult, err
-	}
-
-	instance.Status.Conditions.MarkTrue(condition.CronJobReadyCondition, condition.CronJobReadyMessage)
-	// create CronJob - end
-
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
-	//return ctrl.Result{}, nil
 	return nil
 }
 

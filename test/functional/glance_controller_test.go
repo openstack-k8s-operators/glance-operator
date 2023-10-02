@@ -108,8 +108,8 @@ var _ = Describe("Glance controller", func() {
 		It("defaults the containerImages", func() {
 			glance := GetGlance(glanceName)
 			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
-			Expect(glance.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
-			Expect(glance.Spec.GlanceAPIs.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			Expect(glance.Spec.GlanceAPIs.GlanceAPI.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			//Expect(glance.Spec.GlanceAPIs.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 		})
 		It("should not have a pvc yet", func() {
 			AssertPVCDoesNotExist(glanceTest.Instance)
@@ -202,7 +202,6 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 		It("GlanceAPI CRs are created", func() {
-			GlanceAPIExists(glanceTest.GlanceInternal)
 			GlanceAPIExists(glanceTest.GlanceExternal)
 		})
 	})
@@ -214,14 +213,14 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("has the expected container image defaults", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)
-			Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
-			Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPI.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			//Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
 		})
 	})
 	When("All the Resources are ready", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
-			// Get Default GlanceAPI (internal/external)
+			// Get Default GlanceAPI
 			DeferCleanup(
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
@@ -236,15 +235,13 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
-			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlancePublicRoute)
 		})
 		It("Creates glanceAPI", func() {
-			GlanceAPIExists(glanceTest.GlanceInternal)
 			GlanceAPIExists(glanceTest.GlanceExternal)
 		})
 		It("Assert Services are created", func() {
-			th.AssertServiceExists(glanceTest.GlancePublicRoute)
-			th.AssertServiceExists(glanceTest.GlanceInternalRoute)
+			th.AssertServiceExists(glanceTest.GlancePublicSvc)
 		})
 		It("should not have a cache pvc (no imageCacheSize provided)", func() {
 			AssertPVCDoesNotExist(glanceTest.GlanceCache)
@@ -253,7 +250,6 @@ var _ = Describe("Glance controller", func() {
 	When("Glance CR is deleted", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
-			// Get Default GlanceAPI (internal/external)
 			DeferCleanup(
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
@@ -268,13 +264,12 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
-			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlancePublicRoute)
 		})
 		It("removes the finalizers from the Glance DB", func() {
 			mDB := mariadb.GetMariaDBDatabase(glanceTest.Instance)
 			Expect(mDB.Finalizers).To(ContainElement("Glance"))
 			th.DeleteInstance(GetGlance(glanceTest.Instance))
-
 		})
 	})
 	When("Glance CR instance is built with NAD", func() {
@@ -298,7 +293,7 @@ var _ = Describe("Glance controller", func() {
 					"networkAttachments": []string{"internalapi"},
 					"externalEndpoints":  externalEndpoints,
 				},
-				"glanceAPIExternal": map[string]interface{}{
+				"glanceAPI": map[string]interface{}{
 					"containerImage":     glancev1.GlanceAPIContainerImage,
 					"networkAttachments": []string{"internalapi"},
 				},
@@ -332,17 +327,14 @@ var _ = Describe("Glance controller", func() {
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)
 			th.SimulateStatefulSetReplicaReadyWithPods(
-				//th.SimulateDeploymentReadyWithPods(
 				glanceTest.GlanceExternalAPI,
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)
 			// Retrieve the generated resources
 			glance := GetGlance(glanceTest.Instance)
-			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
-			externalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+			externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
 			// Check GlanceAPI NADs
-			Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIs.GlanceAPIInternal.NetworkAttachments))
-			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIs.GlanceAPIExternal.NetworkAttachments))
+			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPIs.GlanceAPI.NetworkAttachments))
 		})
 	})
 })

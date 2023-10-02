@@ -84,13 +84,15 @@ func GetGlanceEmptySpec() map[string]interface{} {
 
 func GetGlanceDefaultSpec() map[string]interface{} {
 	return map[string]interface{}{
-		"databaseInstance":  "openstack",
-		"databaseUser":      glanceTest.GlanceDatabaseUser,
-		"serviceUser":       glanceName.Name,
-		"secret":            SecretName,
-		"glanceAPIInternal": GetGlanceAPIDefaultSpec(GlanceAPITypeInternal),
-		"glanceAPIExternal": GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
-		"storageRequest":    glanceTest.GlancePVCSize,
+		"databaseInstance": "openstack",
+		"databaseUser":     glanceTest.GlanceDatabaseUser,
+		"serviceUser":      glanceName.Name,
+		"secret":           SecretName,
+		//"glanceAPIInternal": GetGlanceAPIDefaultSpec(GlanceAPITypeInternal),
+		//"glanceAPIExternal": GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
+		"glances":        GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
+		"type":           "split",
+		"storageRequest": glanceTest.GlancePVCSize,
 	}
 }
 

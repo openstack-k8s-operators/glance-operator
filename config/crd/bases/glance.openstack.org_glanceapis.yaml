@@ -45,6 +45,7 @@ spec:
                 enum:
                 - internal
                 - external
+                - single
                 type: string
               containerImage:
                 type: string
