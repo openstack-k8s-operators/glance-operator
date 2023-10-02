@@ -38,6 +38,7 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	cronjob "github.com/openstack-k8s-operators/lib-common/modules/common/cronjob"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
@@ -84,6 +85,7 @@ type GlanceReconciler struct {
 // glance service account permissions that are needed to grant permission to the above
 // +kubebuilder:rbac:groups="security.openshift.io",resourceNames=anyuid;privileged,resources=securitycontextconstraints,verbs=use
 // +kubebuilder:rbac:groups="",resources=pods,verbs=create;delete;get;list;patch;update;watch
+// +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete;
 
 // Reconcile reconcile Glance requests
 func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
@@ -159,6 +161,7 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			condition.UnknownCondition(condition.ServiceAccountReadyCondition, condition.InitReason, condition.ServiceAccountReadyInitMessage),
 			condition.UnknownCondition(condition.RoleReadyCondition, condition.InitReason, condition.RoleReadyInitMessage),
 			condition.UnknownCondition(condition.RoleBindingReadyCondition, condition.InitReason, condition.RoleBindingReadyInitMessage),
+			condition.UnknownCondition(condition.CronJobReadyCondition, condition.InitReason, condition.CronJobReadyInitMessage),
 		)
 
 		instance.Status.Conditions.Init(&cl)
@@ -191,6 +194,7 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&keystonev1.KeystoneService{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
 		Owns(&batchv1.Job{}).
+		Owns(&batchv1.CronJob{}).
 		Owns(&corev1.Secret{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.Role{}).
@@ -662,6 +666,29 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	if apiCondition != nil {
 		instance.Status.Conditions.Set(apiCondition)
 	}
+
+	// NOTE: a CronJob is created at this stage to purge all soft deleted records.
+	// This command should be executed periodically to avoid glance database becomes
+	// bigger by getting filled by soft-deleted records.
+	cronjobDef := glance.CronJob(instance, serviceLabels, serviceAnnotations)
+	cronjob := cronjob.NewCronJob(
+		cronjobDef,
+		5*time.Second,
+	)
+
+	ctrlResult, err = cronjob.CreateOrPatch(ctx, helper)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.CronJobReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.CronJobReadyErrorMessage,
+			err.Error()))
+		return ctrlResult, err
+	}
+
+	instance.Status.Conditions.MarkTrue(condition.CronJobReadyCondition, condition.CronJobReadyMessage)
+	// create CronJob - end
 
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
 	return ctrl.Result{}, nil

@@ -59,6 +59,10 @@ const (
 	// LogVolume is the default logVolume name used to mount logs on both
 	// GlanceAPI and the sidecar container
 	LogVolume = "logs"
+	//DBPurgeAge -
+	DBPurgeAge = 30
+	//DBPurgeDefaultSchedule -
+	DBPurgeDefaultSchedule = "1 0 * * *"
 )
 
 // DbsyncPropagation keeps track of the DBSync Service Propagation Type
