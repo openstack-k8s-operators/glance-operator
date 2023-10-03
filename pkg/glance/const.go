@@ -63,7 +63,20 @@ const (
 	DBPurgeAge = 30
 	//DBPurgeDefaultSchedule -
 	DBPurgeDefaultSchedule = "1 0 * * *"
+	//DBPurgeDefaultSchedule -
+	DBCleanerDefaultSchedule = "1 0 * * *"
+	//DBPrunerDefaultSchedule
+	DBPrunerDefaultSchedule = "/30 * * * *"
 )
+
+// DBPurgeCommandBase -
+var DBPurgeCommandBase = [...]string{"/usr/bin/glance-manage", "--debug", "--config-dir /etc/glance/glance.conf.d", "db purge "}
+
+// DBCleanerCommandBase -
+var DBCleanerCommandBase = [...]string{"/usr/bin/glance-cache-cleaner", "--debug", "--config-dir /etc/glance/glance.conf.d"}
+
+// DBPrunerCommandBase -
+var DBPrunerCommandBase = [...]string{"/usr/bin/glance-cache-pruner", "--debug", "--config-dir /etc/glance/glance.conf.d"}
 
 // DbsyncPropagation keeps track of the DBSync Service Propagation Type
 var DbsyncPropagation = []storage.PropagationType{storage.DBSync}

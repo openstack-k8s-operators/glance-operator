@@ -25,31 +25,48 @@ import (
 	"strings"
 )
 
-// DBPurgeCommandBase -
-var DBPurgeCommandBase = [...]string{"/usr/bin/glance-manage", "--debug", "--config-dir /etc/glance/glance.conf.d", "db purge "}
-
 // CronJob func
 func CronJob(
 	instance *glancev1.Glance,
 	labels map[string]string,
 	annotations map[string]string,
+	cronJobType string,
 ) *batchv1.CronJob {
 	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
-	var DBPurgeCommand []string = DBPurgeCommandBase[:]
+	var DBPurgeCommand []string
+
+	switch cronJobType {
+	case "purge":
+		DBPurgeCommand = DBPurgeCommandBase[:]
+		// Extend the resulting command with the DBPurgeAge int in case purge is
+		DBPurgeCommand = append(DBPurgeCommand, strconv.Itoa(DBPurgeAge))
+	case "cleaner":
+		DBPurgeCommand = DBCleanerCommandBase[:]
+	case "pruner":
+		DBPurgeCommand = DBPrunerCommandBase[:]
+	default:
+		DBPurgeCommand = DBPurgeCommandBase[:]
+	}
+
+	var DBCommand []string = DBPurgeCommand[:]
 	args := []string{"-c"}
 
 	if !instance.Spec.Debug.DBPurge {
 		// If debug mode is not requested, remove the --debug option
-		DBPurgeCommand = append(DBPurgeCommandBase[:1], DBPurgeCommandBase[2:]...)
+		DBCommand = append(DBPurgeCommand[:1], DBPurgeCommand[2:]...)
 	}
 	// NOTE: (fpantano) - check if it makes sense extending this command to
 	// purge_images_table
 	// Build the resulting command
-	DBPurgeCommandString := strings.Join(DBPurgeCommand, " ")
+	DBCommandString := strings.Join(DBCommand, " ")
 
-	// Extend the resulting command with the DBPurgeAge int
-	args = append(args, DBPurgeCommandString+strconv.Itoa(DBPurgeAge))
+	// Extend the resulting command with the DBPurgeAge int in case purge is
+	// passed as argument
+	//if cronJobType == "purge"{
+	//	args = append(args, DBCommandString+strconv.Itoa(DBPurgeAge))
+	//}
+	args = append(args, DBCommandString)
 
 	parallelism := int32(1)
 	completions := int32(1)
