@@ -19,6 +19,9 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 )
 
+// CronJobType -
+type CronJobType string
+
 const (
 	// ServiceName -
 	ServiceName = "glance"
@@ -59,24 +62,31 @@ const (
 	// LogVolume is the default logVolume name used to mount logs on both
 	// GlanceAPI and the sidecar container
 	LogVolume = "logs"
+
 	//DBPurgeAge -
 	DBPurgeAge = 30
+	//DBPurge -
+	DBPurge CronJobType = "purge"
+	//CacheCleaner -
+	CacheCleaner CronJobType = "cleaner"
+	//CachePruner -
+	CachePruner CronJobType = "pruner"
 	//DBPurgeDefaultSchedule -
 	DBPurgeDefaultSchedule = "1 0 * * *"
-	//DBPurgeDefaultSchedule -
-	DBCleanerDefaultSchedule = "1 0 * * *"
-	//DBPrunerDefaultSchedule
-	DBPrunerDefaultSchedule = "/30 * * * *"
+	//CacheCleanerDefaultSchedule -
+	CacheCleanerDefaultSchedule = "1 0 * * *"
+	//CachePrunerDefaultSchedule -
+	CachePrunerDefaultSchedule = "*/30 * * * *"
 )
 
 // DBPurgeCommandBase -
 var DBPurgeCommandBase = [...]string{"/usr/bin/glance-manage", "--debug", "--config-dir /etc/glance/glance.conf.d", "db purge "}
 
-// DBCleanerCommandBase -
-var DBCleanerCommandBase = [...]string{"/usr/bin/glance-cache-cleaner", "--debug", "--config-dir /etc/glance/glance.conf.d"}
+// CacheCleanerCommandBase -
+var CacheCleanerCommandBase = [...]string{"/usr/bin/glance-cache-cleaner", "--debug", "--config-dir /etc/glance/glance.conf.d"}
 
-// DBPrunerCommandBase -
-var DBPrunerCommandBase = [...]string{"/usr/bin/glance-cache-pruner", "--debug", "--config-dir /etc/glance/glance.conf.d"}
+// CachePrunerCommandBase -
+var CachePrunerCommandBase = [...]string{"/usr/bin/glance-cache-pruner", "--debug", "--config-dir /etc/glance/glance.conf.d"}
 
 // DbsyncPropagation keeps track of the DBSync Service Propagation Type
 var DbsyncPropagation = []storage.PropagationType{storage.DBSync}

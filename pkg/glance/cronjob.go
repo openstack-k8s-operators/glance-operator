@@ -30,43 +30,42 @@ func CronJob(
 	instance *glancev1.Glance,
 	labels map[string]string,
 	annotations map[string]string,
-	cronJobType string,
+	cjType CronJobType,
 ) *batchv1.CronJob {
 	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
-	var DBPurgeCommand []string
+	var cronJobCommand []string
+	var cronJobSchedule string
 
-	switch cronJobType {
+	switch cjType {
 	case "purge":
-		DBPurgeCommand = DBPurgeCommandBase[:]
+		cronJobCommand = DBPurgeCommandBase[:]
 		// Extend the resulting command with the DBPurgeAge int in case purge is
-		DBPurgeCommand = append(DBPurgeCommand, strconv.Itoa(DBPurgeAge))
+		cronJobCommand = append(cronJobCommand, strconv.Itoa(DBPurgeAge))
+		cronJobSchedule = DBPurgeDefaultSchedule
 	case "cleaner":
-		DBPurgeCommand = DBCleanerCommandBase[:]
+		cronJobCommand = CacheCleanerCommandBase[:]
+		cronJobSchedule = CacheCleanerDefaultSchedule
 	case "pruner":
-		DBPurgeCommand = DBPrunerCommandBase[:]
+		cronJobCommand = CachePrunerCommandBase[:]
+		cronJobSchedule = CachePrunerDefaultSchedule
 	default:
-		DBPurgeCommand = DBPurgeCommandBase[:]
+		cronJobCommand = DBPurgeCommandBase[:]
+		cronJobSchedule = DBPurgeDefaultSchedule
 	}
 
-	var DBCommand []string = DBPurgeCommand[:]
+	var cronCommand []string = cronJobCommand[:]
 	args := []string{"-c"}
 
 	if !instance.Spec.Debug.DBPurge {
 		// If debug mode is not requested, remove the --debug option
-		DBCommand = append(DBPurgeCommand[:1], DBPurgeCommand[2:]...)
+		cronCommand = append(cronJobCommand[:1], cronJobCommand[2:]...)
 	}
 	// NOTE: (fpantano) - check if it makes sense extending this command to
 	// purge_images_table
 	// Build the resulting command
-	DBCommandString := strings.Join(DBCommand, " ")
-
-	// Extend the resulting command with the DBPurgeAge int in case purge is
-	// passed as argument
-	//if cronJobType == "purge"{
-	//	args = append(args, DBCommandString+strconv.Itoa(DBPurgeAge))
-	//}
-	args = append(args, DBCommandString)
+	commandString := strings.Join(cronCommand, " ")
+	args = append(args, commandString)
 
 	parallelism := int32(1)
 	completions := int32(1)
@@ -103,7 +102,7 @@ func CronJob(
 			Namespace: instance.Namespace,
 		},
 		Spec: batchv1.CronJobSpec{
-			Schedule:          DBPurgeDefaultSchedule,
+			Schedule:          cronJobSchedule,
 			ConcurrencyPolicy: batchv1.ForbidConcurrent,
 			JobTemplate: batchv1.JobTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{

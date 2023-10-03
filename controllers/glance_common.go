@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// GenerateConfigsGeneric -
 func GenerateConfigsGeneric(
 	ctx context.Context, h *helper.Helper,
 	instance client.Object,
