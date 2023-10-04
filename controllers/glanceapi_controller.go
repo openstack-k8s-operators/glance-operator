@@ -724,9 +724,10 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	}
 
 	templateParameters := map[string]interface{}{
-		"ServiceUser":     instance.Spec.ServiceUser,
-		"ServicePassword": string(ospSecret.Data[instance.Spec.PasswordSelectors.Service]),
-		"KeystoneAuthURL": keystonePublicURL,
+		"ServiceUser":         instance.Spec.ServiceUser,
+		"ServicePassword":     string(ospSecret.Data[instance.Spec.PasswordSelectors.Service]),
+		"KeystoneInternalURL": keystoneInternalURL,
+		"KeystonePublicURL":   keystonePublicURL,
 		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s",
 			instance.Spec.DatabaseUser,
 			string(ospSecret.Data[instance.Spec.PasswordSelectors.Database]),
@@ -745,7 +746,6 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	if instance.Spec.APIType == glancev1.APIInternal {
 		templateParameters["ShowImageDirectUrl"] = true
 		templateParameters["ShowMultipleLocations"] = true
-		templateParameters["KeystoneAuthURL"] = keystoneInternalURL
 	} else {
 		templateParameters["ShowImageDirectUrl"] = false
 		templateParameters["ShowMultipleLocations"] = false
