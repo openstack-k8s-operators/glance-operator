@@ -670,7 +670,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// NOTE: a CronJob is created at this stage to purge all soft deleted records.
 	// This command should be executed periodically to avoid glance database becomes
 	// bigger by getting filled by soft-deleted records.
-	cronjobDef := glance.CronJob(instance, serviceLabels, serviceAnnotations)
+	cronjobDef := glance.CronJob(instance, serviceLabels, serviceAnnotations, glance.DBPurge)
 	cronjob := cronjob.NewCronJob(
 		cronjobDef,
 		5*time.Second,

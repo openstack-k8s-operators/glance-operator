@@ -19,14 +19,17 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// GlanceTestData is the data structure used to provide input data to envTest
+// APIType -
 type APIType string
 
 const (
+	//GlanceAPITypeInternal -
 	GlanceAPITypeInternal APIType = "internal"
+	//GlanceAPITypeExternal -
 	GlanceAPITypeExternal APIType = "external"
 )
 
+// GlanceTestData is the data structure used to provide input data to envTest
 type GlanceTestData struct {
 	ContainerImage              string
 	GlanceDatabaseUser          string

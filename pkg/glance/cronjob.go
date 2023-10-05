@@ -25,31 +25,47 @@ import (
 	"strings"
 )
 
-// DBPurgeCommandBase -
-var DBPurgeCommandBase = [...]string{"/usr/bin/glance-manage", "--debug", "--config-dir /etc/glance/glance.conf.d", "db purge "}
-
 // CronJob func
 func CronJob(
 	instance *glancev1.Glance,
 	labels map[string]string,
 	annotations map[string]string,
+	cjType CronJobType,
 ) *batchv1.CronJob {
 	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
-	var DBPurgeCommand []string = DBPurgeCommandBase[:]
+	var cronJobCommand []string
+	var cronJobSchedule string
+
+	switch cjType {
+	case "purge":
+		cronJobCommand = DBPurgeCommandBase[:]
+		// Extend the resulting command with the DBPurgeAge int in case purge is
+		cronJobCommand = append(cronJobCommand, strconv.Itoa(DBPurgeAge))
+		cronJobSchedule = DBPurgeDefaultSchedule
+	case "cleaner":
+		cronJobCommand = CacheCleanerCommandBase[:]
+		cronJobSchedule = CacheCleanerDefaultSchedule
+	case "pruner":
+		cronJobCommand = CachePrunerCommandBase[:]
+		cronJobSchedule = CachePrunerDefaultSchedule
+	default:
+		cronJobCommand = DBPurgeCommandBase[:]
+		cronJobSchedule = DBPurgeDefaultSchedule
+	}
+
+	var cronCommand []string = cronJobCommand[:]
 	args := []string{"-c"}
 
 	if !instance.Spec.Debug.DBPurge {
 		// If debug mode is not requested, remove the --debug option
-		DBPurgeCommand = append(DBPurgeCommandBase[:1], DBPurgeCommandBase[2:]...)
+		cronCommand = append(cronJobCommand[:1], cronJobCommand[2:]...)
 	}
 	// NOTE: (fpantano) - check if it makes sense extending this command to
 	// purge_images_table
 	// Build the resulting command
-	DBPurgeCommandString := strings.Join(DBPurgeCommand, " ")
-
-	// Extend the resulting command with the DBPurgeAge int
-	args = append(args, DBPurgeCommandString+strconv.Itoa(DBPurgeAge))
+	commandString := strings.Join(cronCommand, " ")
+	args = append(args, commandString)
 
 	parallelism := int32(1)
 	completions := int32(1)
@@ -86,7 +102,7 @@ func CronJob(
 			Namespace: instance.Namespace,
 		},
 		Spec: batchv1.CronJobSpec{
-			Schedule:          DBPurgeDefaultSchedule,
+			Schedule:          cronJobSchedule,
 			ConcurrencyPolicy: batchv1.ForbidConcurrent,
 			JobTemplate: batchv1.JobTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{

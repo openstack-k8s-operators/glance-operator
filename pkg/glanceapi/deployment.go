@@ -33,7 +33,7 @@ import (
 const (
 	// GlanceAPIServiceCommand -
 	GlanceAPIServiceCommand = "/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start"
-	// GlanceAPIHttpdCommand
+	// GlanceAPIHttpdCommand -
 	GlanceAPIHttpdCommand = "/usr/sbin/httpd -DFOREGROUND"
 )
 
