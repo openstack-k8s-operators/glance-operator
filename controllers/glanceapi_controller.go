@@ -751,6 +751,13 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		templateParameters["ShowMultipleLocations"] = false
 	}
 
+	// Configure the cache bits accordingly as global options (00-config.conf)
+	if len(instance.Spec.ImageCacheSize) > 0 {
+		templateParameters["CacheEnabled"] = true
+		templateParameters["CacheMaxSize"] = instance.Spec.ImageCacheSize
+		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
+	}
+
 	// 00-default.conf will be regenerated as we have a ln -s of the
 	// templates/glance/config directory
 	// Do not generate -scripts as they are inherited from the top-level CR

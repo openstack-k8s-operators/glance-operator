@@ -119,6 +119,10 @@ type GlanceSpec struct {
 	// Quotas is defined, per-tenant quotas are enforced according to the
 	// registered keystone limits
 	Quotas QuotaLimits `json:"quotas,omitempty"`
+
+	// ImageCacheSize, provides the size of the cache that will be reflected in the image_cache_max_size parameter
+	// +kubebuilder:default=""
+	ImageCacheSize string `json:"imageCacheSize"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret

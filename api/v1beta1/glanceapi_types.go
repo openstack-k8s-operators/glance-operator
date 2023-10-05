@@ -77,6 +77,10 @@ type GlanceAPISpec struct {
 	// QuotaEnforce if true, per-tenant quotas are enforced according to the
 	// registered keystone limits
 	Quota bool `json:"quota"`
+
+	// ImageCacheSize, provides the size of the cache that will be reflected in the image_cache_max_size parameter
+	// +kubebuilder:default=""
+	ImageCacheSize string `json:"imageCacheSize"`
 }
 
 // GlanceAPIDebug defines the observed state of GlanceAPIDebug

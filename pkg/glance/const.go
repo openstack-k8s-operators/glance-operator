@@ -22,6 +22,9 @@ import (
 // CronJobType -
 type CronJobType string
 
+// PvcType -
+type PvcType string
+
 const (
 	// ServiceName -
 	ServiceName = "glance"
@@ -29,6 +32,11 @@ const (
 	ServiceType = "image"
 	// DatabaseName -
 	DatabaseName = "glance"
+
+	// PvcLocal for a generic glanceAPI instance
+	PvcLocal PvcType = "local"
+	// PvcCache is used to define a PVC mounted for image caching purposes
+	PvcCache PvcType = "cache"
 
 	// GlancePublicPort -
 	GlancePublicPort int32 = 9292
@@ -77,6 +85,8 @@ const (
 	CacheCleanerDefaultSchedule = "1 0 * * *"
 	//CachePrunerDefaultSchedule -
 	CachePrunerDefaultSchedule = "*/30 * * * *"
+	//ImageCacheDir -
+	ImageCacheDir = "/var/lib/glance/image-cache"
 )
 
 // DBPurgeCommandBase -
