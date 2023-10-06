@@ -11,6 +11,7 @@ spec:
   customServiceConfig: |
     [DEFAULT]
     enabled_backends = default_backend:rbd
+    enabled_import_methods=[web-download,glance-direct]
     [glance_store]
     default_backend = default_backend
     [default_backend]
@@ -50,14 +51,14 @@ spec:
                 sources:
                   - secret:
                       name: ceph-conf-files
-            - name: imageconv
+            - name: image-import-staging-workspace
               persistentVolumeClaim:
-                claimName: imageconv
+                claimName: image-import-staging-workspace
                 readOnly: false
           mounts:
             - name: ceph
               mountPath: "/etc/ceph"
               readOnly: true
-            - name: imageconv
+            - name: image-import-staging-workspace
               mountPath: /var/lib/glance/os_glance_staging_store/
               readOnly: false
