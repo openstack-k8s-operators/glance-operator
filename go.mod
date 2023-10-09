@@ -7,13 +7,13 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
 	github.com/onsi/ginkgo/v2 v2.12.1
 	github.com/onsi/gomega v1.28.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.1.2-0.20230927112537-42169dd3965b
+	github.com/openstack-k8s-operators/cinder-operator/api v0.3.1-0.20231006133827-ce89e0fd01f2
 	github.com/openstack-k8s-operators/glance-operator/api v0.1.2-0.20230904092048-ae90414f6e25
 	github.com/openstack-k8s-operators/infra-operator/apis v0.1.1-0.20231001103054-f74a88ed4971
-	github.com/openstack-k8s-operators/keystone-operator/api v0.1.1-0.20231001084639-804f0f7cc39a
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.1.1-0.20231001084618-12369665b166
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.1.1-0.20231001084618-12369665b166
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.1.2-0.20230929092523-c4c70829d4ef
+	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20231005132119-e75019792469
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20231006072650-7fe7fe16bcd1
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20231006072650-7fe7fe16bcd1
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20231006072650-7fe7fe16bcd1
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.3.0
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	k8s.io/api v0.26.9
@@ -53,7 +53,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.1.1-0.20231001084618-12369665b166
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20231006072650-7fe7fe16bcd1
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
