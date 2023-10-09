@@ -33,7 +33,6 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceName))
 		})
-
 		It("initializes the status fields", func() {
 			Eventually(func(g Gomega) {
 				glance := GetGlance(glanceName)
@@ -44,7 +43,6 @@ var _ = Describe("Glance controller", func() {
 				g.Expect(glance.Status.GlanceAPIInternalReadyCount).To(Equal(int32(0)))
 			}, timeout, interval).Should(Succeed())
 		})
-
 		It("reports InputReady False as secret is not found", func() {
 			th.ExpectConditionWithDetails(
 				glanceName,
@@ -55,7 +53,6 @@ var _ = Describe("Glance controller", func() {
 				"Input data resources missing",
 			)
 		})
-
 		It("initializes Spec fields", func() {
 			Glance := GetGlance(glanceTest.Instance)
 			Expect(Glance.Spec.DatabaseInstance).Should(Equal("openstack"))
@@ -67,7 +64,6 @@ var _ = Describe("Glance controller", func() {
 			Expect(Glance.Spec.Quotas.ImageCountTotal).To(Equal(int(0)))
 			Expect(Glance.Spec.Quotas.ImageStageTotal).To(Equal(int(0)))
 		})
-
 		It("should have a finalizer", func() {
 			// the reconciler loop adds the finalizer so we have to wait for
 			// it to run
@@ -75,13 +71,11 @@ var _ = Describe("Glance controller", func() {
 				return GetGlance(glanceTest.Instance).Finalizers
 			}, timeout, interval).Should(ContainElement("Glance"))
 		})
-
 		It("should not create a config map", func() {
 			Eventually(func() []corev1.ConfigMap {
 				return th.ListConfigMaps(glanceTest.GlanceConfigMapData.Name).Items
 			}, timeout, interval).Should(BeEmpty())
 		})
-
 		It("creates service account, role and rolebindig", func() {
 			th.ExpectCondition(
 				glanceName,
@@ -113,12 +107,14 @@ var _ = Describe("Glance controller", func() {
 			Expect(binding.Subjects).To(HaveLen(1))
 			Expect(binding.Subjects[0].Name).To(Equal(sa.Name))
 		})
-
 		It("defaults the containerImages", func() {
 			glance := GetGlance(glanceName)
 			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 			Expect(glance.Spec.GlanceAPIInternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 			Expect(glance.Spec.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+		})
+		It("should not have a pvc yet", func() {
+			AssertPVCDoesNotExist(glanceTest.Instance)
 		})
 	})
 	When("Glance DB is created", func() {
@@ -153,7 +149,6 @@ var _ = Describe("Glance controller", func() {
 				corev1.ConditionFalse,
 			)
 		})
-
 		It("Should fail if db-sync job fails when DB is Created", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobFailure(glanceTest.GlanceDBSync)
@@ -245,6 +240,10 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
 		})
+		It("should have a local pvc", func() {
+			AssertPVCExist(glanceTest.Instance)
+			AssertPVCDoesNotExist(glanceTest.GlanceCache)
+		})
 		It("Creates glanceAPI", func() {
 			GlanceAPIExists(glanceTest.GlanceInternal)
 			GlanceAPIExists(glanceTest.GlanceExternal)
@@ -252,6 +251,9 @@ var _ = Describe("Glance controller", func() {
 		It("Assert Services are created", func() {
 			th.AssertServiceExists(glanceTest.GlancePublicRoute)
 			th.AssertServiceExists(glanceTest.GlanceInternalRoute)
+		})
+		It("should not have a cache pvc (no imageCacheSize provided)", func() {
+			AssertPVCDoesNotExist(glanceTest.GlanceCache)
 		})
 	})
 	When("Glance CR is deleted", func() {

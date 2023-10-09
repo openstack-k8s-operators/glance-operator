@@ -54,6 +54,7 @@ type GlanceTestData struct {
 	GlanceInternalAPI           types.NamespacedName
 	GlanceExternalAPI           types.NamespacedName
 	InternalAPINAD              types.NamespacedName
+	GlanceCache                 types.NamespacedName
 }
 
 // GetGlanceTestData is a function that initialize the GlanceTestData
@@ -126,6 +127,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			"imageStageTotal":  1000,
 			"imageCountUpload": 100,
 			"imageCountTotal":  100,
+		},
+		GlanceCache: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-cache", glanceName.Name),
 		},
 		InternalAPINAD: types.NamespacedName{
 			Namespace: glanceName.Namespace,
