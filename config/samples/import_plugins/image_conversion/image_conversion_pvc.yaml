@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: image_import_staging_workspace
+  name: image-import-staging-workspace
 spec:
   accessModes:
   - ReadWriteMany

@@ -48,14 +48,14 @@ spec:
               sources:
               - secret:
                   name: ceph-conf-files
-          - name: imageconv
+          - name: image-import-staging-workspace
             persistentVolumeClaim:
-              claimName: imageconv
+              claimName: image-import-staging-workspace
               readOnly: false
           mounts:
           - name: ceph
             mountPath: "/etc/ceph"
             readOnly: true
-          - name: imageconv
+          - name: image-import-staging-workspace
             mountPath: /var/lib/glance/os_glance_staging_store/
             readOnly: false
