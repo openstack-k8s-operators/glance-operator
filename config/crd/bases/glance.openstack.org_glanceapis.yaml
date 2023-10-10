@@ -825,6 +825,9 @@ spec:
                   - extraVol
                   type: object
                 type: array
+              imageCacheSize:
+                default: ""
+                type: string
               networkAttachments:
                 items:
                   type: string
@@ -946,6 +949,7 @@ spec:
             required:
             - containerImage
             - databaseHostname
+            - imageCacheSize
             - secret
             - serviceAccount
             type: object

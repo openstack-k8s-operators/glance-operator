@@ -192,3 +192,21 @@ func GlanceAPIExists(name types.NamespacedName) {
 		g.Expect(k8s_errors.IsNotFound(err)).To(BeFalse())
 	}, timeout, interval).Should(Succeed())
 }
+
+// AssertPVCDoesNotExist ensures the local PVC resource does not exist in a k8s cluster.
+func AssertPVCDoesNotExist(name types.NamespacedName) {
+	instance := &corev1.PersistentVolumeClaim{}
+	Eventually(func(g Gomega) {
+		err := th.K8sClient.Get(th.Ctx, name, instance)
+		g.Expect(k8s_errors.IsNotFound(err)).To(BeTrue())
+	}, th.Timeout, th.Interval).Should(Succeed())
+}
+
+// AssertPVCExist ensures the local PVC resource exist in a k8s cluster.
+func AssertPVCExist(name types.NamespacedName) {
+	instance := &corev1.PersistentVolumeClaim{}
+	Eventually(func(g Gomega) {
+		err := th.K8sClient.Get(th.Ctx, name, instance)
+		g.Expect(k8s_errors.IsNotFound(err)).To(BeFalse())
+	}, th.Timeout, th.Interval).Should(Succeed())
+}

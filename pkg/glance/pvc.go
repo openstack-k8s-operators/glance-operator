@@ -1,6 +1,7 @@
 package glance
 
 import (
+	"fmt"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -8,10 +9,20 @@ import (
 )
 
 // Pvc - creates and returns a PVC object for a backing store
-func Pvc(api *glancev1.Glance, labels map[string]string) *corev1.PersistentVolumeClaim {
+func Pvc(api *glancev1.Glance, labels map[string]string, pvcType PvcType) *corev1.PersistentVolumeClaim {
+	// By default we point to a local storage pvc request
+	// that will be customized in case the pvc is requested
+	// for cache purposes
+	requestSize := api.Spec.StorageRequest
+	pvcName := ServiceName
+	if pvcType == "cache" {
+		requestSize = api.Spec.ImageCacheSize
+		// append -cache to avoid confusion when listing PVCs
+		pvcName = fmt.Sprintf("%s-cache", ServiceName)
+	}
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServiceName,
+			Name:      pvcName,
 			Namespace: api.Namespace,
 			Labels:    labels,
 		},
@@ -21,7 +32,7 @@ func Pvc(api *glancev1.Glance, labels map[string]string) *corev1.PersistentVolum
 			},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse(api.Spec.StorageRequest),
+					corev1.ResourceStorage: resource.MustParse(requestSize),
 				},
 			},
 			StorageClassName: &api.Spec.StorageClass,

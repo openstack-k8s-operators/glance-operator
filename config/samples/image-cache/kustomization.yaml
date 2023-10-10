@@ -1,0 +1,5 @@
+resources:
+ - ../backends/base/openstack
+
+patches:
+  - image-cache.yaml

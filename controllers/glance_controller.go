@@ -283,17 +283,8 @@ func (r *GlanceReconciler) reconcileInit(
 ) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
 
-	// Define a new PVC object
-	// TODO: Once conditions added to PVC lib-common logic, handle
-	//       the returned condition here
-	// TODO: This could be superfluous if backed by Ceph?
-	pvc := pvc.NewPvc(
-		glance.Pvc(instance, serviceLabels),
-		time.Duration(5)*time.Second,
-	)
-
-	ctrlResult, err := pvc.CreateOrPatch(ctx, helper)
-
+	// Define the PVCs objects required by Glance
+	ctrlResult, err := r.ensurePVC(ctx, helper, instance, serviceLabels)
 	if err != nil {
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
@@ -706,6 +697,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 		ServiceUser:       instance.Spec.ServiceUser,
 		ServiceAccount:    instance.RbacResourceName(),
 		Quota:             instance.IsQuotaEnabled(),
+		ImageCacheSize:    instance.Spec.ImageCacheSize,
 	}
 
 	if apiSpec.GlanceAPITemplate.NodeSelector == nil {
@@ -829,6 +821,39 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 		}
 	}
 	return nil
+}
+
+// ensurePVC - Creates the PVCs required by Glance to start the GlanceAPI Pods
+func (r *GlanceReconciler) ensurePVC(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.Glance,
+	serviceLabels map[string]string,
+) (ctrl.Result, error) {
+	// Define a new PVC object
+	localPvc := pvc.NewPvc(
+		glance.Pvc(instance, serviceLabels, glance.PvcLocal),
+		time.Duration(5)*time.Second,
+	)
+
+	ctrlResult, err := localPvc.CreateOrPatch(ctx, h)
+
+	if err != nil {
+		return ctrlResult, err
+	} else if (ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
+	}
+
+	// Handle an additional PVC creation an ImageCacheSize is provided
+	if len(instance.Spec.ImageCacheSize) > 0 {
+		cachePvc := pvc.NewPvc(
+			glance.Pvc(instance, serviceLabels, glance.PvcCache),
+			time.Duration(5)*time.Second,
+		)
+		ctrlResult, err = cachePvc.CreateOrPatch(ctx, h)
+	}
+	// End PVC creation/patch
+	return ctrlResult, err
 }
 
 // registeredLimitsDelete - cleanup registered limits in keystone

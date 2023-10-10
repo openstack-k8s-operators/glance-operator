@@ -280,3 +280,28 @@ func GetHttpdVolumeMount() []corev1.VolumeMount {
 		},
 	}
 }
+
+// GetCacheVolume - Return the Volume used for image caching purposes
+func GetCacheVolume(pvcName string) []corev1.Volume {
+	return []corev1.Volume{
+		{
+			Name: "image-cache",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: pvcName,
+				},
+			},
+		},
+	}
+}
+
+// GetCacheVolumeMount - Return the VolumeMount used for image caching purposes
+func GetCacheVolumeMount() []corev1.VolumeMount {
+	return []corev1.VolumeMount{
+		{
+			Name:      "image-cache",
+			MountPath: ImageCacheDir,
+			ReadOnly:  false,
+		},
+	}
+}
