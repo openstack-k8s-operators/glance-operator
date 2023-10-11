@@ -18,6 +18,7 @@ package glance
 import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 
+	"fmt"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,7 +88,6 @@ func CronJob(
 			},
 		},
 	}
-
 	cronJobVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "db-purge-config-data",
@@ -95,10 +95,18 @@ func CronJob(
 			ReadOnly:  true,
 		},
 	}
+	// If cache is provided, we expect the main glance_controller to request a
+	// PVC that should be used for that purpose (according to ImageCacheSize)
+	// and it should be available to the Cache CronJobs to properly clean the
+	// image-cache path
+	if cjType == "pruner" || cjType == "cleaner" {
+		cronJobVolume = append(cronJobVolume, GetCacheVolume(ServiceName+"-cache")...)
+		cronJobVolumeMounts = append(cronJobVolumeMounts, GetCacheVolumeMount()...)
+	}
 
 	cronjob := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServiceName + "-cron",
+			Name:      fmt.Sprintf("%s-%s-cron", ServiceName, cjType),
 			Namespace: instance.Namespace,
 		},
 		Spec: batchv1.CronJobSpec{
@@ -140,6 +148,5 @@ func CronJob(
 	if instance.Spec.NodeSelector != nil && len(instance.Spec.NodeSelector) > 0 {
 		cronjob.Spec.JobTemplate.Spec.Template.Spec.NodeSelector = instance.Spec.NodeSelector
 	}
-
 	return cronjob
 }
