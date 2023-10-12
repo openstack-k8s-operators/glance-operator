@@ -33,7 +33,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	keystone_test "github.com/openstack-k8s-operators/keystone-operator/api/test/helpers"
-	common_test "github.com/openstack-k8s-operators/lib-common/modules/test/helpers"
+	common_test "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
 	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
 
 	"k8s.io/client-go/kubernetes"
