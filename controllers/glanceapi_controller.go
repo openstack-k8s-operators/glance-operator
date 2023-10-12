@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -753,8 +754,9 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 
 	// Configure the cache bits accordingly as global options (00-config.conf)
 	if len(instance.Spec.ImageCacheSize) > 0 {
+		cacheSize := resource.MustParse(instance.Spec.ImageCacheSize)
 		templateParameters["CacheEnabled"] = true
-		templateParameters["CacheMaxSize"] = instance.Spec.ImageCacheSize
+		templateParameters["CacheMaxSize"] = cacheSize.Value()
 		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
 	}
 
