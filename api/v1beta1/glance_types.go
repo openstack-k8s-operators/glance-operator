@@ -147,8 +147,8 @@ type GlanceDebug struct {
 	DBSync bool `json:"dbSync"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
-	// DBPurge enable debug
-	DBPurge bool `json:"dbPurge"`
+	// CronJob enable debug
+	CronJob bool `json:"cronJob"`
 }
 
 // GlanceStatus defines the observed state of Glance
