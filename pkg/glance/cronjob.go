@@ -58,7 +58,7 @@ func CronJob(
 	var cronCommand []string = cronJobCommand[:]
 	args := []string{"-c"}
 
-	if !instance.Spec.Debug.DBPurge {
+	if !instance.Spec.Debug.CronJob {
 		// If debug mode is not requested, remove the --debug option
 		cronCommand = append(cronJobCommand[:1], cronJobCommand[2:]...)
 	}
