@@ -109,7 +109,6 @@ var _ = Describe("Glance controller", func() {
 			glance := GetGlance(glanceName)
 			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 			Expect(glance.Spec.GlanceAPI.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
-			//Expect(glance.Spec.GlanceAPIs.GlanceAPIExternal.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 		})
 		It("should not have a pvc yet", func() {
 			AssertPVCDoesNotExist(glanceTest.Instance)

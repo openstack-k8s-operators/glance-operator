@@ -610,7 +610,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1.Glance, current glancev1.GlanceAPITemplate, helper *helper.Helper) error {
 
 	// By default internal and external points to diff instances, but we might
-	// want to override "external" in case of single instance and skip the
+	// want to override "external" in case of a "single" instance and skip the
 	// internal one
 	var internal string = glancev1.APIInternal
 	var external string = glancev1.APIExternal
@@ -636,9 +636,13 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
-	// Mirror external GlanceAPI status' APIEndpoints to this parent CR
+	// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
 		instance.Status.APIEndpoints[string(endpoint.EndpointPublic)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+		// if we don't split, update apiEndpoint to include the internal service
+		if current.Type == "single" {
+			instance.Status.APIEndpoints[string(endpoint.EndpointInternal)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
+		}
 	}
 
 	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition
@@ -670,7 +674,7 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 
 		// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 		if glanceAPI.Status.APIEndpoints != nil {
-			instance.Status.APIEndpoints = glanceAPI.Status.APIEndpoints
+			instance.Status.APIEndpoints[string(endpoint.EndpointInternal)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 
 		// Get internal GlanceAPI's condition status for comparison with external below

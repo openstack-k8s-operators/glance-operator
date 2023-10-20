@@ -22,12 +22,7 @@ spec:
         rbd_store_pool = images
         rbd_store_user = openstack
       databaseUser: glance
-      glanceAPIInternal:
-        debug:
-          service: false
-        preserveJobs: false
-        replicas: 1
-      glanceAPIExternal:
+      glanceAPI:
         debug:
           service: false
         preserveJobs: false

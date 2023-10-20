@@ -10,9 +10,7 @@ kind: Glance
 metadata:
   name: glance
 spec:
-  glanceAPIInternal:
-    replicas: 1
-  glanceAPIExternal:
+  glanceAPI:
     replicas: 1
 ---
 apiVersion: apps/v1

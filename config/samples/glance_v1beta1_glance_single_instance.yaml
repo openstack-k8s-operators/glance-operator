@@ -10,11 +10,11 @@ spec:
   databaseUser: glance
   glanceAPI:
     containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
+    type: "single"
     debug:
       service: false
     preserveJobs: false
     replicas: 1
-  type: "single"
   secret: osp-secret
   storageClass: local-storage
   storageRequest: 10G

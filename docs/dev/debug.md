@@ -210,7 +210,7 @@ here we want to launch a user facing container (External) in debug mode.
 ```
 (path to file: install_yamls/out/openstack/glance/cr/glance_v1beta1_glance.yaml)
 
-glanceAPIExternal:
+glanceAPI:
 	debug:
   	service: true # Change it to true if it is false
 	preserveJobs: false

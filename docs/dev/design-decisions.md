@@ -109,9 +109,10 @@ or symlinked. In our case we instruct kolla to use the copying mechanism in
 To be able to use `nsenter` the pod needs to share the PID namespace with the
 host.
 
+
 ## GlanceAPI deployment
 
-When a Glance CR is created, at last two `GlanceAPI` deployments are triggered:
+When a Glance CR is created, by default two `GlanceAPI` deployments are triggered:
 
 ```
 ...
@@ -120,9 +121,7 @@ spec:
   serviceUser: glance
   databaseInstance: openstack
   databaseUser: glance
-  glanceAPIInternal:
-    ..
-  glanceAPIExternal:
+  glanceAPI:
     ..
   secret: osp-secret
   storageClass: ""
@@ -149,8 +148,38 @@ glance-internal                        True     Setup complete
 ```
 
 and they can be inspected as regular k8s objects.
-Each GlanceAPI deployment resulting from the process above will deploy three
-containers within the same Pod:
+However, it's possible to not split the deployment between internal and external
+API deployment, and reduce everything to a single API instance.
+To do that, a Glance CR spec like the following should be created:
+
+```
+...
+...
+spec:
+  serviceUser: glance
+  databaseInstance: openstack
+  databaseUser: glance
+  glanceAPI:
+    replicas=1
+    type: "single"
+  secret: osp-secret
+  storageClass: ""
+...
+...
+```
+
+By passing `type: single` to the `glanceAPI` section, the main Glance controller
+will only generate a single deployment. Both internal and external `Services`
+will point to the single instance.
+
+```
+$ oc get glanceapi
+NAME            NETWORKATTACHMENTS   STATUS   MESSAGE
+glance-single                        True     Setup complete
+```
+
+In general, a `GlanceAPI` deployment resulting from one of the processes above
+will deploy three containers within the same Pod:
 
 ```
 +-------------------------------------+

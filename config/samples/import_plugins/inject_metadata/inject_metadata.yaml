@@ -25,12 +25,7 @@ spec:
     inject = "property1":"value1","property2":"value2"
   databaseInstance: openstack
   databaseUser: glance
-  glanceAPIInternal:
-    debug:
-      service: false
-    preserveJobs: false
-    replicas: 1
-  glanceAPIExternal:
+  glanceAPI:
     debug:
       service: false
     preserveJobs: false

@@ -2,5 +2,4 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
     - script: |
-            oc patch Glance -n $NAMESPACE glance --type='json' -p='[{"op": "replace", "path": "/spec/glanceAPIInternal/replicas", "value":1}]'
-            oc patch Glance -n $NAMESPACE glance --type='json' -p='[{"op": "replace", "path": "/spec/glanceAPIExternal/replicas", "value":1}]'
+            oc patch Glance -n $NAMESPACE glance --type='json' -p='[{"op": "replace", "path": "/spec/glanceAPI/replicas", "value":1}]'

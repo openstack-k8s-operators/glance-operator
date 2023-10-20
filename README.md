@@ -258,12 +258,7 @@ spec:
     rbd_store_user = openstack
   databaseInstance: openstack
   databaseUser: glance
-  glanceAPIInternal:
-    debug:
-      service: false
-    preserveJobs: false
-    replicas: 1
-  glanceAPIExternal:
+  glanceAPI:
     debug:
       service: false
     preserveJobs: false
@@ -336,11 +331,7 @@ metadata:
   name: glance
 spec:
   ...
-  glanceAPIInternal:
-    ...
-    networkAttachents:
-    - storage
-  glanceAPIExternal:
+  glanceAPI:
     ...
     networkAttachents:
     - storage
@@ -411,7 +402,7 @@ metadata:
   name: glance
 spec:
   ...
-  glanceAPIInternal:
+  glanceAPI:
     ...
     override:
       service:

@@ -89,24 +89,21 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 		"databaseUser":     glanceTest.GlanceDatabaseUser,
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
-		//"glanceAPIInternal": GetGlanceAPIDefaultSpec(GlanceAPITypeInternal),
-		//"glanceAPIExternal": GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
-		"glances":        GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
-		"type":           "split",
-		"storageRequest": glanceTest.GlancePVCSize,
+		"glanceAPI":        GetGlanceAPIDefaultSpec(GlanceAPITypeSingle),
+		"type":             "split",
+		"storageRequest":   glanceTest.GlancePVCSize,
 	}
 }
 
 func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 	return map[string]interface{}{
-		"databaseInstance":  "openstack",
-		"databaseUser":      glanceTest.GlanceDatabaseUser,
-		"serviceUser":       glanceName.Name,
-		"secret":            SecretName,
-		"glanceAPIInternal": GetGlanceAPIDefaultSpec(GlanceAPITypeInternal),
-		"glanceAPIExternal": GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
-		"storageRequest":    glanceTest.GlancePVCSize,
-		"quotas":            glanceTest.GlanceQuotas,
+		"databaseInstance": "openstack",
+		"databaseUser":     glanceTest.GlanceDatabaseUser,
+		"serviceUser":      glanceName.Name,
+		"secret":           SecretName,
+		"glanceAPI":        GetGlanceAPIDefaultSpec(GlanceAPITypeSingle),
+		"storageRequest":   glanceTest.GlancePVCSize,
+		"quotas":           glanceTest.GlanceQuotas,
 	}
 }
 
