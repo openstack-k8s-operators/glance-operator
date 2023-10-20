@@ -114,6 +114,9 @@ var _ = Describe("Glance controller", func() {
 		It("should not have a pvc yet", func() {
 			AssertPVCDoesNotExist(glanceTest.Instance)
 		})
+		It("dbPurge cronJob does not exist yet", func() {
+			AssertCronJobDoesNotExist(glanceTest.Instance)
+		})
 	})
 	When("Glance DB is created", func() {
 		BeforeEach(func() {
@@ -214,7 +217,6 @@ var _ = Describe("Glance controller", func() {
 		It("has the expected container image defaults", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)
 			Expect(glanceDefault.Spec.GlanceAPI.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
-			//Expect(glanceDefault.Spec.GlanceAPIs.GlanceAPIInternal.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
 		})
 	})
 	When("All the Resources are ready", func() {
@@ -237,11 +239,21 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlancePublicRoute)
 		})
+		It("should have a local pvc but not for cache", func() {
+			AssertPVCExist(glanceTest.Instance)
+			AssertPVCDoesNotExist(glanceTest.GlanceCache)
+		})
 		It("Creates glanceAPI", func() {
+			// Default type is "split", make sure that behind the scenes two
+			// glanceAPI deployment are created
 			GlanceAPIExists(glanceTest.GlanceExternal)
+			GlanceAPIExists(glanceTest.GlanceInternal)
 		})
 		It("Assert Services are created", func() {
+			// Both glance-public and glance-internal svc are created regardless
+			// if we split behind the scenes
 			th.AssertServiceExists(glanceTest.GlancePublicSvc)
+			th.AssertServiceExists(glanceTest.GlanceInternalSvc)
 		})
 		It("should not have a cache pvc (no imageCacheSize provided)", func() {
 			AssertPVCDoesNotExist(glanceTest.GlanceCache)
@@ -276,26 +288,34 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			nad := th.CreateNetworkAttachmentDefinition(glanceTest.InternalAPINAD)
 			DeferCleanup(th.DeleteInstance, nad)
-			var externalEndpoints []interface{}
-			externalEndpoints = append(
-				externalEndpoints, map[string]interface{}{
-					"endpoint":        "internal",
-					"ipAddressPool":   "osp-internalapi",
-					"loadBalancerIPs": []string{"10.1.0.1", "10.1.0.2"},
+
+			serviceOverride := map[string]interface{}{}
+			serviceOverride["internal"] = map[string]interface{}{
+				"metadata": map[string]map[string]string{
+					"annotations": {
+						"metallb.universe.tf/address-pool":    "osp-internalapi",
+						"metallb.universe.tf/allow-shared-ip": "osp-internalapi",
+						"metallb.universe.tf/loadBalancerIPs": "internal-lb-ip-1,internal-lb-ip-2",
+					},
+					"labels": {
+						"internal": "true",
+						"service":  "glance",
+					},
 				},
-			)
+				"spec": map[string]interface{}{
+					"type": "LoadBalancer",
+				},
+			}
 			rawSpec := map[string]interface{}{
 				"storageRequest":   glanceTest.GlancePVCSize,
 				"secret":           SecretName,
 				"databaseInstance": "openstack",
-				"glanceAPIInternal": map[string]interface{}{
-					"containerImage":     glancev1.GlanceAPIContainerImage,
-					"networkAttachments": []string{"internalapi"},
-					"externalEndpoints":  externalEndpoints,
-				},
 				"glanceAPI": map[string]interface{}{
 					"containerImage":     glancev1.GlanceAPIContainerImage,
 					"networkAttachments": []string{"internalapi"},
+					"override": map[string]interface{}{
+						"service": serviceOverride,
+					},
 				},
 			}
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
@@ -330,10 +350,14 @@ var _ = Describe("Glance controller", func() {
 				glanceTest.GlanceExternalAPI,
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)
-			// Retrieve the generated resources
+			// Retrieve the generated resources and the two internal/external
+			// instances that are split behind the scenes
 			glance := GetGlance(glanceTest.Instance)
+			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 			externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-			// Check GlanceAPI NADs
+			// Check GlanceAPI(s): we expect the two instances (internal/external)
+			// to have the same NADs as we mirror the deployment
+			Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPI.NetworkAttachments))
 			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPI.NetworkAttachments))
 		})
 	})

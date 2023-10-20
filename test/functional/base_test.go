@@ -28,6 +28,7 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	batchv1 "k8s.io/api/batch/v1"
 )
 
 func GetGlance(name types.NamespacedName) *glancev1.Glance {
@@ -155,10 +156,9 @@ func CreateGlanceSecret(namespace string, name string) *corev1.Secret {
 
 func GetDefaultGlanceSpec() map[string]interface{} {
 	return map[string]interface{}{
-		"databaseInstance":  "openstack",
-		"secret":            SecretName,
-		"glanceAPIInternal": GetDefaultGlanceAPITemplate(GlanceAPITypeInternal),
-		"glanceAPIExternal": GetDefaultGlanceAPITemplate(GlanceAPITypeExternal),
+		"databaseInstance": "openstack",
+		"secret":           SecretName,
+		"glanceAPI":        GetDefaultGlanceAPITemplate(GlanceAPITypeSingle),
 	}
 }
 
@@ -212,5 +212,14 @@ func AssertPVCExist(name types.NamespacedName) {
 	Eventually(func(g Gomega) {
 		err := th.K8sClient.Get(th.Ctx, name, instance)
 		g.Expect(k8s_errors.IsNotFound(err)).To(BeFalse())
+	}, th.Timeout, th.Interval).Should(Succeed())
+}
+
+// AssertCronJobDoesNotExist ensures the CronJob resource does not exist in a k8s cluster.
+func AssertCronJobDoesNotExist(name types.NamespacedName) {
+	instance := &batchv1.CronJob{}
+	Eventually(func(g Gomega) {
+		err := th.K8sClient.Get(th.Ctx, name, instance)
+		g.Expect(k8s_errors.IsNotFound(err)).To(BeTrue())
 	}, th.Timeout, th.Interval).Should(Succeed())
 }
