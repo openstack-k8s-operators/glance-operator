@@ -10,7 +10,6 @@ spec:
   databaseInstance: openstack
   databaseUser: glance
   glanceAPI:
-    containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
     debug:
       service: false
     preserveJobs: false

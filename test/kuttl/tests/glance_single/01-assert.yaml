@@ -1,12 +1,9 @@
 #
 # Check for:
 # - Glance CR
-# - GlanceAPI glance-external CR
-# - GlanceAPI glance-internal CR
-# - GlanceAPI glance-external-api StatefulSet
-# - GlanceAPI glance-internal-api StatefulSet
-# - glance-external-api Pod
-# - glance-internal-api Pod
+# - GlanceAPI glance-single CR
+# - GlanceAPI glance-single-api StatefulSet
+# - glance-single-api Pod
 # - glance-internal service
 # - glance-public service
 # - glance internal and public endpoints
@@ -26,6 +23,7 @@ spec:
     debug:
       service: false
     replicas: 1
+    type: "single"
   secret: osp-secret
   storageRequest: 10G
 status:
@@ -34,24 +32,9 @@ status:
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
 metadata:
-  name: glance-external
+  name: glance-single
 spec:
-  apiType: external
-  databaseUser: glance
-  databaseHostname: openstack
-  debug:
-    service: false
-  passwordSelectors:
-    database: GlanceDatabasePassword
-    service: GlancePassword
-  replicas: 1
----
-apiVersion: glance.openstack.org/v1beta1
-kind: GlanceAPI
-metadata:
-  name: glance-internal
-spec:
-  apiType: internal
+  apiType: single
   databaseUser: glance
   databaseHostname: openstack
   debug:
@@ -64,60 +47,21 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-external-api
+  name: glance-single-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      service: glance-external
+      service: glance-single
   template:
     metadata:
       labels:
-        service: glance-external
+        service: glance-single
     spec:
       containers:
       - args:
         - -c
-        - tail -n+1 -F /var/log/glance/glance-external.log
-        command:
-        - /bin/bash
-        name: glance-log
-      - args:
-        - -c
-        - /usr/sbin/httpd -DFOREGROUND
-        command:
-        - /bin/bash
-        name: glance-httpd
-      - args:
-        - -c
-        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
-        command:
-        - /bin/bash
-        name: glance-api
-      serviceAccount: glance-glance
-      serviceAccountName: glance-glance
-status:
-  availableReplicas: 1
-  replicas: 1
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: glance-internal-api
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      service: glance-internal
-  template:
-    metadata:
-      labels:
-        service: glance-internal
-    spec:
-      containers:
-      - args:
-        - -c
-        - tail -n+1 -F /var/log/glance/glance-internal.log
+        - tail -n+1 -F /var/log/glance/glance-single.log
         command:
         - /bin/bash
         name: glance-log
@@ -143,15 +87,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    service: glance-external
-status:
-  phase: Running
----
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    service: glance-internal
+    service: glance-single
 status:
   phase: Running
 ---
@@ -161,7 +97,7 @@ metadata:
   name: glance-internal
   labels:
     endpoint: internal
-    service: glance-internal
+    service: glance-single
 spec:
   ports:
   - name: glance-internal
@@ -169,7 +105,7 @@ spec:
     protocol: TCP
     targetPort: 9292
   selector:
-    service: glance-internal
+    service: glance-single
 ---
 apiVersion: v1
 kind: Service
@@ -177,7 +113,7 @@ metadata:
   name: glance-public
   labels:
     endpoint: public
-    service: glance-external
+    service: glance-single
 spec:
   ports:
   - name: glance-public
@@ -185,7 +121,7 @@ spec:
     protocol: TCP
     targetPort: 9292
   selector:
-    service: glance-external
+    service: glance-single
 ---
 # the actual addresses of the apiEndpoints are platform specific, so we can't rely on
 # kuttl asserts to check them. This short script gathers the addresses and checks that

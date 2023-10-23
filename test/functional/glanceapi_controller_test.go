@@ -122,7 +122,7 @@ var _ = Describe("Glanceapi controller", func() {
 				corev1.ConditionTrue,
 			)
 		})
-		It("creates a Deployment for glance-api service - Internal", func() {
+		It("creates a StatefulSet for glance-api service - Internal", func() {
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalAPI)
 
 			ss := th.GetStatefulSet(glanceTest.GlanceInternalAPI)
@@ -137,7 +137,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 		})
-		It("creates a Deployment for glance-api service - External", func() {
+		It("creates a StatefulSet for glance-api service - External", func() {
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalAPI)
 			ss := th.GetStatefulSet(glanceTest.GlanceExternalAPI)
 			// Check the resulting deployment fields
@@ -175,12 +175,12 @@ var _ = Describe("Glanceapi controller", func() {
 				corev1.ConditionTrue,
 			)
 		})
-		It("creates a Deployment for glance-single-api service", func() {
-			th.SimulateDeploymentReplicaReady(glanceTest.GlanceSingleAPI)
-			ss := th.GetDeployment(glanceTest.GlanceSingleAPI)
+		It("creates a StatefulSet for glance-single-api service", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingleAPI)
+			ss := th.GetStatefulSet(glanceTest.GlanceSingleAPI)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(3))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
 
 			container := ss.Spec.Template.Spec.Containers[2]
@@ -190,21 +190,21 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 		})
 	})
-	When("the Deployment has at least one Replica ready - External", func() {
+	When("the StatefulSet has at least one Replica ready - External", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, GetDefaultGlanceAPISpec(GlanceAPITypeExternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceExternal.Namespace))
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalAPI)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
 		})
-		It("reports that Deployment is ready", func() {
+		It("reports that StatefulSet is ready", func() {
 			th.ExpectCondition(
 				glanceTest.GlanceExternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.DeploymentReadyCondition,
 				corev1.ConditionTrue,
 			)
-			// Deployment is Ready, check the actual ReadyCount is > 0
+			// StatefulSet is Ready, check the actual ReadyCount is > 0
 			glanceAPI := GetGlanceAPI(glanceTest.GlanceExternal)
 			Expect(glanceAPI.Status.ReadyCount).To(BeNumerically(">", 0))
 		})
@@ -224,21 +224,21 @@ var _ = Describe("Glanceapi controller", func() {
 			)
 		})
 	})
-	When("the Deployment has at least one Replica ready - Internal", func() {
+	When("the StatefulSet has at least one Replica ready - Internal", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, GetDefaultGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalAPI)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalSvc)
 		})
-		It("reports that Deployment is ready", func() {
+		It("reports that StatefulSet is ready", func() {
 			th.ExpectCondition(
 				glanceTest.GlanceInternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.DeploymentReadyCondition,
 				corev1.ConditionTrue,
 			)
-			// Deployment is Ready, check the actual ReadyCount is > 0
+			// StatefulSet is Ready, check the actual ReadyCount is > 0
 			glanceAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 			Expect(glanceAPI.Status.ReadyCount).To(BeNumerically(">", 0))
 		})
@@ -258,21 +258,21 @@ var _ = Describe("Glanceapi controller", func() {
 			)
 		})
 	})
-	When("the Deployment has at least one Replica ready - Single", func() {
+	When("the StatefulSet has at least one Replica ready - Single", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, GetDefaultGlanceAPISpec(GlanceAPITypeSingle)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceSingle.Namespace))
-			th.SimulateDeploymentReplicaReady(glanceTest.GlanceSingleAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingleAPI)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 		})
-		It("reports that Deployment is ready", func() {
+		It("reports that StatefulSet is ready", func() {
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.DeploymentReadyCondition,
 				corev1.ConditionTrue,
 			)
-			// Deployment is Ready, check the actual ReadyCount is > 0
+			// StatefulSet is Ready, check the actual ReadyCount is > 0
 			glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
 			Expect(glanceAPI.Status.ReadyCount).To(BeNumerically(">", 0))
 		})

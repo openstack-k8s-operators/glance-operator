@@ -607,17 +607,22 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	return ctrl.Result{}, nil
 }
 
+// apiDeployment represents the logic of deploying GlanceAPI instances specified
+// in the main CR according to a given strategy (split vs single). It handles
+// the deployment logic itself, as well as the output settings mirrored in the
+// main Glance CR status
 func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1.Glance, current glancev1.GlanceAPITemplate, helper *helper.Helper) error {
 
 	// By default internal and external points to diff instances, but we might
-	// want to override "external" in case of a "single" instance and skip the
-	// internal one
+	// want to override "external" with "single" in case APIType == "single":
+	// in this case we only deploy the External instance and skip the internal
+	// one
 	var internal string = glancev1.APIInternal
 	var external string = glancev1.APIExternal
 
-	// If we're deploying a "single" instance, we skip the GlanceAPI.Internal one,
-	// and we only deploy the External instance passing "glancev1.APISingle" to
-	// the GlanceAPI controller, so we can properly handle this use case (nad and
+	// If we're deploying a "single" instance, we skip GlanceAPI.Internal, and
+	// we only deploy the External instance passing "glancev1.APISingle" to the
+	// GlanceAPI controller, so we can properly handle this use case (nad and
 	// service creation).
 	if current.Type == "single" {
 		external = glancev1.APISingle
@@ -639,7 +644,8 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 	// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
 		instance.Status.APIEndpoints[string(endpoint.EndpointPublic)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
-		// if we don't split, update apiEndpoint to include the internal service
+		// if we don't split, both apiEndpoints (public and internal) should be
+		// reflected to the main Glance CR
 		if current.Type == "single" {
 			instance.Status.APIEndpoints[string(endpoint.EndpointInternal)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
@@ -648,8 +654,9 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition
 	apiCondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
 
+	// split is the default use case unless type: "single" is passed to the top
+	// level CR: in this case we deploy an additional glanceAPI instance (Internal)
 	if current.Type == "split" || len(current.Type) == 0 {
-		// Regardless of what the user may have set in GlanceAPIInternal.EndpointType,
 		// we force "internal" here by passing glancev1.APIInternal for the apiType arg
 		glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, current, internal, helper)
 		if err != nil {
@@ -710,11 +717,6 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		ServiceAccount:    instance.RbacResourceName(),
 		Quota:             instance.IsQuotaEnabled(),
 		ImageCacheSize:    instance.Spec.ImageCacheSize,
-	}
-
-	// TODO: Remove this if statement when API are consolidated
-	if len(apiSpec.GlanceAPITemplate.ContainerImage) == 0 {
-		apiSpec.GlanceAPITemplate.ContainerImage = instance.Spec.ContainerImage
 	}
 
 	if apiSpec.GlanceAPITemplate.NodeSelector == nil {
