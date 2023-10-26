@@ -131,12 +131,12 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 
 		It("creates a Deployment for glance-api service - Internal", func() {
-			th.SimulateDeploymentReplicaReady(glanceTest.GlanceInternalAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalAPI)
 
-			ss := th.GetDeployment(glanceTest.GlanceInternalAPI)
+			ss := th.GetStatefulSet(glanceTest.GlanceInternalAPI)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(3))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
 
 			container := ss.Spec.Template.Spec.Containers[2]
@@ -147,12 +147,12 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 
 		It("creates a Deployment for glance-api service - External", func() {
-			th.SimulateDeploymentReplicaReady(glanceTest.GlanceExternalAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalAPI)
 
-			ss := th.GetDeployment(glanceTest.GlanceExternalAPI)
+			ss := th.GetStatefulSet(glanceTest.GlanceExternalAPI)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(3))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
 
 			// Check the glance-api container
@@ -179,7 +179,7 @@ var _ = Describe("Glanceapi controller", func() {
 			//DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, GetDefaultGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, GetDefaultGlanceAPISpec(GlanceAPITypeExternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceExternal.Namespace))
-			th.SimulateDeploymentReplicaReady(glanceTest.GlanceExternalAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalAPI)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
 		})
 
@@ -216,7 +216,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, GetDefaultGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
-			th.SimulateDeploymentReplicaReady(glanceTest.GlanceInternalAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalAPI)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
 		})
 
@@ -278,7 +278,7 @@ var _ = Describe("Glanceapi controller", func() {
 
 			glance := CreateGlanceAPI(glanceTest.GlanceInternal, spec)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
-			th.SimulateDeploymentReplicaReady(glanceTest.GlanceInternalAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalAPI)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
 			DeferCleanup(th.DeleteInstance, glance)
 		})
@@ -332,7 +332,7 @@ var _ = Describe("Glanceapi controller", func() {
 
 			glance := CreateGlanceAPI(glanceTest.GlanceExternal, spec)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceExternal.Namespace))
-			th.SimulateDeploymentReplicaReady(glanceTest.GlanceExternalAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalAPI)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
 			DeferCleanup(th.DeleteInstance, glance)
 		})

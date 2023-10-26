@@ -45,7 +45,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/pvc"
 	common_rbac "github.com/openstack-k8s-operators/lib-common/modules/common/rbac"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
@@ -284,15 +283,6 @@ func (r *GlanceReconciler) reconcileInit(
 ) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
 
-	// Define the PVCs objects required by Glance
-	ctrlResult, err := r.ensurePVC(ctx, helper, instance, serviceLabels)
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-	// End PVC creation/patch
-
 	//
 	// create service DB instance
 	//
@@ -305,7 +295,7 @@ func (r *GlanceReconciler) reconcileInit(
 		},
 	)
 	// create or patch the DB
-	ctrlResult, err = db.CreateOrPatchDB(
+	ctrlResult, err := db.CreateOrPatchDB(
 		ctx,
 		helper,
 	)
@@ -699,6 +689,10 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 		apiSpec.GlanceAPITemplate.NodeSelector = instance.Spec.NodeSelector
 	}
 
+	// Inherit the values required for PVC creation from the top-level CR
+	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
+	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
+
 	deployment := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", instance.Name, apiType),
@@ -832,39 +826,6 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 		}
 	}
 	return nil
-}
-
-// ensurePVC - Creates the PVCs required by Glance to start the GlanceAPI Pods
-func (r *GlanceReconciler) ensurePVC(
-	ctx context.Context,
-	h *helper.Helper,
-	instance *glancev1.Glance,
-	serviceLabels map[string]string,
-) (ctrl.Result, error) {
-	// Define a new PVC object
-	localPvc := pvc.NewPvc(
-		glance.Pvc(instance, serviceLabels, glance.PvcLocal),
-		time.Duration(5)*time.Second,
-	)
-
-	ctrlResult, err := localPvc.CreateOrPatch(ctx, h)
-
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-
-	// Handle an additional PVC creation an ImageCacheSize is provided
-	if len(instance.Spec.ImageCacheSize) > 0 {
-		cachePvc := pvc.NewPvc(
-			glance.Pvc(instance, serviceLabels, glance.PvcCache),
-			time.Duration(5)*time.Second,
-		)
-		ctrlResult, err = cachePvc.CreateOrPatch(ctx, h)
-	}
-	// End PVC creation/patch
-	return ctrlResult, err
 }
 
 // ensureCronJobs - Create the required CronJobs to clean DB entries and image-cache

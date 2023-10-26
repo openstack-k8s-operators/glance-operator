@@ -240,10 +240,6 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
 		})
-		It("should have a local pvc", func() {
-			AssertPVCExist(glanceTest.Instance)
-			AssertPVCDoesNotExist(glanceTest.GlanceCache)
-		})
 		It("Creates glanceAPI", func() {
 			GlanceAPIExists(glanceTest.GlanceInternal)
 			GlanceAPIExists(glanceTest.GlanceExternal)
@@ -332,11 +328,13 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 		})
 		It("Check the resulting endpoints of the generated sub-CRs", func() {
-			th.SimulateDeploymentReadyWithPods(
+			th.SimulateStatefulSetReplicaReadyWithPods(
+				//th.SimulateDeploymentReadyWithPods(
 				glanceTest.GlanceInternalAPI,
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)
-			th.SimulateDeploymentReadyWithPods(
+			th.SimulateStatefulSetReplicaReadyWithPods(
+				//th.SimulateDeploymentReadyWithPods(
 				glanceTest.GlanceExternalAPI,
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)

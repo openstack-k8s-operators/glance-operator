@@ -109,7 +109,8 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 
 func GetGlanceAPIDefaultSpec(apiType APIType) map[string]interface{} {
 	return map[string]interface{}{
-		"replicas": 1,
+		"replicas":       1,
+		"storageRequest": glanceTest.GlancePVCSize,
 	}
 }
 
@@ -165,6 +166,7 @@ func GetDefaultGlanceAPITemplate(apiType APIType) map[string]interface{} {
 		"containerImage": glanceTest.ContainerImage,
 		"serviceAccount": glanceTest.GlanceSA.Name,
 		"apiType":        apiType,
+		"storageRequest": glanceTest.GlancePVCSize,
 	}
 }
 

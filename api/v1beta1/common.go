@@ -95,6 +95,13 @@ type GlanceAPITemplate struct {
 
 	// Override, provides the ability to override the generated manifest of several child resources.
 	Override APIOverrideSpec `json:"override,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// StorageClass
+	StorageClass string `json:"storageClass,omitempty"`
+
+	// StorageRequest
+	StorageRequest string `json:"storageRequest"`
 }
 
 // APIOverrideSpec to override the generated manifest of several child resources.

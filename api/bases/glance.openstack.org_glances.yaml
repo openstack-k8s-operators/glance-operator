@@ -934,8 +934,13 @@ spec:
                           x-kubernetes-int-or-string: true
                         type: object
                     type: object
+                  storageClass:
+                    type: string
+                  storageRequest:
+                    type: string
                 required:
                 - containerImage
+                - storageRequest
                 type: object
               glanceAPIInternal:
                 properties:
@@ -1053,8 +1058,13 @@ spec:
                           x-kubernetes-int-or-string: true
                         type: object
                     type: object
+                  storageClass:
+                    type: string
+                  storageRequest:
+                    type: string
                 required:
                 - containerImage
+                - storageRequest
                 type: object
               imageCacheSize:
                 default: ""

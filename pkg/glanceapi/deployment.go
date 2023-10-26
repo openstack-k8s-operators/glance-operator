@@ -231,6 +231,11 @@ func StatefulSet(
 			},
 		},
 	}
+	deployment.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{glance.GetPvc(instance, labels, glance.PvcLocal)}
+
+	if len(instance.Spec.ImageCacheSize) > 0 {
+		deployment.Spec.VolumeClaimTemplates = append(deployment.Spec.VolumeClaimTemplates, glance.GetPvc(instance, labels, glance.PvcCache))
+	}
 	deployment.Spec.Template.Spec.Volumes = append(glance.GetVolumes(
 		instance.Name,
 		glance.ServiceName,
