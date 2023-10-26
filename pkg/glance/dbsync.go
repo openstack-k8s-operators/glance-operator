@@ -37,9 +37,6 @@ func DbSyncJob(
 	annotations map[string]string,
 ) *batchv1.Job {
 	runAsUser := int64(0)
-
-	dbSyncExtraMounts := []glancev1.GlanceExtraVolMounts{}
-	secretNames := []string{}
 	var config0644AccessMode int32 = 0644
 
 	// Unlike the individual glanceAPI services, the DbSyncJob doesn't need a
@@ -47,21 +44,32 @@ func DbSyncJob(
 	// service, The two snippet files that it does need (DefaultsConfigFileName
 	// and CustomConfigFileName) can be extracted from the top-level glance
 	// config-data secret.
-	dbSyncVolume := corev1.Volume{
-		Name: "db-sync-config-data",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				DefaultMode: &config0644AccessMode,
-				SecretName:  instance.Name + "-config-data",
-				Items: []corev1.KeyToPath{
-					{
-						Key:  DefaultsConfigFileName,
-						Path: DefaultsConfigFileName,
+	dbSyncVolume := []corev1.Volume{
+		{
+			Name: "db-sync-config-data",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					DefaultMode: &config0644AccessMode,
+					SecretName:  instance.Name + "-config-data",
+					Items: []corev1.KeyToPath{
+						{
+							Key:  DefaultsConfigFileName,
+							Path: DefaultsConfigFileName,
+						},
+						{
+							Key:  CustomConfigFileName,
+							Path: CustomConfigFileName,
+						},
 					},
-					{
-						Key:  CustomConfigFileName,
-						Path: CustomConfigFileName,
-					},
+				},
+			},
+		},
+		{
+			Name: "config-data",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					DefaultMode: &config0644AccessMode,
+					SecretName:  ServiceName + "-config-data",
 				},
 			},
 		},
@@ -116,27 +124,14 @@ func DbSyncJob(
 							SecurityContext: &corev1.SecurityContext{
 								RunAsUser: &runAsUser,
 							},
-							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts: append(GetVolumeMounts(
-								secretNames, false,
-								dbSyncExtraMounts, DbsyncPropagation),
-								dbSyncMounts...),
+							Env:          env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts: dbSyncMounts,
 						},
 					},
 				},
 			},
 		},
 	}
-
-	job.Spec.Template.Spec.Volumes = append(GetVolumes(
-		instance.Name,
-		ServiceName,
-		false,
-		secretNames,
-		dbSyncExtraMounts,
-		DbsyncPropagation),
-		dbSyncVolume,
-	)
-
+	job.Spec.Template.Spec.Volumes = dbSyncVolume
 	return job
 }
