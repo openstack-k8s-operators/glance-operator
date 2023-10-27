@@ -14,12 +14,9 @@ spec:
     replicas: 2
   glanceAPIExternal:
     replicas: 2
-status:
-  glanceAPIExternalReadyCount: 2
-  glanceAPIInternalReadyCount: 2
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: glance-external-api
 spec:
@@ -29,7 +26,7 @@ status:
   replicas: 2
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: glance-internal-api
 spec:

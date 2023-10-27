@@ -600,7 +600,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return ctrl.Result{}, err
 	}
 	if op != controllerutil.OperationResultNone {
-		r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
+		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
 	// It is possible that an earlier call to update the status has also set
@@ -610,11 +610,10 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		instance.Status.APIEndpoints = map[string]string{}
 	}
 
-	// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
+	// Mirror internal GlanceAPI status' APIEndpoints to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
 		instance.Status.APIEndpoints = glanceAPI.Status.APIEndpoints
 	}
-	instance.Status.GlanceAPIInternalReadyCount = glanceAPI.Status.ReadyCount
 
 	// Get internal GlanceAPI's condition status for comparison with external below
 	internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
@@ -632,14 +631,13 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return ctrl.Result{}, err
 	}
 	if op != controllerutil.OperationResultNone {
-		r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
+		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
-	// Mirror external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
+	// Mirror external GlanceAPI status' APIEndpoints to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
 		instance.Status.APIEndpoints[string(endpoint.EndpointPublic)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
 	}
-	instance.Status.GlanceAPIExternalReadyCount = glanceAPI.Status.ReadyCount
 
 	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition
 	externalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
@@ -693,28 +691,28 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
 	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
 
-	deployment := &glancev1.GlanceAPI{
+	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", instance.Name, apiType),
 			Namespace: instance.Namespace,
 		},
 	}
 
-	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
+	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, glanceStatefulset, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
-		deployment.Spec = apiSpec
+		glanceStatefulset.Spec = apiSpec
 
 		// We might want to create instances pointing to different backends in
 		// the future, hence we inherit the customServiceConfig (where the backends
 		// are defined) only if it's not specified in the GlanceAPITemplate.
 		// Same comment applies to CustomServiceConfigSecrets
-		if len(deployment.Spec.CustomServiceConfig) == 0 {
-			deployment.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
+		if len(glanceStatefulset.Spec.CustomServiceConfig) == 0 {
+			glanceStatefulset.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
 		}
 
-		if len(deployment.Spec.CustomServiceConfigSecrets) == 0 {
-			deployment.Spec.CustomServiceConfigSecrets = instance.Spec.CustomServiceConfigSecrets
+		if len(glanceStatefulset.Spec.CustomServiceConfigSecrets) == 0 {
+			glanceStatefulset.Spec.CustomServiceConfigSecrets = instance.Spec.CustomServiceConfigSecrets
 		}
 
 		// QuotaLimits are global values for Glance service in keystone, it's not
@@ -727,18 +725,18 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 			}
 		}
 
-		err := controllerutil.SetControllerReference(instance, deployment, r.Scheme)
+		err := controllerutil.SetControllerReference(instance, glanceStatefulset, r.Scheme)
 		if err != nil {
 			return err
 		}
 
 		// Add a finalizer to prevent user from manually removing child GlanceAPI
-		controllerutil.AddFinalizer(deployment, helper.GetFinalizer())
+		controllerutil.AddFinalizer(glanceStatefulset, helper.GetFinalizer())
 
 		return nil
 	})
 
-	return deployment, op, err
+	return glanceStatefulset, op, err
 }
 
 // generateServiceConfig - create secrets which hold scripts and service configuration (*used for DBSync only*)

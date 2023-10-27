@@ -1156,12 +1156,6 @@ spec:
                 type: array
               databaseHostname:
                 type: string
-              glanceAPIExternalReadyCount:
-                format: int32
-                type: integer
-              glanceAPIInternalReadyCount:
-                format: int32
-                type: integer
               hash:
                 additionalProperties:
                   type: string
