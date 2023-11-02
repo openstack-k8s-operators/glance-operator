@@ -946,12 +946,17 @@ spec:
               serviceUser:
                 default: glance
                 type: string
+              storageClass:
+                type: string
+              storageRequest:
+                type: string
             required:
             - containerImage
             - databaseHostname
             - imageCacheSize
             - secret
             - serviceAccount
+            - storageRequest
             type: object
           status:
             properties:

@@ -39,8 +39,6 @@ var _ = Describe("Glance controller", func() {
 				g.Expect(glance.Status.Conditions).To(HaveLen(12))
 				g.Expect(glance.Status.DatabaseHostname).To(Equal(""))
 				g.Expect(glance.Status.APIEndpoints).To(BeEmpty())
-				g.Expect(glance.Status.GlanceAPIExternalReadyCount).To(Equal(int32(0)))
-				g.Expect(glance.Status.GlanceAPIInternalReadyCount).To(Equal(int32(0)))
 			}, timeout, interval).Should(Succeed())
 		})
 		It("reports InputReady False as secret is not found", func() {
@@ -240,10 +238,6 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalRoute)
 		})
-		It("should have a local pvc", func() {
-			AssertPVCExist(glanceTest.Instance)
-			AssertPVCDoesNotExist(glanceTest.GlanceCache)
-		})
 		It("Creates glanceAPI", func() {
 			GlanceAPIExists(glanceTest.GlanceInternal)
 			GlanceAPIExists(glanceTest.GlanceExternal)
@@ -332,11 +326,13 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 		})
 		It("Check the resulting endpoints of the generated sub-CRs", func() {
-			th.SimulateDeploymentReadyWithPods(
+			th.SimulateStatefulSetReplicaReadyWithPods(
+				//th.SimulateDeploymentReadyWithPods(
 				glanceTest.GlanceInternalAPI,
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)
-			th.SimulateDeploymentReadyWithPods(
+			th.SimulateStatefulSetReplicaReadyWithPods(
+				//th.SimulateDeploymentReadyWithPods(
 				glanceTest.GlanceExternalAPI,
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)

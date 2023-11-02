@@ -45,7 +45,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/pvc"
 	common_rbac "github.com/openstack-k8s-operators/lib-common/modules/common/rbac"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
@@ -284,15 +283,6 @@ func (r *GlanceReconciler) reconcileInit(
 ) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
 
-	// Define the PVCs objects required by Glance
-	ctrlResult, err := r.ensurePVC(ctx, helper, instance, serviceLabels)
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-	// End PVC creation/patch
-
 	//
 	// create service DB instance
 	//
@@ -305,7 +295,7 @@ func (r *GlanceReconciler) reconcileInit(
 		},
 	)
 	// create or patch the DB
-	ctrlResult, err = db.CreateOrPatchDB(
+	ctrlResult, err := db.CreateOrPatchDB(
 		ctx,
 		helper,
 	)
@@ -610,7 +600,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return ctrl.Result{}, err
 	}
 	if op != controllerutil.OperationResultNone {
-		r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
+		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
 	// It is possible that an earlier call to update the status has also set
@@ -620,11 +610,10 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		instance.Status.APIEndpoints = map[string]string{}
 	}
 
-	// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
+	// Mirror internal GlanceAPI status' APIEndpoints to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
 		instance.Status.APIEndpoints = glanceAPI.Status.APIEndpoints
 	}
-	instance.Status.GlanceAPIInternalReadyCount = glanceAPI.Status.ReadyCount
 
 	// Get internal GlanceAPI's condition status for comparison with external below
 	internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
@@ -642,14 +631,13 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return ctrl.Result{}, err
 	}
 	if op != controllerutil.OperationResultNone {
-		r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
+		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
-	// Mirror external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
+	// Mirror external GlanceAPI status' APIEndpoints to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
 		instance.Status.APIEndpoints[string(endpoint.EndpointPublic)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
 	}
-	instance.Status.GlanceAPIExternalReadyCount = glanceAPI.Status.ReadyCount
 
 	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition
 	externalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
@@ -699,28 +687,32 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 		apiSpec.GlanceAPITemplate.NodeSelector = instance.Spec.NodeSelector
 	}
 
-	deployment := &glancev1.GlanceAPI{
+	// Inherit the values required for PVC creation from the top-level CR
+	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
+	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
+
+	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", instance.Name, apiType),
 			Namespace: instance.Namespace,
 		},
 	}
 
-	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
+	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, glanceStatefulset, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
-		deployment.Spec = apiSpec
+		glanceStatefulset.Spec = apiSpec
 
 		// We might want to create instances pointing to different backends in
 		// the future, hence we inherit the customServiceConfig (where the backends
 		// are defined) only if it's not specified in the GlanceAPITemplate.
 		// Same comment applies to CustomServiceConfigSecrets
-		if len(deployment.Spec.CustomServiceConfig) == 0 {
-			deployment.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
+		if len(glanceStatefulset.Spec.CustomServiceConfig) == 0 {
+			glanceStatefulset.Spec.CustomServiceConfig = instance.Spec.CustomServiceConfig
 		}
 
-		if len(deployment.Spec.CustomServiceConfigSecrets) == 0 {
-			deployment.Spec.CustomServiceConfigSecrets = instance.Spec.CustomServiceConfigSecrets
+		if len(glanceStatefulset.Spec.CustomServiceConfigSecrets) == 0 {
+			glanceStatefulset.Spec.CustomServiceConfigSecrets = instance.Spec.CustomServiceConfigSecrets
 		}
 
 		// QuotaLimits are global values for Glance service in keystone, it's not
@@ -733,18 +725,18 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(ctx context.Context, inst
 			}
 		}
 
-		err := controllerutil.SetControllerReference(instance, deployment, r.Scheme)
+		err := controllerutil.SetControllerReference(instance, glanceStatefulset, r.Scheme)
 		if err != nil {
 			return err
 		}
 
 		// Add a finalizer to prevent user from manually removing child GlanceAPI
-		controllerutil.AddFinalizer(deployment, helper.GetFinalizer())
+		controllerutil.AddFinalizer(glanceStatefulset, helper.GetFinalizer())
 
 		return nil
 	})
 
-	return deployment, op, err
+	return glanceStatefulset, op, err
 }
 
 // generateServiceConfig - create secrets which hold scripts and service configuration (*used for DBSync only*)
@@ -832,39 +824,6 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 		}
 	}
 	return nil
-}
-
-// ensurePVC - Creates the PVCs required by Glance to start the GlanceAPI Pods
-func (r *GlanceReconciler) ensurePVC(
-	ctx context.Context,
-	h *helper.Helper,
-	instance *glancev1.Glance,
-	serviceLabels map[string]string,
-) (ctrl.Result, error) {
-	// Define a new PVC object
-	localPvc := pvc.NewPvc(
-		glance.Pvc(instance, serviceLabels, glance.PvcLocal),
-		time.Duration(5)*time.Second,
-	)
-
-	ctrlResult, err := localPvc.CreateOrPatch(ctx, h)
-
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-
-	// Handle an additional PVC creation an ImageCacheSize is provided
-	if len(instance.Spec.ImageCacheSize) > 0 {
-		cachePvc := pvc.NewPvc(
-			glance.Pvc(instance, serviceLabels, glance.PvcCache),
-			time.Duration(5)*time.Second,
-		)
-		ctrlResult, err = cachePvc.CreateOrPatch(ctx, h)
-	}
-	// End PVC creation/patch
-	return ctrlResult, err
 }
 
 // ensureCronJobs - Create the required CronJobs to clean DB entries and image-cache

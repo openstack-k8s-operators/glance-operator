@@ -37,8 +37,6 @@ spec:
   storageRequest: 10G
 status:
   databaseHostname: openstack
-  glanceAPIExternalReadyCount: 1
-  glanceAPIInternalReadyCount: 1
 ---
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
@@ -55,8 +53,6 @@ spec:
     database: GlanceDatabasePassword
     service: GlancePassword
   replicas: 1
-status:
-  readyCount: 1
 ---
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
@@ -73,11 +69,9 @@ spec:
     database: GlanceDatabasePassword
     service: GlancePassword
   replicas: 1
-status:
-  readyCount: 1
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: glance-external-api
 spec:
@@ -119,7 +113,7 @@ status:
   replicas: 1
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: glance-internal-api
 spec:

@@ -27,12 +27,12 @@ metadata:
   name: glance-internal
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: glance-external-api
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: glance-internal-api
 ---

@@ -38,13 +38,13 @@ const (
 )
 
 // Deployment func
-func Deployment(
+func StatefulSet(
 	instance *glancev1.GlanceAPI,
 	configHash string,
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
-) *appsv1.Deployment {
+) *appsv1.StatefulSet {
 	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
 
@@ -145,12 +145,12 @@ func Deployment(
 		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
 	}
 
-	deployment := &appsv1.Deployment{
+	deployment := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-api", instance.Name),
 			Namespace: instance.Namespace,
 		},
-		Spec: appsv1.DeploymentSpec{
+		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
@@ -230,6 +230,11 @@ func Deployment(
 				},
 			},
 		},
+	}
+	deployment.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{glance.GetPvc(instance, labels, glance.PvcLocal)}
+
+	if len(instance.Spec.ImageCacheSize) > 0 {
+		deployment.Spec.VolumeClaimTemplates = append(deployment.Spec.VolumeClaimTemplates, glance.GetPvc(instance, labels, glance.PvcCache))
 	}
 	deployment.Spec.Template.Spec.Volumes = append(glance.GetVolumes(
 		instance.Name,

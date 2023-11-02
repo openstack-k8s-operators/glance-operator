@@ -9,7 +9,7 @@ import (
 )
 
 // Pvc - creates and returns a PVC object for a backing store
-func Pvc(api *glancev1.Glance, labels map[string]string, pvcType PvcType) *corev1.PersistentVolumeClaim {
+func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) corev1.PersistentVolumeClaim {
 	// By default we point to a local storage pvc request
 	// that will be customized in case the pvc is requested
 	// for cache purposes
@@ -20,7 +20,7 @@ func Pvc(api *glancev1.Glance, labels map[string]string, pvcType PvcType) *corev
 		// append -cache to avoid confusion when listing PVCs
 		pvcName = fmt.Sprintf("%s-cache", ServiceName)
 	}
-	pvc := &corev1.PersistentVolumeClaim{
+	pvc := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvcName,
 			Namespace: api.Namespace,
@@ -28,7 +28,7 @@ func Pvc(api *glancev1.Glance, labels map[string]string, pvcType PvcType) *corev
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteMany,
+				corev1.ReadWriteOnce,
 			},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
@@ -38,6 +38,5 @@ func Pvc(api *glancev1.Glance, labels map[string]string, pvcType PvcType) *corev
 			StorageClassName: &api.Spec.StorageClass,
 		},
 	}
-
 	return pvc
 }

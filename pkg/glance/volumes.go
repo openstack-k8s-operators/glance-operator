@@ -38,14 +38,6 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 				},
 			},
 		},
-		{
-			Name: "lib-data",
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: pvcName,
-				},
-			},
-		},
 	}
 
 	for _, exv := range extraVol {
@@ -153,7 +145,7 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 			ReadOnly:  true,
 		},
 		{
-			Name:      "lib-data",
+			Name:      ServiceName,
 			MountPath: "/var/lib/glance",
 			ReadOnly:  false,
 		},

@@ -44,7 +44,6 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/deployment"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
@@ -53,6 +52,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/statefulset"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -73,7 +73,8 @@ type GlanceAPIReconciler struct {
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update
 // +kubebuilder:rbac:groups=cinder.openstack.org,resources=cinders,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete;
+// +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
@@ -245,7 +246,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&keystonev1.KeystoneEndpoint{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
-		Owns(&appsv1.Deployment{}).
+		Owns(&appsv1.StatefulSet{}).
 		Watches(&source.Kind{Type: &corev1.Secret{}},
 			handler.EnqueueRequestsFromMapFunc(svcSecretFn)).
 		Watches(&source.Kind{Type: &networkv1.NetworkAttachmentDefinition{}},
@@ -614,9 +615,9 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// normal reconcile tasks
 	//
 
-	// Define a new Deployment object
-	deplDef := glanceapi.Deployment(instance, inputHash, serviceLabels, serviceAnnotations, privileged)
-	depl := deployment.NewDeployment(
+	// Define a new StatefuleSet object
+	deplDef := glanceapi.StatefulSet(instance, inputHash, serviceLabels, serviceAnnotations, privileged)
+	depl := statefulset.NewStatefulSet(
 		deplDef,
 		time.Duration(5)*time.Second,
 	)
@@ -638,7 +639,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			condition.DeploymentReadyRunningMessage))
 		return ctrlResult, nil
 	}
-	instance.Status.ReadyCount = depl.GetDeployment().Status.ReadyReplicas
+	instance.Status.ReadyCount = depl.GetStatefulSet().Status.ReadyReplicas
 
 	// verify if network attachment matches expectations
 	networkReady, networkAttachmentStatus, err := nad.VerifyNetworkStatusFromAnnotation(ctx, helper, instance.Spec.NetworkAttachments, serviceLabels, instance.Status.ReadyCount)
@@ -670,7 +671,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			condition.SeverityInfo,
 			condition.DeploymentReadyRunningMessage))
 	}
-	// create Deployment - end
+	// create StatefulSet - end
 
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
 	return ctrl.Result{}, nil
