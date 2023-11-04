@@ -196,6 +196,8 @@ var _ = BeforeSuite(func() {
 	err = (&glancev1.Glance{}).SetupWebhookWithManager(k8sManager)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = (&glancev1.GlanceAPI{}).SetupWebhookWithManager(k8sManager)
+	Expect(err).NotTo(HaveOccurred())
 	go func() {
 		defer GinkgoRecover()
 		err = k8sManager.Start(ctx)

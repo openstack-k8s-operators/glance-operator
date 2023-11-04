@@ -37,7 +37,7 @@ const (
 	GlanceAPIHttpdCommand = "/usr/sbin/httpd -DFOREGROUND"
 )
 
-// Deployment func
+// StatefulSet func
 func StatefulSet(
 	instance *glancev1.GlanceAPI,
 	configHash string,
