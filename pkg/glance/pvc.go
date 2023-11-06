@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Pvc - creates and returns a PVC object for a backing store
+// GetPvc - creates and returns a PVC object for a backing store
 func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) corev1.PersistentVolumeClaim {
 	// By default we point to a local storage pvc request
 	// that will be customized in case the pvc is requested

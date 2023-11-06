@@ -144,6 +144,10 @@ func main() {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Glance")
 			os.Exit(1)
 		}
+		if err = (&glancev1.GlanceAPI{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "GlanceAPI")
+			os.Exit(1)
+		}
 		checker = mgr.GetWebhookServer().StartedChecker()
 	}
 	//+kubebuilder:scaffold:builder

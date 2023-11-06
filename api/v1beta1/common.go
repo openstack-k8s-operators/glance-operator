@@ -120,6 +120,16 @@ func SetupDefaults() {
 	SetupGlanceDefaults(glanceDefaults)
 }
 
+// SetupAPIDefaults - initializes any CRD field defaults based on environment variables (the defaulting mechanism itself is implemented via webhooks)
+func SetupAPIDefaults() {
+	// Acquire environmental defaults and initialize GlanceAPI defaults with them
+	glanceAPIDefaults := GlanceAPIDefaults{
+		ContainerImageURL: util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", GlanceAPIContainerImage),
+	}
+
+	SetupGlanceAPIDefaults(glanceAPIDefaults)
+}
+
 // GetAdminServiceClient - get an admin serviceClient for the Glance instance
 func GetAdminServiceClient(
 	ctx context.Context,

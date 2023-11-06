@@ -25,6 +25,26 @@ webhooks:
     resources:
     - glances
   sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-glance-openstack-org-v1beta1-glanceapi
+  failurePolicy: Fail
+  name: mglanceapi.kb.io
+  rules:
+  - apiGroups:
+    - glance.openstack.org
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - glanceapis
+  sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -51,4 +71,24 @@ webhooks:
     - UPDATE
     resources:
     - glances
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-glance-openstack-org-v1beta1-glanceapi
+  failurePolicy: Fail
+  name: vglanceapi.kb.io
+  rules:
+  - apiGroups:
+    - glance.openstack.org
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - glanceapis
   sideEffects: None
