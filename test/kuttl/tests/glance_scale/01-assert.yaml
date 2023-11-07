@@ -17,19 +17,16 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
-  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   customServiceConfig: |
     [DEFAULT]
     debug = true
   databaseInstance: openstack
   databaseUser: glance
   glanceAPIInternal:
-    containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
     debug:
       service: false
     replicas: 1
   glanceAPIExternal:
-    containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
     debug:
       service: false
     replicas: 1
@@ -44,7 +41,6 @@ metadata:
   name: glance-external
 spec:
   apiType: external
-  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   databaseUser: glance
   databaseHostname: openstack
   debug:
@@ -60,7 +56,6 @@ metadata:
   name: glance-internal
 spec:
   apiType: internal
-  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
   databaseUser: glance
   databaseHostname: openstack
   debug:
@@ -90,21 +85,18 @@ spec:
         - tail -n+1 -F /var/log/glance/glance-external.log
         command:
         - /bin/bash
-        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-log
       - args:
         - -c
         - /usr/sbin/httpd -DFOREGROUND
         command:
         - /bin/bash
-        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-httpd
       - args:
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         command:
         - /bin/bash
-        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-api
       serviceAccount: glance-glance
       serviceAccountName: glance-glance
@@ -132,21 +124,18 @@ spec:
         - tail -n+1 -F /var/log/glance/glance-internal.log
         command:
         - /bin/bash
-        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-log
       - args:
         - -c
         - /usr/sbin/httpd -DFOREGROUND
         command:
         - /bin/bash
-        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-httpd
       - args:
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         command:
         - /bin/bash
-        image: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
         name: glance-api
       serviceAccount: glance-glance
       serviceAccountName: glance-glance
@@ -219,3 +208,30 @@ commands:
       else
         exit 1
       fi
+---
+# Verify that Glance CRs have the containerImage defaulted from the CSV RELATED_IMAGE parameter default
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+namespaced: true
+commands:
+  - script: |
+      tupleTemplate='{{ range (index .spec.template.spec.containers 1).env }}{{ .name }}{{ "#" }}{{ .value}}{{"\n"}}{{ end }}'
+      imageTuples=$(oc get -n openstack-operators deployment glance-operator-controller-manager -o go-template="$tupleTemplate")
+      for ITEM in $(echo $imageTuples); do
+        # it is an image
+        if echo $ITEM | grep 'RELATED_IMAGE' &> /dev/null; then
+          NAME=$(echo $ITEM | sed -e 's|^RELATED_IMAGE_GLANCE_\([^_]*\)_.*|\1|')
+          IMG_FROM_ENV=$(echo $ITEM | sed -e 's|^.*#\(.*\)|\1|')
+          template='{{.spec.containerImage}}'
+          case $NAME in
+            API)
+              SERVICE_IMAGE=$(oc get -n $NAMESPACE glance glance -o go-template="$template")
+              ;;
+          esac
+          if [ "$SERVICE_IMAGE" != "$IMG_FROM_ENV" ]; then
+            echo "$NAME image does not equal $VALUE"
+            exit 1
+          fi
+        fi
+      done
+      exit 0
