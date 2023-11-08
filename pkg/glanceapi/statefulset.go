@@ -44,7 +44,7 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
-) *appsv1.StatefulSet {
+) (*appsv1.StatefulSet, error) {
 	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
 
@@ -145,7 +145,7 @@ func StatefulSet(
 		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
 	}
 
-	deployment := &appsv1.StatefulSet{
+	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-api", instance.Name),
 			Namespace: instance.Namespace,
@@ -231,12 +231,20 @@ func StatefulSet(
 			},
 		},
 	}
-	deployment.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{glance.GetPvc(instance, labels, glance.PvcLocal)}
+	localPvc, err := glance.GetPvc(instance, labels, glance.PvcLocal)
+	if err != nil {
+		return statefulset, err
+	}
+	statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
 
 	if len(instance.Spec.ImageCacheSize) > 0 {
-		deployment.Spec.VolumeClaimTemplates = append(deployment.Spec.VolumeClaimTemplates, glance.GetPvc(instance, labels, glance.PvcCache))
+		cachePvc, err := glance.GetPvc(instance, labels, glance.PvcCache)
+		if err != nil {
+			return statefulset, err
+		}
+		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, cachePvc)
 	}
-	deployment.Spec.Template.Spec.Volumes = append(glance.GetVolumes(
+	statefulset.Spec.Template.Spec.Volumes = append(glance.GetVolumes(
 		instance.Name,
 		glance.ServiceName,
 		privileged,
@@ -248,7 +256,7 @@ func StatefulSet(
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
 	// the get still created on the same worker node.
-	deployment.Spec.Template.Spec.Affinity = affinity.DistributePods(
+	statefulset.Spec.Template.Spec.Affinity = affinity.DistributePods(
 		common.AppSelector,
 		[]string{
 			glance.ServiceName,
@@ -256,8 +264,8 @@ func StatefulSet(
 		corev1.LabelHostname,
 	)
 	if instance.Spec.NodeSelector != nil && len(instance.Spec.NodeSelector) > 0 {
-		deployment.Spec.Template.Spec.NodeSelector = instance.Spec.NodeSelector
+		statefulset.Spec.Template.Spec.NodeSelector = instance.Spec.NodeSelector
 	}
 
-	return deployment
+	return statefulset, err
 }

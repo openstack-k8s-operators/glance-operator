@@ -616,7 +616,10 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 
 	// Define a new StatefuleSet object
-	deplDef := glanceapi.StatefulSet(instance, inputHash, serviceLabels, serviceAnnotations, privileged)
+	deplDef, err := glanceapi.StatefulSet(instance, inputHash, serviceLabels, serviceAnnotations, privileged)
+	if err != nil {
+		return ctrlResult, err
+	}
 	depl := statefulset.NewStatefulSet(
 		deplDef,
 		time.Duration(5)*time.Second,
@@ -755,7 +758,11 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 
 	// Configure the cache bits accordingly as global options (00-config.conf)
 	if len(instance.Spec.ImageCacheSize) > 0 {
-		cacheSize := resource.MustParse(instance.Spec.ImageCacheSize)
+		// if ImageCacheSize is not a valid k8s Quantity, return an error
+		cacheSize, err := resource.ParseQuantity(instance.Spec.ImageCacheSize)
+		if err != nil {
+			return err
+		}
 		templateParameters["CacheEnabled"] = true
 		templateParameters["CacheMaxSize"] = cacheSize.Value()
 		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
