@@ -60,8 +60,12 @@ import (
 type GlanceReconciler struct {
 	client.Client
 	Kclient kubernetes.Interface
-	Log     logr.Logger
 	Scheme  *runtime.Scheme
+}
+
+// GetLogger returns a logger object with a logging prefix of "controller.name" and additional controller context fields
+func (r *GlanceReconciler) GetLogger(ctx context.Context) logr.Logger {
+	return log.FromContext(ctx).WithName("Controllers").WithName(string(glance.Glance))
 }
 
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glances,verbs=get;list;watch;create;update;patch;delete
@@ -87,7 +91,7 @@ type GlanceReconciler struct {
 
 // Reconcile reconcile Glance requests
 func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
-	_ = log.FromContext(ctx)
+	Log := r.GetLogger(ctx)
 
 	// Fetch the Glance instance
 	instance := &glancev1.Glance{}
@@ -108,7 +112,7 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		r.Client,
 		r.Kclient,
 		r.Scheme,
-		r.Log,
+		Log,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -204,7 +208,8 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
+
+	Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
 
 	// remove db finalizer first
 	db, err := mariadbv1.GetDatabaseByName(ctx, helper, instance.Name)
@@ -260,7 +265,7 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 
 	// Service is deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
 
 	return ctrl.Result{}, nil
 }
@@ -303,7 +308,9 @@ func (r *GlanceReconciler) reconcileInit(
 	serviceLabels map[string]string,
 	serviceAnnotations map[string]string,
 ) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
 
 	//
 	// create service DB instance
@@ -441,7 +448,7 @@ func (r *GlanceReconciler) reconcileInit(
 	}
 	if dbSyncjob.HasChanged() {
 		instance.Status.Hash[glancev1.DbSyncHash] = dbSyncjob.GetHash()
-		r.Log.Info(fmt.Sprintf("Service '%s' - Job %s hash added - %s", instance.Name, jobDef.Name, instance.Status.Hash[glancev1.DbSyncHash]))
+		Log.Info(fmt.Sprintf("Service '%s' - Job %s hash added - %s", instance.Name, jobDef.Name, instance.Status.Hash[glancev1.DbSyncHash]))
 	}
 	instance.Status.Conditions.MarkTrue(condition.DBSyncReadyCondition, condition.DBSyncReadyMessage)
 
@@ -450,32 +457,38 @@ func (r *GlanceReconciler) reconcileInit(
 
 	// run Glance db sync - end
 
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
 func (r *GlanceReconciler) reconcileUpdate(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' update", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info(fmt.Sprintf("Reconciling Service '%s' update", instance.Name))
 
 	// TODO: should have minor update tasks if required
 	// - delete dbsync hash from status to rerun it?
 
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' update successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' update successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
 func (r *GlanceReconciler) reconcileUpgrade(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' upgrade", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info(fmt.Sprintf("Reconciling Service '%s' upgrade", instance.Name))
 
 	// TODO: should have major version upgrade tasks
 	// -delete dbsync hash from status to rerun it?
 
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' upgrade successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' upgrade successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
 func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
 	// Service account, role, binding
 	rbacRules := []rbacv1.PolicyRule{
@@ -629,6 +642,8 @@ func (r *GlanceReconciler) apiDeployment(
 	serviceLabels map[string]string,
 ) error {
 
+	Log := r.GetLogger(ctx)
+
 	// By default internal and external points to diff instances, but we might
 	// want to override "external" with "single" in case APIType == "single":
 	// in this case we only deploy the External instance and skip the internal
@@ -662,7 +677,7 @@ func (r *GlanceReconciler) apiDeployment(
 		return err
 	}
 	if op != controllerutil.OperationResultNone {
-		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
+		Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 	if instance.Status.GlanceAPIReadyCounts == nil {
 		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
@@ -707,7 +722,7 @@ func (r *GlanceReconciler) apiDeployment(
 			return err
 		}
 		if op != controllerutil.OperationResultNone {
-			r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
+			Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
 		}
 
 		// It is possible that an earlier call to update the status has also set
@@ -731,7 +746,7 @@ func (r *GlanceReconciler) apiDeployment(
 		instance.Status.Conditions.Set(apiCondition)
 	}
 
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
 	return nil
 }
 
@@ -874,6 +889,7 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 	instance *glancev1.Glance,
 	quota map[string]int,
 ) error {
+	Log := r.GetLogger(ctx)
 
 	// get admin
 	var err error
@@ -895,7 +911,7 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 			ResourceName: lName,
 			DefaultLimit: lValue,
 		}
-		_, err = o.CreateOrUpdateRegisteredLimit(r.Log, m)
+		_, err = o.CreateOrUpdateRegisteredLimit(Log, m)
 		if err != nil {
 			return err
 		}
@@ -953,6 +969,7 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 	instance *glancev1.Glance,
 	quota map[string]int,
 ) error {
+	Log := r.GetLogger(ctx)
 
 	// get admin
 	var err error
@@ -965,12 +982,12 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 	if err != nil {
 		return err
 	}
-	fetchRegLimits, err := o.ListRegisteredLimitsByServiceID(r.Log, instance.Status.ServiceID)
+	fetchRegLimits, err := o.ListRegisteredLimitsByServiceID(Log, instance.Status.ServiceID)
 	if err != nil {
 		return err
 	}
 	for _, l := range fetchRegLimits {
-		err = o.DeleteRegisteredLimit(r.Log, l.ID)
+		err = o.DeleteRegisteredLimit(Log, l.ID)
 		if err != nil {
 			return err
 		}
@@ -981,13 +998,15 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 // GlanceAPICleanup - Delete the glanceAPI instance if it no longer appears
 // in the spec.
 func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glancev1.Glance) error {
+	Log := r.GetLogger(ctx)
+
 	// Generate a list of GlanceAPI CRs
 	apis := &glancev1.GlanceAPIList{}
 	listOpts := []client.ListOption{
 		client.InNamespace(instance.Namespace),
 	}
 	if err := r.Client.List(ctx, apis, listOpts...); err != nil {
-		r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %v")
+		Log.Error(err, "Unable to retrieve GlanceAPI CRs %v")
 		return nil
 	}
 	for _, glanceAPI := range apis.Items {
@@ -999,7 +1018,7 @@ func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glanc
 		// Simply return if the apiName doesn't match the existing pattern, log but do not
 		// raise an error
 		if apiName == "" {
-			r.Log.Info(fmt.Sprintf("GlanceAPI %s does not match the pattern", glanceAPI.Name))
+			Log.Info(fmt.Sprintf("GlanceAPI %s does not match the pattern", glanceAPI.Name))
 			return nil
 		}
 		_, exists := instance.Spec.GlanceAPIs[apiName]

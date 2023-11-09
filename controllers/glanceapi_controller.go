@@ -64,8 +64,12 @@ import (
 type GlanceAPIReconciler struct {
 	client.Client
 	Kclient kubernetes.Interface
-	Log     logr.Logger
 	Scheme  *runtime.Scheme
+}
+
+// GetLogger returns a logger object with a logging prefix of "controller.name" and additional controller context fields
+func (r *GlanceAPIReconciler) GetLogger(ctx context.Context) logr.Logger {
+	return log.FromContext(ctx).WithName("Controllers").WithName(string(glance.GlanceAPI))
 }
 
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
@@ -83,7 +87,7 @@ type GlanceAPIReconciler struct {
 
 // Reconcile reconcile Glance API requests
 func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
-	_ = log.FromContext(ctx)
+	Log := r.GetLogger(ctx)
 
 	// Fetch the GlanceAPI instance
 	instance := &glancev1.GlanceAPI{}
@@ -104,7 +108,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		r.Client,
 		r.Kclient,
 		r.Scheme,
-		r.Log,
+		Log,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -177,7 +181,8 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	Log := r.GetLogger(ctx)
 
 	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
 	svcSecretFn := func(o client.Object) []reconcile.Request {
@@ -191,7 +196,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			client.InNamespace(namespace),
 		}
 		if err := r.Client.List(context.Background(), apis, listOpts...); err != nil {
-			r.Log.Error(err, "Unable to retrieve API CRs %v")
+			Log.Error(err, "Unable to retrieve API CRs %v")
 			return nil
 		}
 		for _, cr := range apis.Items {
@@ -201,7 +206,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 						Namespace: namespace,
 						Name:      cr.Name,
 					}
-					r.Log.Info(fmt.Sprintf("Secret %s is used by Glance CR %s", secretName, cr.Name))
+					Log.Info(fmt.Sprintf("Secret %s is used by Glance CR %s", secretName, cr.Name))
 					result = append(result, reconcile.Request{NamespacedName: name})
 				}
 			}
@@ -222,7 +227,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			client.InNamespace(o.GetNamespace()),
 		}
 		if err := r.Client.List(context.Background(), glanceAPIs, listOpts...); err != nil {
-			r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
+			Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
 			return nil
 		}
 		for _, cr := range glanceAPIs.Items {
@@ -231,7 +236,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					Namespace: cr.GetNamespace(),
 					Name:      cr.GetName(),
 				}
-				r.Log.Info(fmt.Sprintf("NAD %s is used by GlanceAPI CR %s", o.GetName(), cr.GetName()))
+				Log.Info(fmt.Sprintf("NAD %s is used by GlanceAPI CR %s", o.GetName(), cr.GetName()))
 				result = append(result, reconcile.Request{NamespacedName: name})
 			}
 		}
@@ -255,14 +260,16 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info("Reconciling Service delete")
 	if ctrlResult, err := r.ensureDeletedEndpoints(ctx, instance, helper); err != nil {
 		return ctrlResult, err
 	}
 
 	// Endpoints are deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
 
 	return ctrl.Result{}, nil
 }
@@ -273,7 +280,9 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	helper *helper.Helper,
 	serviceLabels map[string]string,
 ) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
 
 	//
 	// create service/s
@@ -405,32 +414,38 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		return ctrlResult, err
 	}
 
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
+	Log.Info("Reconciled Service init successfully")
 	return ctrl.Result{}, nil
 }
 
 func (r *GlanceAPIReconciler) reconcileUpdate(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' update", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info("Reconciling Service update")
 
 	// TODO: should have minor update tasks if required
 	// - delete dbsync hash from status to rerun it?
 
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' update successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' update successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
 func (r *GlanceAPIReconciler) reconcileUpgrade(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' upgrade", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info(fmt.Sprintf("Reconciling Service '%s' upgrade", instance.Name))
 
 	// TODO: should have major version upgrade tasks
 	// -delete dbsync hash from status to rerun it?
 
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' upgrade successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' upgrade successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
 func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper, req ctrl.Request) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
+	Log := r.GetLogger(ctx)
+
+	Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
 	configVars := make(map[string]env.Setter)
 	privileged := false
@@ -519,7 +534,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			if err != nil {
 				if errors.IsNotFound(err) {
 					// Request object not found, can't run GlanceAPI with this config
-					r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
+					Log.Info("Cinder resource not found. Waiting for it to be deployed")
 					return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 				}
 			}
@@ -625,7 +640,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 	// create StatefulSet - end
 
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
+	Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
@@ -731,6 +746,8 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 	instance *glancev1.GlanceAPI,
 	envVars map[string]env.Setter,
 ) (string, bool, error) {
+	Log := r.GetLogger(ctx)
+
 	var hashMap map[string]string
 	changed := false
 	mergedMapVars := env.MergeEnvs([]corev1.EnvVar{}, envVars)
@@ -740,7 +757,7 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 	}
 	if hashMap, changed = util.SetHash(instance.Status.Hash, common.InputHashName, hash); changed {
 		instance.Status.Hash = hashMap
-		r.Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
+		Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
 	}
 	return hash, changed, nil
 }
@@ -752,6 +769,7 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 	instance *glancev1.GlanceAPI,
 	serviceLabels map[string]string,
 ) (ctrl.Result, error) {
+	Log := r.GetLogger(ctx)
 
 	var ctrlResult ctrl.Result
 	var err error
@@ -771,7 +789,7 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		// the registered endpoints with the new URL.
 		err = keystonev1.DeleteKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
 		if err != nil {
-			r.Log.Info(fmt.Sprintf("Endpoint %s not found", instance.Name))
+			Log.Info("Endpoint not found")
 			return ctrlResult, nil
 		}
 		return ctrlResult, nil
