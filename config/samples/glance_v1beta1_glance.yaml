@@ -9,12 +9,7 @@ spec:
     debug = true
   databaseInstance: openstack
   databaseUser: glance
-  glanceAPIInternal:
-    debug:
-      service: false
-    preserveJobs: false
-    replicas: 1
-  glanceAPIExternal:
+  glanceAPI:
     debug:
       service: false
     preserveJobs: false

@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -59,16 +60,12 @@ func (r *Glance) Default() {
 
 // Default - set defaults for this Glance spec
 func (spec *GlanceSpec) Default() {
-	if spec.ContainerImage == "" {
+	if len(spec.ContainerImage) == 0 {
 		spec.ContainerImage = glanceDefaults.ContainerImageURL
 	}
-
-	if spec.GlanceAPIExternal.ContainerImage == "" {
-		spec.GlanceAPIExternal.ContainerImage = glanceDefaults.ContainerImageURL
-	}
-
-	if spec.GlanceAPIInternal.ContainerImage == "" {
-		spec.GlanceAPIInternal.ContainerImage = glanceDefaults.ContainerImageURL
+	// Check the sub-cr ContainerImage parameter
+	if len(spec.GlanceAPI.ContainerImage) == 0 {
+		spec.GlanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
 	}
 }
 
@@ -88,7 +85,13 @@ func (r *Glance) ValidateCreate() error {
 func (r *Glance) ValidateUpdate(old runtime.Object) error {
 	glancelog.Info("validate update", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object update.
+	// Type can either be "split" or "single": we do not support changing layout
+	// because there's no logic in the operator to scale down the existing statefulset
+	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
+	o := old.(*Glance);
+	if (r.Spec.GlanceAPI.Type != o.Spec.GlanceAPI.Type) {
+		return errors.New("GlanceAPI deployment layout can't be updated")
+	}
 	return nil
 }
 

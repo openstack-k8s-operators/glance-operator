@@ -3,8 +3,8 @@
 # - No Glance CR
 # - No GlanceAPI glance-external CR
 # - No GlanceAPI glance-internal CR
-# - No GlanceAPI glance-external-api Deployment
-# - No GlanceAPI glance-internal-api Deployment
+# - No GlanceAPI glance-external-api StatefulSet
+# - No GlanceAPI glance-internal-api StatefulSet
 # - No glance-external-api Pod
 # - No glance-internal-api Pod
 # - No glance-internal service

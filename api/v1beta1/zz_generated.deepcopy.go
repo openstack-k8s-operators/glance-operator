@@ -33,8 +33,10 @@ func (in *APIOverrideSpec) DeepCopyInto(out *APIOverrideSpec) {
 	*out = *in
 	if in.Service != nil {
 		in, out := &in.Service, &out.Service
-		*out = new(service.RoutedOverrideSpec)
-		(*in).DeepCopyInto(*out)
+		*out = make(map[service.Endpoint]service.RoutedOverrideSpec, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
 	}
 }
 
@@ -394,8 +396,7 @@ func (in *GlanceSpec) DeepCopyInto(out *GlanceSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	in.GlanceAPIInternal.DeepCopyInto(&out.GlanceAPIInternal)
-	in.GlanceAPIExternal.DeepCopyInto(&out.GlanceAPIExternal)
+	in.GlanceAPI.DeepCopyInto(&out.GlanceAPI)
 	if in.ExtraMounts != nil {
 		in, out := &in.ExtraMounts, &out.ExtraMounts
 		*out = make([]GlanceExtraVolMounts, len(*in))

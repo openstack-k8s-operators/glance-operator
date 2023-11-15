@@ -28,6 +28,7 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	batchv1 "k8s.io/api/batch/v1"
 )
 
 func GetGlance(name types.NamespacedName) *glancev1.Glance {
@@ -84,26 +85,25 @@ func GetGlanceEmptySpec() map[string]interface{} {
 
 func GetGlanceDefaultSpec() map[string]interface{} {
 	return map[string]interface{}{
-		"databaseInstance":  "openstack",
-		"databaseUser":      glanceTest.GlanceDatabaseUser,
-		"serviceUser":       glanceName.Name,
-		"secret":            SecretName,
-		"glanceAPIInternal": GetGlanceAPIDefaultSpec(GlanceAPITypeInternal),
-		"glanceAPIExternal": GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
-		"storageRequest":    glanceTest.GlancePVCSize,
+		"databaseInstance": "openstack",
+		"databaseUser":     glanceTest.GlanceDatabaseUser,
+		"serviceUser":      glanceName.Name,
+		"secret":           SecretName,
+		"glanceAPI":        GetGlanceAPIDefaultSpec(GlanceAPITypeSingle),
+		"type":             "split",
+		"storageRequest":   glanceTest.GlancePVCSize,
 	}
 }
 
 func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 	return map[string]interface{}{
-		"databaseInstance":  "openstack",
-		"databaseUser":      glanceTest.GlanceDatabaseUser,
-		"serviceUser":       glanceName.Name,
-		"secret":            SecretName,
-		"glanceAPIInternal": GetGlanceAPIDefaultSpec(GlanceAPITypeInternal),
-		"glanceAPIExternal": GetGlanceAPIDefaultSpec(GlanceAPITypeExternal),
-		"storageRequest":    glanceTest.GlancePVCSize,
-		"quotas":            glanceTest.GlanceQuotas,
+		"databaseInstance": "openstack",
+		"databaseUser":     glanceTest.GlanceDatabaseUser,
+		"serviceUser":      glanceName.Name,
+		"secret":           SecretName,
+		"glanceAPI":        GetGlanceAPIDefaultSpec(GlanceAPITypeSingle),
+		"storageRequest":   glanceTest.GlancePVCSize,
+		"quotas":           glanceTest.GlanceQuotas,
 	}
 }
 
@@ -153,10 +153,9 @@ func CreateGlanceSecret(namespace string, name string) *corev1.Secret {
 
 func GetDefaultGlanceSpec() map[string]interface{} {
 	return map[string]interface{}{
-		"databaseInstance":  "openstack",
-		"secret":            SecretName,
-		"glanceAPIInternal": GetDefaultGlanceAPITemplate(GlanceAPITypeInternal),
-		"glanceAPIExternal": GetDefaultGlanceAPITemplate(GlanceAPITypeExternal),
+		"databaseInstance": "openstack",
+		"secret":           SecretName,
+		"glanceAPI":        GetDefaultGlanceAPITemplate(GlanceAPITypeSingle),
 	}
 }
 
@@ -210,5 +209,14 @@ func AssertPVCExist(name types.NamespacedName) {
 	Eventually(func(g Gomega) {
 		err := th.K8sClient.Get(th.Ctx, name, instance)
 		g.Expect(k8s_errors.IsNotFound(err)).To(BeFalse())
+	}, th.Timeout, th.Interval).Should(Succeed())
+}
+
+// AssertCronJobDoesNotExist ensures the CronJob resource does not exist in a k8s cluster.
+func AssertCronJobDoesNotExist(name types.NamespacedName) {
+	instance := &batchv1.CronJob{}
+	Eventually(func(g Gomega) {
+		err := th.K8sClient.Get(th.Ctx, name, instance)
+		g.Expect(k8s_errors.IsNotFound(err)).To(BeTrue())
 	}, th.Timeout, th.Interval).Should(Succeed())
 }

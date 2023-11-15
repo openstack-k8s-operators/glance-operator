@@ -67,6 +67,12 @@ var _ = Describe("Samples", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
+	When("glance_v1beta1_glance_single.yaml sample is applied", func() {
+		It("Glance is created", func() {
+			name := CreateGlanceFromSample("glance_v1beta1_glance_single.yaml", glanceTest.Instance)
+			GetGlance(name)
+		})
+	})
 	When("glance_v1beta1_glance_quota.yaml sample is applied", func() {
 		It("Glance is created", func() {
 			name := CreateGlanceFromSample("quotas/glance_v1beta1_glance_quota.yaml", glanceTest.Instance)

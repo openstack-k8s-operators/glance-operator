@@ -27,6 +27,8 @@ const (
 	GlanceAPITypeInternal APIType = "internal"
 	//GlanceAPITypeExternal -
 	GlanceAPITypeExternal APIType = "external"
+	//GlanceAPITypeSingle -
+	GlanceAPITypeSingle APIType = "single"
 )
 
 // GlanceTestData is the data structure used to provide input data to envTest
@@ -39,6 +41,7 @@ type GlanceTestData struct {
 	GlancePort                  string
 	GlanceQuotas                map[string]interface{}
 	Instance                    types.NamespacedName
+	GlanceSingle                types.NamespacedName
 	GlanceInternal              types.NamespacedName
 	GlanceExternal              types.NamespacedName
 	GlanceRole                  types.NamespacedName
@@ -46,11 +49,14 @@ type GlanceTestData struct {
 	GlanceSA                    types.NamespacedName
 	GlanceDBSync                types.NamespacedName
 	GlancePublicRoute           types.NamespacedName
-	GlanceInternalRoute         types.NamespacedName
+	GlancePublicSvc             types.NamespacedName
+	GlanceInternalSvc           types.NamespacedName
 	GlanceService               types.NamespacedName
 	GlanceConfigMapData         types.NamespacedName
 	GlanceInternalConfigMapData types.NamespacedName
+	GlanceSingleConfigMapData   types.NamespacedName
 	GlanceConfigMapScripts      types.NamespacedName
+	GlanceSingleAPI             types.NamespacedName
 	GlanceInternalAPI           types.NamespacedName
 	GlanceExternalAPI           types.NamespacedName
 	InternalAPINAD              types.NamespacedName
@@ -69,6 +75,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-db-sync", glanceName.Name),
 		},
+		GlanceSingleAPI: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-single-api", glanceName.Name),
+		},
 		GlanceInternalAPI: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-internal-api", glanceName.Name),
@@ -76,6 +86,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		GlanceExternalAPI: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-external-api", glanceName.Name),
+		},
+		GlanceSingle: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-single", glanceName.Name),
 		},
 		GlanceInternal: types.NamespacedName{
 			Namespace: glanceName.Namespace,
@@ -109,16 +123,24 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "internal-config-data"),
 		},
+		GlanceSingleConfigMapData: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "single-config-data"),
+		},
 		GlanceService: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      "image",
 		},
 		// Also used to identify GlanceKeystoneService
-		GlanceInternalRoute: types.NamespacedName{
+		GlanceInternalSvc: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-internal", glanceName.Name),
 		},
 		GlancePublicRoute: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-external", glanceName.Name),
+		},
+		GlancePublicSvc: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-public", glanceName.Name),
 		},

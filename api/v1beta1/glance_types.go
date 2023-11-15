@@ -29,6 +29,8 @@ const (
 	APIInternal = "internal"
 	// APIExternal -
 	APIExternal = "external"
+	// APISingle -
+	APISingle = "single"
 )
 
 // GlanceSpec defines the desired state of Glance
@@ -104,12 +106,9 @@ type GlanceSpec struct {
 	StorageRequest string `json:"storageRequest"`
 
 	// +kubebuilder:validation:Required
-	// GlanceAPIInternal - Spec definition for the internal and admin API service of this Glance deployment
-	GlanceAPIInternal GlanceAPITemplate `json:"glanceAPIInternal"`
-
-	// +kubebuilder:validation:Required
-	// GlanceAPIExternal - Spec definition for the external API service of this Glance deployment
-	GlanceAPIExternal GlanceAPITemplate `json:"glanceAPIExternal"`
+	// GlanceAPI - Spec definition for the API service of this Glance deployment
+	// +kubebuilder:default={}
+	GlanceAPI GlanceAPITemplate `json:"glanceAPI"`
 
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials

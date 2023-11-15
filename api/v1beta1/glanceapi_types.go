@@ -36,7 +36,7 @@ type GlanceAPISpec struct {
 	GlanceAPITemplate `json:",inline"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=internal;external
+	// +kubebuilder:validation:Enum=internal;external;single
 	// +kubebuilder:default=external
 	APIType string `json:"apiType"`
 

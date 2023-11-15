@@ -292,6 +292,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	// create service/s
 	//
 	glanceEndpoints := map[service.Endpoint]endpoint.Data{}
+	// split
 	if instance.Spec.APIType == glancev1.APIInternal {
 		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
@@ -301,15 +302,19 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			Port: glance.GlancePublicPort,
 		}
 	}
+	// if we're not splitting the API and deploying a single instance, we have
+	// to add both internal and public endpoints
+	if instance.Spec.APIType == glancev1.APISingle {
+		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
+			Port: glance.GlanceInternalPort,
+		}
+	}
 	apiEndpoints := make(map[string]string)
 
 	for endpointType, data := range glanceEndpoints {
 		endpointTypeStr := string(endpointType)
 		endpointName := glance.ServiceName + "-" + endpointTypeStr
-		svcOverride := instance.Spec.Override.Service
-		if svcOverride == nil {
-			svcOverride = &service.RoutedOverrideSpec{}
-		}
+		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
 			svcOverride.EmbeddedLabelsAnnotations = &service.EmbeddedLabelsAnnotations{}
 		}
@@ -747,8 +752,9 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	}
 
 	// Configure the internal GlanceAPI to provide image location data, and the
-	// external version to *not* provide it.
-	if instance.Spec.APIType == glancev1.APIInternal {
+	// external version to *not* provide it; if we don't split, the resulting
+	// GlanceAPI instance will provide it.
+	if instance.Spec.APIType == glancev1.APIInternal || instance.Spec.APIType == glancev1.APISingle {
 		templateParameters["ShowImageDirectUrl"] = true
 		templateParameters["ShowMultipleLocations"] = true
 	} else {
