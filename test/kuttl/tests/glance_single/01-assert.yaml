@@ -2,8 +2,8 @@
 # Check for:
 # - Glance CR
 # - GlanceAPI glance-single CR
-# - GlanceAPI glance-single-api StatefulSet
-# - glance-single-api Pod
+# - GlanceAPI glance-api StatefulSet
+# - glance-api Pod
 # - glance-internal service
 # - glance-public service
 # - glance internal and public endpoints
@@ -47,7 +47,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-single-api
+  name: glance-api
 spec:
   replicas: 1
   selector:

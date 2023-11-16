@@ -2,8 +2,8 @@
 # Check for:
 # - No Glance CR
 # - No GlanceAPI glance-single CR
-# - No GlanceAPI glance-single-api StatefulSet
-# - No glance-single-api Pod
+# - No GlanceAPI glance-api StatefulSet
+# - No glance-api Pod
 # - No glance-public service
 # - No glance internal and public endpoints
 
@@ -20,7 +20,7 @@ metadata:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-single-api
+  name: glance-api
 ---
 apiVersion: v1
 kind: Pod

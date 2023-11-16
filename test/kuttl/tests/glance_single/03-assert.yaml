@@ -1,7 +1,7 @@
 #
 # Check for:
 # - Glance CR with 1 replicas for each GlanceAPI
-# - GlanceAPI glance-single-api StatefulSet with 1 replicas
+# - GlanceAPI glance-api StatefulSet with 1 replicas
 
 
 apiVersion: glance.openstack.org/v1beta1
@@ -15,7 +15,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-single-api
+  name: glance-api
 spec:
   replicas: 1
 status:
