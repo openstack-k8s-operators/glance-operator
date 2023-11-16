@@ -145,9 +145,15 @@ func StatefulSet(
 		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
 	}
 
+	// Do not append apiType if we only have a single glanceAPI instance
+	instanceName := fmt.Sprintf("%s-api", instance.Name)
+	if instance.Spec.APIType == "single" {
+		instanceName = fmt.Sprintf("%s-api", glance.ServiceName)
+	}
+
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-api", instance.Name),
+			Name:      instanceName,
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{

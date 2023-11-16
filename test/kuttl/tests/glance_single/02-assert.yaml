@@ -16,7 +16,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-single-api
+  name: glance-api
 spec:
   replicas: 2
 status:

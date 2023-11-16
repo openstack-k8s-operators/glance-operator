@@ -77,7 +77,7 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		},
 		GlanceSingleAPI: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-single-api", glanceName.Name),
+			Name:      fmt.Sprintf("%s-api", glanceName.Name),
 		},
 		GlanceInternalAPI: types.NamespacedName{
 			Namespace: glanceName.Namespace,
