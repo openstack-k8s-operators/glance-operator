@@ -5,15 +5,15 @@ go 1.19
 require (
 	github.com/go-logr/logr v1.3.0
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
-	github.com/onsi/ginkgo/v2 v2.13.0
-	github.com/onsi/gomega v1.29.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.3.1-0.20231103151904-8ab68afd18ce
+	github.com/onsi/ginkgo/v2 v2.13.1
+	github.com/onsi/gomega v1.30.0
+	github.com/openstack-k8s-operators/cinder-operator/api v0.3.1-0.20231114160640-3c5c40e6cc3a
 	github.com/openstack-k8s-operators/glance-operator/api v0.1.2-0.20230904092048-ae90414f6e25
-	github.com/openstack-k8s-operators/infra-operator/apis v0.3.1-0.20231103182030-0aaa65ca38c7
+	github.com/openstack-k8s-operators/infra-operator/apis v0.3.1-0.20231117154810-8bbeeadaa790
 	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20231103151903-a1a0e540408d
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20231102083359-58e12a1299b2
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20231102083359-58e12a1299b2
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20231102083359-58e12a1299b2
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20231114102008-65eb1b13d3a7
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20231114102008-65eb1b13d3a7
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20231114102008-65eb1b13d3a7
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.3.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	k8s.io/api v0.26.11
@@ -52,7 +52,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20231102083359-58e12a1299b2
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20231114102008-65eb1b13d3a7
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
@@ -64,9 +64,9 @@ require (
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/term v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
