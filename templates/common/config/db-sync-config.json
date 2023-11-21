@@ -1,0 +1,3 @@
+{
+          "command": "glance-manage --config-dir /etc/glance/glance.conf.d db sync glance && glance-manage db_load_metadefs"
+}

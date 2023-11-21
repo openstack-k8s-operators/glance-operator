@@ -88,6 +88,17 @@ func DbSyncJob(
 			ReadOnly:  true,
 		},
 	}
+
+	// add CA cert if defined from the first api
+	for _, api := range instance.Spec.GlanceAPIs {
+		if api.TLS.CaBundleSecretName != "" {
+			dbSyncVolume = append(dbSyncVolume, api.TLS.CreateVolume())
+			dbSyncMounts = append(dbSyncMounts, api.TLS.CreateVolumeMounts(nil)...)
+
+			break
+		}
+	}
+
 	args := []string{"-c"}
 	if instance.Spec.Debug.DBSync {
 		args = append(args, common.DebugCommand)

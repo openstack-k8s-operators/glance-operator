@@ -19,11 +19,12 @@ import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 
 	"fmt"
+	"strconv"
+	"strings"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strconv"
-	"strings"
 )
 
 // CronJob func
@@ -95,6 +96,17 @@ func CronJob(
 			ReadOnly:  true,
 		},
 	}
+
+	// add CA cert if defined from the first api
+	for _, api := range instance.Spec.GlanceAPIs {
+		if api.TLS.CaBundleSecretName != "" {
+			cronJobVolume = append(cronJobVolume, api.TLS.CreateVolume())
+			cronJobVolumeMounts = append(cronJobVolumeMounts, api.TLS.CreateVolumeMounts(nil)...)
+
+			break
+		}
+	}
+
 	// If cache is provided, we expect the main glance_controller to request a
 	// PVC that should be used for that purpose (according to ImageCacheSize)
 	// and it should be available to the Cache CronJobs to properly clean the
