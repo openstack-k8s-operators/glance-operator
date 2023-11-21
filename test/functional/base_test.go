@@ -68,18 +68,22 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 		"spec": map[string]interface{}{
 			"databaseInstance": "openstack",
 			"storageRequest":   glanceTest.GlancePVCSize,
+			"glanceAPIs": map[string]interface{}{
+				"default": GetGlanceAPIDefaultSpec(GlanceAPITypeSingle),
+			},
 		},
 	}
 	return th.CreateUnstructured(raw)
 }
 
+// GetGlanceEmptySpec - the resulting map is usually assigned to the top-level
+// Glance spec
 func GetGlanceEmptySpec() map[string]interface{} {
 	return map[string]interface{}{
-		"secret": SecretName,
-		"spec": map[string]interface{}{
-			"databaseInstance": "openstack",
-			"storageRequest":   glanceTest.GlancePVCSize,
-		},
+		"secret":           SecretName,
+		"databaseInstance": "openstack",
+		"storageRequest":   glanceTest.GlancePVCSize,
+		"glanceAPIs":       map[string]interface{}{},
 	}
 }
 
@@ -89,7 +93,7 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 		"databaseUser":     glanceTest.GlanceDatabaseUser,
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
-		"glanceAPI":        GetGlanceAPIDefaultSpec(GlanceAPITypeSingle),
+		"glanceAPIs":       GetAPIList(),
 		"type":             "split",
 		"storageRequest":   glanceTest.GlancePVCSize,
 	}
@@ -101,10 +105,18 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 		"databaseUser":     glanceTest.GlanceDatabaseUser,
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
-		"glanceAPI":        GetGlanceAPIDefaultSpec(GlanceAPITypeSingle),
+		"glanceAPIs":       GetAPIList(),
 		"storageRequest":   glanceTest.GlancePVCSize,
 		"quotas":           glanceTest.GlanceQuotas,
 	}
+}
+
+// By default we're splitting here
+func GetAPIList() map[string]interface{} {
+	apiList := map[string]interface{}{
+		"default": GetDefaultGlanceAPISpec(GlanceAPITypeExternal),
+	}
+	return apiList
 }
 
 func GetGlanceAPIDefaultSpec(apiType APIType) map[string]interface{} {
@@ -155,7 +167,7 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 	return map[string]interface{}{
 		"databaseInstance": "openstack",
 		"secret":           SecretName,
-		"glanceAPI":        GetDefaultGlanceAPITemplate(GlanceAPITypeSingle),
+		"glanceAPIs":       GetAPIList(),
 	}
 }
 
@@ -174,6 +186,7 @@ func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 	maps.Copy(spec, map[string]interface{}{
 		"databaseHostname": "openstack",
 		"secret":           SecretName,
+		"name":             "default",
 	})
 	return spec
 }

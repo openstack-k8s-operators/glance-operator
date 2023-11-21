@@ -101,8 +101,7 @@ type GlanceSpec struct {
 
 	// +kubebuilder:validation:Required
 	// GlanceAPI - Spec definition for the API service of this Glance deployment
-	// +kubebuilder:default={}
-	GlanceAPI GlanceAPITemplate `json:"glanceAPI"`
+	GlanceAPIs map[string]GlanceAPITemplate `json:"glanceAPIs"`
 
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials

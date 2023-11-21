@@ -44,7 +44,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
-	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
 	common_rbac "github.com/openstack-k8s-operators/lib-common/modules/common/rbac"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
@@ -530,37 +529,17 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// TODO check when/if Init, Update, or Upgrade should/could be skipped
 	//
 
+	var serviceAnnotations map[string]string
+	var ctrlResult ctrl.Result
 	// networks to attach to
-	for _, netAtt := range instance.Spec.GlanceAPI.NetworkAttachments {
-		_, err := nad.GetNADWithName(ctx, helper, netAtt, instance.Namespace)
+	for _, glanceAPI := range instance.Spec.GlanceAPIs {
+		serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, glanceAPI.NetworkAttachments, helper)
 		if err != nil {
-			if k8s_errors.IsNotFound(err) {
-				instance.Status.Conditions.Set(condition.FalseCondition(
-					condition.NetworkAttachmentsReadyCondition,
-					condition.RequestedReason,
-					condition.SeverityInfo,
-					condition.NetworkAttachmentsReadyWaitingMessage,
-					netAtt))
-				return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("network-attachment-definition %s not found", netAtt)
-			}
-			instance.Status.Conditions.Set(condition.FalseCondition(
-				condition.NetworkAttachmentsReadyCondition,
-				condition.ErrorReason,
-				condition.SeverityWarning,
-				condition.NetworkAttachmentsReadyErrorMessage,
-				err.Error()))
-			return ctrl.Result{}, err
+			return ctrlResult, err
 		}
 	}
-
-	serviceAnnotations, err := nad.CreateNetworksAnnotation(instance.Namespace, instance.Spec.GlanceAPI.NetworkAttachments)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed create network annotation from %s: %w",
-			instance.Spec.GlanceAPI.NetworkAttachments, err)
-	}
-
 	// Handle service init
-	ctrlResult, err := r.reconcileInit(ctx, instance, helper, serviceLabels, serviceAnnotations)
+	ctrlResult, err = r.reconcileInit(ctx, instance, helper, serviceLabels, serviceAnnotations)
 	if err != nil {
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
@@ -586,9 +565,12 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// Reconcile the GlanceAPI deployment
 	//
-	err = r.apiDeployment(ctx, instance, instance.Spec.GlanceAPI, helper)
-	if err != nil {
-		return ctrl.Result{}, err
+
+	for name, glanceAPI := range instance.Spec.GlanceAPIs {
+		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	// create CronJobs: DBPurge (always), CacheCleaner and CachePruner if image-cache
 	// is enabled
@@ -611,7 +593,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 // in the main CR according to a given strategy (split vs single). It handles
 // the deployment logic itself, as well as the output settings mirrored in the
 // main Glance CR status
-func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1.Glance, current glancev1.GlanceAPITemplate, helper *helper.Helper) error {
+func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1.Glance, instanceName string, current glancev1.GlanceAPITemplate, helper *helper.Helper) error {
 
 	// By default internal and external points to diff instances, but we might
 	// want to override "external" with "single" in case APIType == "single":
@@ -627,7 +609,7 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 	if current.Type == "single" {
 		external = glancev1.APISingle
 	}
-	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPI, external, helper)
+	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIs[instanceName], external, instanceName, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -658,7 +640,7 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 	// level CR: in this case we deploy an additional glanceAPI instance (Internal)
 	if current.Type == "split" || len(current.Type) == 0 {
 		// we force "internal" here by passing glancev1.APIInternal for the apiType arg
-		glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, current, internal, helper)
+		glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIs[instanceName], internal, instanceName, helper)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				glancev1.GlanceAPIReadyCondition,
@@ -702,6 +684,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	instance *glancev1.Glance,
 	apiTemplate glancev1.GlanceAPITemplate,
 	apiType string,
+	apiName string,
 	helper *helper.Helper,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 
@@ -729,7 +712,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 
 	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", instance.Name, apiType),
+			Name:      fmt.Sprintf("%s-%s-%s", instance.Name, apiName, apiType),
 			Namespace: instance.Namespace,
 		},
 	}

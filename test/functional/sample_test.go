@@ -79,6 +79,12 @@ var _ = Describe("Samples", func() {
 			GetGlance(name)
 		})
 	})
+	When("glance_v1beta1_glance_multiple.yaml sample is applied", func() {
+		It("Glance is created", func() {
+			name := CreateGlanceFromSample("glance_v1beta1_glance_multiple.yaml", glanceTest.Instance)
+			GetGlance(name)
+		})
+	})
 	When("glance_v1beta1_glanceapi.yaml sample is applied", func() {
 		It("GlanceAPI is created", func() {
 			name := CreateGlanceAPIFromSample("glance_v1beta1_glanceapi.yaml", glanceTest.Instance)

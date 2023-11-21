@@ -108,7 +108,9 @@ var _ = Describe("Glance controller", func() {
 		It("defaults the containerImages", func() {
 			glance := GetGlance(glanceName)
 			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
-			Expect(glance.Spec.GlanceAPI.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			for _, api := range glance.Spec.GlanceAPIs {
+				Expect(api.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+			}
 		})
 		It("should not have a pvc yet", func() {
 			AssertPVCDoesNotExist(glanceTest.Instance)
@@ -167,7 +169,6 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("Does not create GlanceAPI", func() {
 			GlanceAPINotExists(glanceTest.GlanceInternal)
-			GlanceAPINotExists(glanceTest.GlanceInternal)
 		})
 	})
 	When("Glance DB is created and db-sync Job succeeded", func() {
@@ -215,7 +216,9 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("has the expected container image defaults", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)
-			Expect(glanceDefault.Spec.GlanceAPI.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			for _, api := range glanceDefault.Spec.GlanceAPIs {
+				Expect(api.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
+			}
 		})
 	})
 	When("All the Resources are ready", func() {
@@ -305,11 +308,13 @@ var _ = Describe("Glance controller", func() {
 				"storageRequest":   glanceTest.GlancePVCSize,
 				"secret":           SecretName,
 				"databaseInstance": "openstack",
-				"glanceAPI": map[string]interface{}{
-					"containerImage":     glancev1.GlanceAPIContainerImage,
-					"networkAttachments": []string{"internalapi"},
-					"override": map[string]interface{}{
-						"service": serviceOverride,
+				"glanceAPIs": map[string]interface{}{
+					"default": map[string]interface{}{
+						"containerImage":     glancev1.GlanceAPIContainerImage,
+						"networkAttachments": []string{"internalapi"},
+						"override": map[string]interface{}{
+							"service": serviceOverride,
+						},
 					},
 				},
 			}
@@ -351,8 +356,11 @@ var _ = Describe("Glance controller", func() {
 			externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
 			// Check GlanceAPI(s): we expect the two instances (internal/external)
 			// to have the same NADs as we mirror the deployment
-			Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPI.NetworkAttachments))
-			Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glance.Spec.GlanceAPI.NetworkAttachments))
+
+			for _, glanceAPI := range glance.Spec.GlanceAPIs {
+				Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glanceAPI.NetworkAttachments))
+				Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glanceAPI.NetworkAttachments))
+			}
 		})
 	})
 })

@@ -229,7 +229,7 @@ var _ = Describe("Glanceapi controller", func() {
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, GetDefaultGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalAPI)
-			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalSvc)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternalKeystoneEP)
 		})
 		It("reports that StatefulSet is ready", func() {
 			th.ExpectCondition(

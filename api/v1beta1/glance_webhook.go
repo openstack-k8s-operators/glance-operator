@@ -63,9 +63,15 @@ func (spec *GlanceSpec) Default() {
 	if len(spec.ContainerImage) == 0 {
 		spec.ContainerImage = glanceDefaults.ContainerImageURL
 	}
-	// Check the sub-cr ContainerImage parameter
-	if len(spec.GlanceAPI.ContainerImage) == 0 {
-		spec.GlanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
+	if spec.GlanceAPIs == nil || len(spec.GlanceAPIs) == 0 {
+		spec.GlanceAPIs["default"] = GlanceAPITemplate{}
+	}
+	for key, glanceAPI := range spec.GlanceAPIs {
+		// Check the sub-cr ContainerImage parameter
+		if glanceAPI.ContainerImage == "" {
+			glanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
+			spec.GlanceAPIs[key] =  glanceAPI
+		}
 	}
 }
 
@@ -89,8 +95,10 @@ func (r *Glance) ValidateUpdate(old runtime.Object) error {
 	// because there's no logic in the operator to scale down the existing statefulset
 	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
 	o := old.(*Glance);
-	if (r.Spec.GlanceAPI.Type != o.Spec.GlanceAPI.Type) {
-		return errors.New("GlanceAPI deployment layout can't be updated")
+	for key, glanceAPI := range r.Spec.GlanceAPIs {
+		if (glanceAPI.Type != o.Spec.GlanceAPIs[key].Type) {
+			return errors.New("GlanceAPI deployment layout can't be updated")
+		}
 	}
 	return nil
 }
