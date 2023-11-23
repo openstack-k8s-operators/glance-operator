@@ -313,7 +313,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	for endpointType, data := range glanceEndpoints {
 		endpointTypeStr := string(endpointType)
-		endpointName := glance.ServiceName + "-" + endpointTypeStr
+		endpointName := fmt.Sprintf("%s-%s", instance.Name, endpointTypeStr)
 		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
 			svcOverride.EmbeddedLabelsAnnotations = &service.EmbeddedLabelsAnnotations{}
@@ -560,7 +560,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 
 	serviceLabels := map[string]string{
-		common.AppSelector: fmt.Sprintf("%s-%s", glance.ServiceName, instance.Spec.APIType),
+		common.AppSelector: instance.Name,
 	}
 
 	var serviceAnnotations map[string]string

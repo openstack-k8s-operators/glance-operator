@@ -231,22 +231,11 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 		}
 	}
 
-	// Remove finalizers from any existing child GlanceAPIs
-	for _, apiType := range []string{glancev1.APIInternal, glancev1.APIExternal, glancev1.APISingle} {
-		glanceAPI := &glancev1.GlanceAPI{}
-		err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", instance.Name, apiType), Namespace: instance.Namespace}, glanceAPI)
-		if err != nil && !k8s_errors.IsNotFound(err) {
+	// Remove the finalizer on rach GlanceAPI CR
+	for name := range instance.Spec.GlanceAPIs {
+		err = r.removeAPIFinalizer(ctx, instance, helper, name)
+		if err != nil {
 			return ctrl.Result{}, err
-		}
-
-		if err == nil {
-			if controllerutil.RemoveFinalizer(glanceAPI, helper.GetFinalizer()) {
-				err = r.Update(ctx, glanceAPI)
-				if err != nil && !k8s_errors.IsNotFound(err) {
-					return ctrl.Result{}, err
-				}
-				util.LogForObject(helper, fmt.Sprintf("Removed finalizer from GlanceAPI %s", glanceAPI.Name), glanceAPI)
-			}
 		}
 	}
 
@@ -271,6 +260,37 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
 
 	return ctrl.Result{}, nil
+}
+
+// removeFinalizer - iterates over the supported GlanceAPI types and, if the
+// associated resource is found, the finalizer is removed from the CR and the
+// resource can be deleted
+func (r *GlanceReconciler) removeAPIFinalizer(
+	ctx context.Context,
+	instance *glancev1.Glance,
+	helper *helper.Helper,
+	name string,
+) error {
+	var err error
+	// Remove finalizers from any existing GlanceAPIs instance
+	glanceAPI := &glancev1.GlanceAPI{}
+	for _, apiType := range []string{glancev1.APIInternal, glancev1.APIExternal, glancev1.APISingle} {
+		err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", glance.ServiceName, name, apiType), Namespace: instance.Namespace}, glanceAPI)
+		if err != nil && !k8s_errors.IsNotFound(err) {
+			return err
+		}
+		// GlanceAPI instance successfully found, remove the finalizer
+		if err == nil {
+			if controllerutil.RemoveFinalizer(glanceAPI, helper.GetFinalizer()) {
+				err = r.Update(ctx, glanceAPI)
+				if err != nil && !k8s_errors.IsNotFound(err) {
+					return err
+				}
+				util.LogForObject(helper, fmt.Sprintf("Removed finalizer from GlanceAPI %s", glanceAPI.Name), glanceAPI)
+			}
+		}
+	}
+	return nil
 }
 
 func (r *GlanceReconciler) reconcileInit(

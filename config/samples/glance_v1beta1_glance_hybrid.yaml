@@ -1,0 +1,26 @@
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  serviceUser: glance
+  customServiceConfig: |
+    [DEFAULT]
+    debug = true
+  databaseInstance: openstack
+  databaseUser: glance
+  glanceAPIs:
+    api1:
+      debug:
+        service: false
+      preserveJobs: false
+      replicas: 1
+    api2:
+      debug:
+        service: false
+      preserveJobs: false
+      replicas: 1
+      type: "single"
+  secret: osp-secret
+  storageClass: ""
+  storageRequest: 10G

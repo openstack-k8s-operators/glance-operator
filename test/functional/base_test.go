@@ -114,7 +114,7 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 // By default we're splitting here
 func GetAPIList() map[string]interface{} {
 	apiList := map[string]interface{}{
-		"default": GetDefaultGlanceAPISpec(GlanceAPITypeExternal),
+		"default": GetDefaultGlanceAPISpec(GlanceAPITypeSingle),
 	}
 	return apiList
 }

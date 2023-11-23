@@ -342,11 +342,11 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("Check the resulting endpoints of the generated sub-CRs", func() {
 			th.SimulateStatefulSetReplicaReadyWithPods(
-				glanceTest.GlanceInternalAPI,
+				glanceTest.GlanceInternal,
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)
 			th.SimulateStatefulSetReplicaReadyWithPods(
-				glanceTest.GlanceExternalAPI,
+				glanceTest.GlanceExternal,
 				map[string][]string{glanceName.Namespace + "/internalapi": {"10.0.0.1"}},
 			)
 			// Retrieve the generated resources and the two internal/external
