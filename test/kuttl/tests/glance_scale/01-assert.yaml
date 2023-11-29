@@ -77,10 +77,14 @@ spec:
     spec:
       containers:
       - args:
-        - -c
-        - tail -n+1 -F /var/log/glance/glance-external.log
+        - --single-child
+        - --
+        - /usr/bin/tail
+        - -n+1
+        - -F
+        - /var/log/glance/glance-external.log
         command:
-        - /bin/bash
+        - /usr/bin/dumb-init
         name: glance-log
       - args:
         - -c
@@ -116,10 +120,14 @@ spec:
     spec:
       containers:
       - args:
-        - -c
-        - tail -n+1 -F /var/log/glance/glance-internal.log
+        - --single-child
+        - --
+        - /usr/bin/tail
+        - -n+1
+        - -F
+        - /var/log/glance/glance-internal.log
         command:
-        - /bin/bash
+        - /usr/bin/dumb-init
         name: glance-log
       - args:
         - -c
