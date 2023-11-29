@@ -116,6 +116,10 @@ type GlanceSpec struct {
 	// Local storage request, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
 	// +kubebuilder:default=""
 	ImageCacheSize string `json:"imageCacheSize"`
+
+	// +kubebuilder:validation:Required
+	// KeystoneBackend -
+	KeystoneBackend string `json:"keystoneBackend"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret

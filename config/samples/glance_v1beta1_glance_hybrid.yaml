@@ -9,6 +9,7 @@ spec:
     debug = true
   databaseInstance: openstack
   databaseUser: glance
+  keystoneBackend: api2
   glanceAPIs:
     api1:
       debug:

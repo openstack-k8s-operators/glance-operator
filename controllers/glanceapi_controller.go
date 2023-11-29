@@ -292,7 +292,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	// create service/s
 	//
 	glanceEndpoints := map[service.Endpoint]endpoint.Data{}
-	// split
 	if instance.Spec.APIType == glancev1.APIInternal {
 		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
@@ -303,7 +302,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		}
 	}
 	// if we're not splitting the API and deploying a single instance, we have
-	// to add both internal and public endpoints
+	// to add both internal and public endpoints, hence the || condition here
 	if instance.Spec.APIType == glancev1.APISingle {
 		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
@@ -412,35 +411,11 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	// expose service - end
 
-	//
-	// create keystone endpoints
-	//
-
-	ksEndpointSpec := keystonev1.KeystoneEndpointSpec{
-		ServiceName: glance.ServiceName,
-		Endpoints:   instance.Status.APIEndpoints,
-	}
-
-	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, time.Duration(10)*time.Second)
-	ctrlResult, err := ksSvc.CreateOrPatch(ctx, helper)
+	// Create/Patch the KeystoneEndpoints
+	ctrlResult, err := r.ensureKeystoneEndpoints(ctx, helper, instance, serviceLabels)
 	if err != nil {
 		return ctrlResult, err
 	}
-
-	// mirror the Status, Reason, Severity and Message of the latest keystoneendpoint condition
-	// into a local condition with the type condition.KeystoneEndpointReadyCondition
-	c := ksSvc.GetConditions().Mirror(condition.KeystoneEndpointReadyCondition)
-	if c != nil {
-		instance.Status.Conditions.Set(c)
-	}
-
-	if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-
-	//
-	// create keystone endpoints - end
-	//
 
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
 	return ctrl.Result{}, nil
@@ -777,4 +752,52 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 		r.Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
 	}
 	return hash, changed, nil
+}
+
+// ensureKeystoneEndpoints -  create or update keystone endpoints
+func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
+	ctx context.Context,
+	helper *helper.Helper,
+	instance *glancev1.GlanceAPI,
+	serviceLabels map[string]string,
+) (ctrl.Result, error) {
+
+	var ctrlResult ctrl.Result
+	var err error
+
+	// If the parent controller didn't set the annotation, the current glanceAPIs
+	// shouldn't register the endpoints in keystone
+	if len(instance.ObjectMeta.Annotations) == 0 ||
+		instance.ObjectMeta.Annotations[glance.KeystoneBackend] != "yes" {
+		// Mark the KeystoneEndpointReadyCondition as True because there's nothing
+		// to do here
+		instance.Status.Conditions.Set(instance.Status.Conditions.Mirror(condition.KeystoneEndpointReadyCondition))
+		instance.Status.Conditions.MarkTrue(
+			condition.KeystoneEndpointReadyCondition, condition.ReadyMessage)
+		return ctrlResult, nil
+	}
+
+	// Build the keystoneEndpoints Spec
+	ksEndpointSpec := keystonev1.KeystoneEndpointSpec{
+		ServiceName: glance.ServiceName,
+		Endpoints:   instance.Status.APIEndpoints,
+	}
+
+	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, time.Duration(10)*time.Second)
+	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
+	if err != nil {
+		return ctrlResult, err
+	}
+
+	// mirror the Status, Reason, Severity and Message of the latest keystoneendpoint condition
+	// into a local condition with the type condition.KeystoneEndpointReadyCondition
+	c := ksSvc.GetConditions().Mirror(condition.KeystoneEndpointReadyCondition)
+	if c != nil {
+		instance.Status.Conditions.Set(c)
+	}
+
+	if (ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
+	}
+	return ctrlResult, nil
 }

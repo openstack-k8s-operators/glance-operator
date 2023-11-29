@@ -70,6 +70,9 @@ const (
 	// LogVolume is the default logVolume name used to mount logs on both
 	// GlanceAPI and the sidecar container
 	LogVolume = "logs"
+	// KeystoneBackend - indicates whether the glanceAPI should register the
+	// endpoints in keystone
+	KeystoneBackend = "keystoneBackend"
 
 	//DBPurgeAge -
 	DBPurgeAge = 30

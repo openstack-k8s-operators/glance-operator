@@ -951,6 +951,8 @@ spec:
               imageCacheSize:
                 default: ""
                 type: string
+              keystoneBackend:
+                type: string
               nodeSelector:
                 additionalProperties:
                   type: string
@@ -1004,6 +1006,7 @@ spec:
             - databaseInstance
             - glanceAPIs
             - imageCacheSize
+            - keystoneBackend
             - secret
             - storageRequest
             type: object

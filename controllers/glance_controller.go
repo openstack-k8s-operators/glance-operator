@@ -643,13 +643,15 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
+	apiPubEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointPublic))
+	apiIntEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointInternal))
 	// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
-		instance.Status.APIEndpoints[string(endpoint.EndpointPublic)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+		instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
 		// if we don't split, both apiEndpoints (public and internal) should be
 		// reflected to the main Glance CR
 		if current.Type == "single" {
-			instance.Status.APIEndpoints[string(endpoint.EndpointInternal)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
+			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 	}
 
@@ -683,7 +685,7 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 
 		// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 		if glanceAPI.Status.APIEndpoints != nil {
-			instance.Status.APIEndpoints[string(endpoint.EndpointInternal)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
+			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 
 		// Get internal GlanceAPI's condition status for comparison with external below
@@ -708,6 +710,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	helper *helper.Helper,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 
+	apiAnnotations := map[string]string{}
 	apiSpec := glancev1.GlanceAPISpec{
 		GlanceAPITemplate: apiTemplate,
 		APIType:           apiType,
@@ -730,13 +733,19 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
 	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
 
+	// We select which glanceAPI should register the keystoneEndpoint by using
+	// an API selector defined in the main glance CR; if it matches with the
+	// current APIName, an annotation is added to the glanceAPI instance
+	if instance.Spec.KeystoneBackend == apiName {
+		apiAnnotations[glance.KeystoneBackend] = "yes"
+	}
 	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s-%s", instance.Name, apiName, apiType),
-			Namespace: instance.Namespace,
+			Name:        fmt.Sprintf("%s-%s-%s", instance.Name, apiName, apiType),
+			Annotations: apiAnnotations,
+			Namespace:   instance.Namespace,
 		},
 	}
-
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, glanceStatefulset, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)

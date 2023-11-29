@@ -70,7 +70,7 @@ func (spec *GlanceSpec) Default() {
 		// Check the sub-cr ContainerImage parameter
 		if glanceAPI.ContainerImage == "" {
 			glanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
-			spec.GlanceAPIs[key] =  glanceAPI
+			spec.GlanceAPIs[key] = glanceAPI
 		}
 	}
 }
@@ -83,7 +83,11 @@ var _ webhook.Validator = &Glance{}
 func (r *Glance) ValidateCreate() error {
 	glancelog.Info("validate create", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
+	//TODO:
+	// - Two glanceAPI with the same name can't be deployed
+	// - Check one of the items of the list is the one that should appear in the
+	//   keystone catalog, otherwise raise an error because the field is not set!
+
 	return nil
 }
 
@@ -94,9 +98,9 @@ func (r *Glance) ValidateUpdate(old runtime.Object) error {
 	// Type can either be "split" or "single": we do not support changing layout
 	// because there's no logic in the operator to scale down the existing statefulset
 	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
-	o := old.(*Glance);
+	o := old.(*Glance)
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
-		if (glanceAPI.Type != o.Spec.GlanceAPIs[key].Type) {
+		if glanceAPI.Type != o.Spec.GlanceAPIs[key].Type {
 			return errors.New("GlanceAPI deployment layout can't be updated")
 		}
 	}
