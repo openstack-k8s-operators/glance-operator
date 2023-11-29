@@ -58,10 +58,6 @@ spec:
                     default: false
                     type: boolean
                 type: object
-              defaultConfigOverwrite:
-                additionalProperties:
-                  type: string
-                type: object
               extraMounts:
                 items:
                   properties:
@@ -833,10 +829,6 @@ spec:
                       service:
                         default: false
                         type: boolean
-                    type: object
-                  defaultConfigOverwrite:
-                    additionalProperties:
-                      type: string
                     type: object
                   networkAttachments:
                     items:
