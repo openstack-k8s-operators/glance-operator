@@ -66,6 +66,7 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 			"namespace": name.Namespace,
 		},
 		"spec": map[string]interface{}{
+			"keystoneBackend":  "default",
 			"databaseInstance": "openstack",
 			"storageRequest":   glanceTest.GlancePVCSize,
 			"glanceAPIs": map[string]interface{}{
@@ -80,6 +81,7 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 // Glance spec
 func GetGlanceEmptySpec() map[string]interface{} {
 	return map[string]interface{}{
+		"keystoneBackend":  "default",
 		"secret":           SecretName,
 		"databaseInstance": "openstack",
 		"storageRequest":   glanceTest.GlancePVCSize,
@@ -89,6 +91,7 @@ func GetGlanceEmptySpec() map[string]interface{} {
 
 func GetGlanceDefaultSpec() map[string]interface{} {
 	return map[string]interface{}{
+		"keystoneBackend":  "default",
 		"databaseInstance": "openstack",
 		"databaseUser":     glanceTest.GlanceDatabaseUser,
 		"serviceUser":      glanceName.Name,
@@ -101,6 +104,7 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 
 func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 	return map[string]interface{}{
+		"keystoneBackend":  "default",
 		"databaseInstance": "openstack",
 		"databaseUser":     glanceTest.GlanceDatabaseUser,
 		"serviceUser":      glanceName.Name,
@@ -145,6 +149,9 @@ func CreateGlanceAPI(name types.NamespacedName, spec map[string]interface{}) cli
 		"apiVersion": "glance.openstack.org/v1beta1",
 		"kind":       "GlanceAPI",
 		"metadata": map[string]interface{}{
+			"annotations": map[string]interface{}{
+				"keystoneBackend": "true",
+			},
 			"name":      name.Name,
 			"namespace": name.Namespace,
 		},

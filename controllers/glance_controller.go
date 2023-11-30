@@ -737,7 +737,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	// an API selector defined in the main glance CR; if it matches with the
 	// current APIName, an annotation is added to the glanceAPI instance
 	if instance.Spec.KeystoneBackend == apiName {
-		apiAnnotations[glance.KeystoneBackend] = "yes"
+		apiAnnotations[glance.KeystoneBackend] = "true"
 	}
 	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
@@ -749,6 +749,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, glanceStatefulset, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
+		glanceStatefulset.ObjectMeta.Annotations = apiAnnotations
 		glanceStatefulset.Spec = apiSpec
 
 		// We might want to create instances pointing to different backends in

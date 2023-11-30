@@ -256,21 +256,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
-
-	// Remove the finalizer from our KeystoneEndpoint CR
-	keystoneEndpoint, err := keystonev1.GetKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
-	if err != nil && !k8s_errors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
-
-	if err == nil {
-		if controllerutil.RemoveFinalizer(keystoneEndpoint, helper.GetFinalizer()) {
-			err = r.Update(ctx, keystoneEndpoint)
-			if err != nil && !k8s_errors.IsNotFound(err) {
-				return ctrl.Result{}, err
-			}
-			util.LogForObject(helper, "Removed finalizer from our KeystoneEndpoint", instance)
-		}
+	if ctrlResult, err := r.ensureDeletedEndpoints(ctx, instance, helper); err != nil {
+		return ctrlResult, err
 	}
 
 	// Endpoints are deleted so remove the finalizer.
@@ -487,6 +474,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrl.Result{}, err
 	}
 
+	configVars[glance.KeystoneBackend] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneBackend])
 	//
 	// create hash over all the different input resources to identify if any those changed
 	// and a restart/recreate is required.
@@ -768,12 +756,22 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 	// If the parent controller didn't set the annotation, the current glanceAPIs
 	// shouldn't register the endpoints in keystone
 	if len(instance.ObjectMeta.Annotations) == 0 ||
-		instance.ObjectMeta.Annotations[glance.KeystoneBackend] != "yes" {
+		instance.ObjectMeta.Annotations[glance.KeystoneBackend] != "true" {
 		// Mark the KeystoneEndpointReadyCondition as True because there's nothing
 		// to do here
 		instance.Status.Conditions.Set(instance.Status.Conditions.Mirror(condition.KeystoneEndpointReadyCondition))
 		instance.Status.Conditions.MarkTrue(
 			condition.KeystoneEndpointReadyCondition, condition.ReadyMessage)
+		// If the current glanceAPI was the main one and the annotation has been removed, there is
+		// an associated keystone endpoint that should be removed to keep the 1:1 relation between
+		// image service - keystone Endpoint. For this reason here we try to delete the existing
+		// KeystoneEndpoints associated to the current glanceAPI, so that the new API can update
+		// the registered endpoints with the new URL.
+		err = keystonev1.DeleteKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
+		if err != nil {
+			r.Log.Info(fmt.Sprintf("Endpoint %s not found", instance.Name))
+			return ctrlResult, nil
+		}
 		return ctrlResult, nil
 	}
 
@@ -800,4 +798,36 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		return ctrlResult, nil
 	}
 	return ctrlResult, nil
+}
+
+// ensureDeletedEndpoints -
+func (r *GlanceAPIReconciler) ensureDeletedEndpoints(
+	ctx context.Context,
+	instance *glancev1.GlanceAPI,
+	h *helper.Helper,
+) (ctrl.Result, error) {
+
+	// Remove the finalizer from our KeystoneEndpoint CR
+	keystoneEndpoint, err := keystonev1.GetKeystoneEndpointWithName(ctx, h, instance.Name, instance.Namespace)
+
+	// It might happen that the resource is not found because it does not match
+	// with the one exposing the keystone endpoints. If the keystoneendpoints
+	// CR does not exist it doesn't mean there's an issue, hence we don't have
+	// to do nothing, just return without an error
+	if k8s_errors.IsNotFound(err) {
+		return ctrl.Result{}, nil
+	}
+	if err != nil && !k8s_errors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+	if err == nil {
+		if controllerutil.RemoveFinalizer(keystoneEndpoint, h.GetFinalizer()) {
+			err = r.Update(ctx, keystoneEndpoint)
+			if err != nil && !k8s_errors.IsNotFound(err) {
+				return ctrl.Result{}, err
+			}
+			util.LogForObject(h, "Removed finalizer from our KeystoneEndpoint", instance)
+		}
+	}
+	return ctrl.Result{}, err
 }

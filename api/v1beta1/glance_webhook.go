@@ -64,7 +64,10 @@ func (spec *GlanceSpec) Default() {
 		spec.ContainerImage = glanceDefaults.ContainerImageURL
 	}
 	if spec.GlanceAPIs == nil || len(spec.GlanceAPIs) == 0 {
-		spec.GlanceAPIs = map[string]GlanceAPITemplate{}
+		spec.KeystoneBackend = "default"
+		spec.GlanceAPIs = map[string]GlanceAPITemplate{
+			"default": {},
+		}
 	}
 	for key, glanceAPI := range spec.GlanceAPIs {
 		// Check the sub-cr ContainerImage parameter
