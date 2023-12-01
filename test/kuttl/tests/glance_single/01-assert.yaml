@@ -60,10 +60,14 @@ spec:
     spec:
       containers:
       - args:
-        - -c
-        - tail -n+1 -F /var/log/glance/glance-single.log
+        - --single-child
+        - --
+        - /usr/bin/tail
+        - -n+1
+        - -F
+        - /var/log/glance/glance-single.log
         command:
-        - /bin/bash
+        - /usr/bin/dumb-init
         name: glance-log
       - args:
         - -c
