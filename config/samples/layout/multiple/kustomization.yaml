@@ -1,0 +1,5 @@
+resources:
+ - ../base
+
+patches:
+  - glance_v1beta1_glance.yaml

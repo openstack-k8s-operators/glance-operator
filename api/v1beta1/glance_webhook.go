@@ -58,13 +58,29 @@ func (r *Glance) Default() {
 	r.Spec.Default()
 }
 
+// Check if the KeystoneEndpoint matches with a deployed glanceAPI
+func (spec *GlanceSpec) isValidKeystoneEP() bool {
+	for name := range spec.GlanceAPIs {
+		if spec.KeystoneEndpoint == name {
+			return true
+		}
+	}
+	return false
+}
+
 // Default - set defaults for this Glance spec
 func (spec *GlanceSpec) Default() {
 	if len(spec.ContainerImage) == 0 {
 		spec.ContainerImage = glanceDefaults.ContainerImageURL
 	}
+	// When no glanceAPI(s) are specified in the top-level CR
+	// we build one by default
+	// TODO: (fpantano) Set replicas=0 so users are forced to
+	// patch the CR and configure a backend.
 	if spec.GlanceAPIs == nil || len(spec.GlanceAPIs) == 0 {
-		spec.KeystoneBackend = "default"
+		// keystoneEndpoint will match with the only instance
+		// deployed by default
+		spec.KeystoneEndpoint = "default"
 		spec.GlanceAPIs = map[string]GlanceAPITemplate{
 			"default": {},
 		}
@@ -76,6 +92,15 @@ func (spec *GlanceSpec) Default() {
 			spec.GlanceAPIs[key] = glanceAPI
 		}
 	}
+	// In the special case where the GlanceAPI list is composed by a single
+	// element, we can omit the "KeystoneEndpoint" spec parameter and default
+	// it to that only instance present in the main CR
+	if spec.KeystoneEndpoint == "" && len(spec.GlanceAPIs) == 1 {
+		for k := range spec.GlanceAPIs {
+			spec.KeystoneEndpoint = k
+			break
+		}
+	}
 }
 
 //+kubebuilder:webhook:path=/validate-glance-openstack-org-v1beta1-glance,mutating=false,failurePolicy=fail,sideEffects=None,groups=glance.openstack.org,resources=glances,verbs=create;update,versions=v1beta1,name=vglance.kb.io,admissionReviewVersions=v1
@@ -85,6 +110,11 @@ var _ webhook.Validator = &Glance{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Glance) ValidateCreate() error {
 	glancelog.Info("validate create", "name", r.Name)
+	// At creation time, if the CR has an invalid keystoneEndpoint value (that
+	// doesn't match with any defined backend), return an error.
+	if !r.Spec.isValidKeystoneEP() {
+		return errors.New("KeystoneEndpoint is assigned to an invalid glanceAPI instance")
+	}
 
 	//TODO:
 	// - Two glanceAPI with the same name can't be deployed

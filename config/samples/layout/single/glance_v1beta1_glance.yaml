@@ -4,23 +4,19 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
+  databaseInstance: openstack
+  databaseUser: glance
+  keystoneEndpoint: default
   customServiceConfig: |
     [DEFAULT]
     debug = true
-  databaseInstance: openstack
-  databaseUser: glance
-  keystoneBackend: api1
   glanceAPIs:
-    api1:
-      debug:
-        service: false
-      preserveJobs: false
-      replicas: 1
-    api2:
+    default:
+      type: "single"
       debug:
         service: false
       preserveJobs: false
       replicas: 1
   secret: osp-secret
-  storageClass: ""
+  storageClass: local-storage
   storageRequest: 10G

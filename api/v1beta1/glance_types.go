@@ -118,8 +118,10 @@ type GlanceSpec struct {
 	ImageCacheSize string `json:"imageCacheSize"`
 
 	// +kubebuilder:validation:Required
-	// KeystoneBackend -
-	KeystoneBackend string `json:"keystoneBackend"`
+	// KeystoneEndpoint - indicates which glanceAPI should be registered in the
+	// keystone catalog, and it acts as a selector for the underlying glanceAPI(s)
+	// that can be specified by name
+	KeystoneEndpoint string `json:"keystoneEndpoint"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret

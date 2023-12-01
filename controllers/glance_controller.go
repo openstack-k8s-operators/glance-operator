@@ -736,8 +736,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	// We select which glanceAPI should register the keystoneEndpoint by using
 	// an API selector defined in the main glance CR; if it matches with the
 	// current APIName, an annotation is added to the glanceAPI instance
-	if instance.Spec.KeystoneBackend == apiName {
-		apiAnnotations[glance.KeystoneBackend] = "true"
+	if instance.Spec.KeystoneEndpoint == apiName {
+		apiAnnotations[glance.KeystoneEndpoint] = "true"
 	}
 	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{

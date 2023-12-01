@@ -7,6 +7,7 @@ spec:
   serviceUser: glance
   databaseInstance: openstack
   databaseUser: glance
+  keystoneEndpoint: default
   glanceAPIs:
     default:
       debug:

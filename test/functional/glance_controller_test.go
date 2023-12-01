@@ -308,7 +308,7 @@ var _ = Describe("Glance controller", func() {
 				"storageRequest":   glanceTest.GlancePVCSize,
 				"secret":           SecretName,
 				"databaseInstance": "openstack",
-				"keystoneBackend":  "default",
+				"keystoneEndpoint": "default",
 				"glanceAPIs": map[string]interface{}{
 					"default": map[string]interface{}{
 						"containerImage":     glancev1.GlanceAPIContainerImage,

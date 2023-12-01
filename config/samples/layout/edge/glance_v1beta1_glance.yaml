@@ -9,14 +9,20 @@ spec:
     debug = true
   databaseInstance: openstack
   databaseUser: glance
-  keystoneBackend: api2
+  keystoneEndpoint: central
   glanceAPIs:
-    api1:
+    central:
       debug:
         service: false
       preserveJobs: false
       replicas: 1
-    api2:
+    edge1:
+      debug:
+        service: false
+      preserveJobs: false
+      replicas: 1
+      type: "single"
+    edge2:
       debug:
         service: false
       preserveJobs: false

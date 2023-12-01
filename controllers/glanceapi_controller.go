@@ -474,7 +474,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrl.Result{}, err
 	}
 
-	configVars[glance.KeystoneBackend] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneBackend])
+	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
 	//
 	// create hash over all the different input resources to identify if any those changed
 	// and a restart/recreate is required.
@@ -756,7 +756,7 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 	// If the parent controller didn't set the annotation, the current glanceAPIs
 	// shouldn't register the endpoints in keystone
 	if len(instance.ObjectMeta.Annotations) == 0 ||
-		instance.ObjectMeta.Annotations[glance.KeystoneBackend] != "true" {
+		instance.ObjectMeta.Annotations[glance.KeystoneEndpoint] != "true" {
 		// Mark the KeystoneEndpointReadyCondition as True because there's nothing
 		// to do here
 		instance.Status.Conditions.Set(instance.Status.Conditions.Mirror(condition.KeystoneEndpointReadyCondition))
