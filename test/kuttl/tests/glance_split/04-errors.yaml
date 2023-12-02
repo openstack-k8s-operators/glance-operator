@@ -2,10 +2,10 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    service: glance-external
+    service: glance-default-external
 ---
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    service: glance-internal
+    service: glance-default-internal

@@ -19,11 +19,12 @@ spec:
     debug = true
   databaseInstance: openstack
   databaseUser: glance
-  glanceAPI:
-    debug:
-      service: false
-    replicas: 1
-    type: "single"
+  glanceAPIs:
+    default:
+      debug:
+        service: false
+      replicas: 1
+      type: "single"
   secret: osp-secret
   storageRequest: 10G
 status:
@@ -32,7 +33,7 @@ status:
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
 metadata:
-  name: glance-single
+  name: glance-default-single
 spec:
   apiType: single
   databaseUser: glance
@@ -47,16 +48,16 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-api
+  name: glance-default-single
 spec:
   replicas: 1
   selector:
     matchLabels:
-      service: glance-single
+      service: glance-default-single
   template:
     metadata:
       labels:
-        service: glance-single
+        service: glance-default-single
     spec:
       containers:
       - args:
@@ -65,7 +66,7 @@ spec:
         - /usr/bin/tail
         - -n+1
         - -F
-        - /var/log/glance/glance-single.log
+        - /var/log/glance/glance-default-single.log
         command:
         - /usr/bin/dumb-init
         name: glance-log
@@ -91,41 +92,41 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    service: glance-single
+    service: glance-default-single
 status:
   phase: Running
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: glance-internal
+  name: glance-default-single-internal
   labels:
     endpoint: internal
-    service: glance-single
+    service: glance-default-single
 spec:
   ports:
-  - name: glance-internal
+  - name: glance-default-single-internal
     port: 9292
     protocol: TCP
     targetPort: 9292
   selector:
-    service: glance-single
+    service: glance-default-single
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: glance-public
+  name: glance-default-single-public
   labels:
     endpoint: public
-    service: glance-single
+    service: glance-default-single
 spec:
   ports:
-  - name: glance-public
+  - name: glance-default-single-public
     port: 9292
     protocol: TCP
     targetPort: 9292
   selector:
-    service: glance-single
+    service: glance-default-single
 ---
 # the actual addresses of the apiEndpoints are platform specific, so we can't rely on
 # kuttl asserts to check them. This short script gathers the addresses and checks that
