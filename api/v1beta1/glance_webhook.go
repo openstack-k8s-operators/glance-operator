@@ -120,7 +120,6 @@ func (r *Glance) ValidateCreate() error {
 	// - Two glanceAPI with the same name can't be deployed
 	// - Check one of the items of the list is the one that should appear in the
 	//   keystone catalog, otherwise raise an error because the field is not set!
-
 	return nil
 }
 
@@ -133,6 +132,14 @@ func (r *Glance) ValidateUpdate(old runtime.Object) error {
 	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
 	o := old.(*Glance)
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
+		// When a new entry (new glanceAPI instance) is added in the main CR, it's
+		// possible that the old CR used to compare the new map had no entry with
+		// the same name. This represent a valid use case and we shouldn't prevent
+		// to grow the deployment
+		if o.Spec.GlanceAPIs[key].Type == "" {
+			continue
+		}
+		// The current glanceAPI exists and the layout is different
 		if glanceAPI.Type != o.Spec.GlanceAPIs[key].Type {
 			return errors.New("GlanceAPI deployment layout can't be updated")
 		}

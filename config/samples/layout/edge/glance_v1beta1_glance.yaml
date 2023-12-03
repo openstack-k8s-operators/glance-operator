@@ -29,5 +29,5 @@ spec:
       replicas: 1
       type: "single"
   secret: osp-secret
-  storageClass: ""
+  storageClass: local-storage
   storageRequest: 10G

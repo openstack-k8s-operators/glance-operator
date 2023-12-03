@@ -97,8 +97,9 @@ type GlanceAPITemplate struct {
 	// StorageRequest
 	StorageRequest string `json:"storageRequest"`
 
-	// +kubebuilder:validation:Enum=split;single
+	// +kubebuilder:validation:Enum=split;single;edge
 	// +kubebuilder:default:=split
+	// Type - represents the layout of the glanceAPI deployment.
 	Type string `json:"type,omitempty"`
 }
 

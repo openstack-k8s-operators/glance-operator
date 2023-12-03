@@ -610,26 +610,69 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 }
 
 // apiDeployment represents the logic of deploying GlanceAPI instances specified
-// in the main CR according to a given strategy (split vs single). It handles
-// the deployment logic itself, as well as the output settings mirrored in the
-// main Glance CR status
+// in the main CR according to a given strategy (split vs single). The main
+// switch-case is usefult to define a clear logic associated with the defined
+// layout
 func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1.Glance, instanceName string, current glancev1.GlanceAPITemplate, helper *helper.Helper) error {
 
-	// By default internal and external points to diff instances, but we might
-	// want to override "external" with "single" in case APIType == "single":
-	// in this case we only deploy the External instance and skip the internal
-	// one
-	var internal string = glancev1.APIInternal
-	var external string = glancev1.APIExternal
-
-	// If we're deploying a "single" instance, we skip GlanceAPI.Internal, and
-	// we only deploy the External instance passing "glancev1.APISingle" to the
-	// GlanceAPI controller, so we can properly handle this use case (nad and
-	// service creation).
-	if current.Type == "single" {
-		external = glancev1.APISingle
+	var glanceAPI *glancev1.GlanceAPI
+	var err error
+	switch current.Type {
+	case "single":
+		// Deploy a single instance of GlanceAPI
+		glanceAPI, err = r.ensureAPIDeployment(ctx, instance, glancev1.APISingle, instanceName, helper)
+		if err != nil {
+			return err
+		}
+	case "split":
+		// Deploy a layout composed by an internal and external instance
+		// TODO: (fpantano) If the backend is not set prevent this layout deployment
+		_, err = r.ensureAPIDeployment(ctx, instance, glancev1.APIExternal, instanceName, helper)
+		if err != nil {
+			return err
+		}
+		glanceAPI, err = r.ensureAPIDeployment(ctx, instance, glancev1.APIInternal, instanceName, helper)
+		if err != nil {
+			return err
+		}
+	default:
+		// by default we split and deploy a layout composed by an internal and an external instance
+		// TODO: (fpantano) If the backend is not set prevent this layout deployment
+		_, err = r.ensureAPIDeployment(ctx, instance, glancev1.APIExternal, instanceName, helper)
+		if err != nil {
+			return err
+		}
+		glanceAPI, err = r.ensureAPIDeployment(ctx, instance, glancev1.APIInternal, instanceName, helper)
+		if err != nil {
+			return err
+		}
 	}
-	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIs[instanceName], external, instanceName, helper)
+
+	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition
+	apiCondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
+	// Get internal GlanceAPI's condition status for comparison with external below
+	internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
+	apiCondition = condition.GetHigherPrioCondition(internalAPICondition, apiCondition).DeepCopy()
+
+	if apiCondition != nil {
+		instance.Status.Conditions.Set(apiCondition)
+	}
+	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
+	return nil
+}
+
+// ensureAPIDeployment - the function that manages the Deployment of a given GlanceAPI
+// instance by invoking the underlying createOrUpdate with proper parameters. In addition
+// it manages the APIEndpoints mirroring according to the nature of the API instance
+func (r *GlanceReconciler) ensureAPIDeployment(
+	ctx context.Context,
+	instance *glancev1.Glance,
+	apiType string,
+	apiName string,
+	helper *helper.Helper,
+) (*glancev1.GlanceAPI, error) {
+
+	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIs[apiName], apiType, apiName, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -637,70 +680,40 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 			condition.SeverityWarning,
 			glancev1.GlanceAPIReadyErrorMessage,
 			err.Error()))
-		return err
+		return nil, err
 	}
 	if op != controllerutil.OperationResultNone {
 		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
 
-	apiPubEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointPublic))
-	apiIntEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointInternal))
+	apiPubEndpoint := fmt.Sprintf("%s-%s", apiName, string(endpoint.EndpointPublic))
+	apiIntEndpoint := fmt.Sprintf("%s-%s", apiName, string(endpoint.EndpointInternal))
+
+	// It is possible that an earlier call to update the status has also set
+	// APIEndpoints to nil (if the APIEndpoints map was not nil but was empty,
+	// saving the status unfortunately re-initializes it as nil)
+	if instance.Status.APIEndpoints == nil {
+		instance.Status.APIEndpoints = map[string]string{}
+	}
 	// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
-		instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
-		// if we don't split, both apiEndpoints (public and internal) should be
-		// reflected to the main Glance CR
-		if current.Type == "single" {
+		switch glanceAPI.Spec.APIType {
+		case glancev1.APIExternal:
+			// we only mirror the external Endpoint
+			instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+		case glancev1.APIInternal:
+			// we only mirror the internal Endpoint
+			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
+		case glancev1.APISingle:
+			// we mirror both
+			instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
 			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 	}
-
-	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition
-	apiCondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
-
-	// split is the default use case unless type: "single" is passed to the top
-	// level CR: in this case we deploy an additional glanceAPI instance (Internal)
-	if current.Type == "split" || len(current.Type) == 0 {
-		// we force "internal" here by passing glancev1.APIInternal for the apiType arg
-		glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPIs[instanceName], internal, instanceName, helper)
-		if err != nil {
-			instance.Status.Conditions.Set(condition.FalseCondition(
-				glancev1.GlanceAPIReadyCondition,
-				condition.ErrorReason,
-				condition.SeverityWarning,
-				glancev1.GlanceAPIReadyErrorMessage,
-				err.Error()))
-			return err
-		}
-		if op != controllerutil.OperationResultNone {
-			r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
-		}
-
-		// It is possible that an earlier call to update the status has also set
-		// APIEndpoints to nil (if the APIEndpoints map was not nil but was empty,
-		// saving the status unfortunately re-initializes it as nil)
-		if instance.Status.APIEndpoints == nil {
-			instance.Status.APIEndpoints = map[string]string{}
-		}
-
-		// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
-		if glanceAPI.Status.APIEndpoints != nil {
-			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
-		}
-
-		// Get internal GlanceAPI's condition status for comparison with external below
-		internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
-		apiCondition = condition.GetHigherPrioCondition(internalAPICondition, apiCondition).DeepCopy()
-	}
-
-	if apiCondition != nil {
-		instance.Status.Conditions.Set(apiCondition)
-	}
-
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
-	return nil
+	return glanceAPI, err
 }
 
+// apiDeploymentCreateOrUpdate -
 func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	ctx context.Context,
 	instance *glancev1.Glance,
