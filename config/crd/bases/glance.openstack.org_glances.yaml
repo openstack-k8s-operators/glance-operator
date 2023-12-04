@@ -1037,6 +1037,11 @@ spec:
                 type: array
               databaseHostname:
                 type: string
+              glanceAPIReadyCounts:
+                additionalProperties:
+                  format: int32
+                  type: integer
+                type: object
               hash:
                 additionalProperties:
                   type: string

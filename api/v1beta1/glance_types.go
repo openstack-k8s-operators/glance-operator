@@ -165,6 +165,9 @@ type GlanceStatus struct {
 
 	// Glance Database Hostname
 	DatabaseHostname string `json:"databaseHostname,omitempty"`
+
+	// GlanceAPIReadyCounts -
+	GlanceAPIReadyCounts map[string]int32 `json:"glanceAPIReadyCounts,omitempty"`
 }
 
 //+kubebuilder:object:root=true

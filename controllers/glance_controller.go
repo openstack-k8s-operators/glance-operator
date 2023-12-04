@@ -165,13 +165,17 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		instance.Status.Conditions.Init(&cl)
 
 		// Register overall status immediately to have an early feedback e.g. in the cli
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 	if instance.Status.Hash == nil {
 		instance.Status.Hash = map[string]string{}
 	}
 	if instance.Status.APIEndpoints == nil {
 		instance.Status.APIEndpoints = map[string]string{}
+	}
+
+	if instance.Status.GlanceAPIReadyCounts == nil {
+		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
 	}
 
 	// Handle service delete
@@ -231,7 +235,7 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 		}
 	}
 
-	// Remove the finalizer on rach GlanceAPI CR
+	// Remove the finalizer on each GlanceAPI CR
 	for name := range instance.Spec.GlanceAPIs {
 		err = r.removeAPIFinalizer(ctx, instance, helper, name)
 		if err != nil {
@@ -591,6 +595,10 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		err = r.glanceAPICleanup(ctx, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	// create CronJobs: DBPurge (always), CacheCleaner and CachePruner if image-cache
 	// is enabled
@@ -685,6 +693,11 @@ func (r *GlanceReconciler) ensureAPIDeployment(
 	if op != controllerutil.OperationResultNone {
 		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
+
+	if instance.Status.GlanceAPIReadyCounts == nil {
+		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
+	}
+	instance.Status.GlanceAPIReadyCounts[apiName] = glanceAPI.Status.ReadyCount
 
 	apiPubEndpoint := fmt.Sprintf("%s-%s", apiName, string(endpoint.EndpointPublic))
 	apiIntEndpoint := fmt.Sprintf("%s-%s", apiName, string(endpoint.EndpointInternal))
@@ -953,6 +966,50 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 		err = o.DeleteRegisteredLimit(r.Log, l.ID)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// GlanceAPICleanup - Delete the glanceAPI instance if it no longer appears
+// in the spec.
+func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glancev1.Glance) error {
+	// Generate a list of GlanceAPI CRs
+	apis := &glancev1.GlanceAPIList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(instance.Namespace),
+	}
+	if err := r.Client.List(ctx, apis, listOpts...); err != nil {
+		r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %v")
+		return nil
+	}
+
+	for _, glanceAPI := range apis.Items {
+		// Skip any GlanceAPI that we don't own
+		if glance.GetOwningGlanceName(&glanceAPI) != instance.Name {
+			continue
+		}
+		apiName := glance.GetGlanceAPIName(glanceAPI.Name)
+		// Simply return if the apiName doesn't match the existing pattern, log but do not
+		// raise an error
+		if apiName == "" {
+			r.Log.Info(fmt.Sprintf("GlanceAPI %s does not match the pattern", glanceAPI.Name))
+			return nil
+		}
+		// Delete the api if it's no longer in the spec
+		_, exists := instance.Spec.GlanceAPIs[apiName]
+		if !exists && glanceAPI.DeletionTimestamp.IsZero() {
+			err := r.Client.Delete(ctx, &glanceAPI)
+			if err != nil && !k8s_errors.IsNotFound(err) {
+				err = fmt.Errorf("Error cleaning up %s: %w", glanceAPI.Name, err)
+				return err
+			}
+			// Update the APIEndpoints in the top-level CR
+			endpoints := []endpoint.Endpoint{endpoint.EndpointPublic, endpoint.EndpointInternal}
+			for _, ep := range endpoints {
+				endpointKey := fmt.Sprintf("%s-%s", apiName, ep)
+				delete(instance.Status.APIEndpoints, endpointKey)
+			}
 		}
 	}
 	return nil

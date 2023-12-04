@@ -136,7 +136,7 @@ func (r *Glance) ValidateUpdate(old runtime.Object) error {
 		// possible that the old CR used to compare the new map had no entry with
 		// the same name. This represent a valid use case and we shouldn't prevent
 		// to grow the deployment
-		if o.Spec.GlanceAPIs[key].Type == "" {
+		if _, found := o.Spec.GlanceAPIs[key]; !found {
 			continue
 		}
 		// The current glanceAPI exists and the layout is different
