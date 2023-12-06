@@ -70,11 +70,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      service: glance-default-external
+      service: glance
   template:
     metadata:
       labels:
-        service: glance-default-external
+        service: glance
     spec:
       containers:
       - args:
@@ -113,11 +113,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      service: glance-default-internal
+      service: glance
   template:
     metadata:
       labels:
-        service: glance-default-internal
+        service: glance
     spec:
       containers:
       - args:
@@ -152,7 +152,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    service: glance-default-external
+    service: glance
 status:
   phase: Running
 ---
@@ -160,7 +160,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    service: glance-default-internal
+    service: glance
 status:
   phase: Running
 ---
@@ -170,7 +170,7 @@ metadata:
   name: glance-default-internal-internal
   labels:
     endpoint: internal
-    service: glance-default-internal
+    service: glance
 spec:
   ports:
   - name: glance-default-internal-internal
@@ -178,7 +178,7 @@ spec:
     protocol: TCP
     targetPort: 9292
   selector:
-    service: glance-default-internal
+    service: glance
 ---
 apiVersion: v1
 kind: Service
@@ -186,7 +186,7 @@ metadata:
   name: glance-default-external-public
   labels:
     endpoint: public
-    service: glance-default-external
+    service: glance
 spec:
   ports:
   - name: glance-default-external-public
@@ -194,7 +194,7 @@ spec:
     protocol: TCP
     targetPort: 9292
   selector:
-    service: glance-default-external
+    service: glance
 ---
 # the actual addresses of the apiEndpoints are platform specific, so we can't rely on
 # kuttl asserts to check them. This short script gathers the addresses and checks that

@@ -210,7 +210,7 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 		It("exposes the service", func() {
 			apiInstance := th.GetService(glanceTest.GlancePublicSvc)
-			Expect(apiInstance.Labels["service"]).To(Equal("glance-default-external"))
+			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
 		})
 		It("creates KeystoneEndpoint", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceExternal)
@@ -244,7 +244,7 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 		It("exposes the service - Internal", func() {
 			apiInstance := th.GetService(glanceTest.GlanceInternalSvc)
-			Expect(apiInstance.Labels["service"]).To(Equal("glance-default-internal"))
+			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
 		})
 		It("creates KeystoneEndpoint - Internal", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceInternal)
@@ -278,7 +278,7 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 		It("exposes the service", func() {
 			apiInstance := th.GetService(glanceTest.GlanceSingleInternalSvc)
-			Expect(apiInstance.Labels["service"]).To(Equal("glance-default-single"))
+			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
 		})
 		It("creates KeystoneEndpoint", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceSingle)

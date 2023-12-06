@@ -536,7 +536,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	//
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -820,8 +820,9 @@ func (r *GlanceReconciler) generateServiceConfig(
 	h *helper.Helper,
 	instance *glancev1.Glance,
 	envVars *map[string]env.Setter,
+	serviceLabels map[string]string,
 ) error {
-	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
+	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
 	ospSecret, _, err := secret.GetSecret(ctx, h, instance.Spec.Secret, instance.Namespace)
 	if err != nil {

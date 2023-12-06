@@ -459,11 +459,16 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
-	//
-	// Create Secrets required as input for the Service and calculate an overall hash of hashes
-	//
+	// Generate serviceLabels that will be passed to all the Service related resource
+	// By doing this we can `oc get` all the resources associated to Glance making
+	// queries by label
+	serviceLabels := map[string]string{
+		common.AppSelector:       glance.ServiceName,
+		common.ComponentSelector: glance.Component,
+		glance.GlanceAPIName:     instance.Name,
+	}
 
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -521,11 +526,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			privileged = true
 		}
 	}
-
-	serviceLabels := map[string]string{
-		common.AppSelector: instance.Name,
-	}
-
 	var serviceAnnotations map[string]string
 	var ctrlResult ctrl.Result
 	// networks to attach to
@@ -633,9 +633,10 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	h *helper.Helper,
 	instance *glancev1.GlanceAPI,
 	envVars *map[string]env.Setter,
+	serviceLabels map[string]string,
 ) error {
 
-	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
+	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
 	// 02-config.conf
 	customData := map[string]string{glance.CustomServiceConfigFileName: instance.Spec.CustomServiceConfig}

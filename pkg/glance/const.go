@@ -32,7 +32,10 @@ const (
 	ServiceType = "image"
 	// DatabaseName -
 	DatabaseName = "glance"
-
+	// Component -
+	Component = "glance-api"
+	// GlanceAPIName -
+	GlanceAPIName = "glanceAPI"
 	// PvcLocal for a generic glanceAPI instance
 	PvcLocal PvcType = "local"
 	// PvcCache is used to define a PVC mounted for image caching purposes

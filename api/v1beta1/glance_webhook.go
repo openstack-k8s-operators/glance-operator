@@ -117,7 +117,6 @@ func (r *Glance) ValidateCreate() error {
 	}
 
 	//TODO:
-	// - Two glanceAPI with the same name can't be deployed
 	// - Check one of the items of the list is the one that should appear in the
 	//   keystone catalog, otherwise raise an error because the field is not set!
 	return nil
