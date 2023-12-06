@@ -100,7 +100,7 @@ type GlanceSpec struct {
 	StorageRequest string `json:"storageRequest"`
 
 	// +kubebuilder:validation:Required
-	// GlanceAPI - Spec definition for the API service of this Glance deployment
+	// GlanceAPIs - Spec definition for the API service of this Glance deployment
 	GlanceAPIs map[string]GlanceAPITemplate `json:"glanceAPIs"`
 
 	// +kubebuilder:validation:Optional

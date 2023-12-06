@@ -760,7 +760,6 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		instance.ObjectMeta.Annotations[glance.KeystoneEndpoint] != "true" {
 		// Mark the KeystoneEndpointReadyCondition as True because there's nothing
 		// to do here
-		instance.Status.Conditions.Set(instance.Status.Conditions.Mirror(condition.KeystoneEndpointReadyCondition))
 		instance.Status.Conditions.MarkTrue(
 			condition.KeystoneEndpointReadyCondition, condition.ReadyMessage)
 		// If the current glanceAPI was the main one and the annotation has been removed, there is
@@ -795,9 +794,6 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		instance.Status.Conditions.Set(c)
 	}
 
-	if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
 	return ctrlResult, nil
 }
 
