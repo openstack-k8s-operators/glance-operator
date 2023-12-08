@@ -239,7 +239,7 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
-			keystone.SimulateKeystoneEndpointReady(glanceTest.GlancePublicRoute)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
 		})
 		It("Creates glanceAPI", func() {
 			// Default type is "split", make sure that behind the scenes two
@@ -274,7 +274,7 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
-			keystone.SimulateKeystoneEndpointReady(glanceTest.GlancePublicRoute)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
 		})
 		It("removes the finalizers from the Glance DB", func() {
 			mDB := mariadb.GetMariaDBDatabase(glanceTest.Instance)

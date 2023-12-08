@@ -99,13 +99,13 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  name: glance-default-single-internal
+  name: glance-default-internal
   labels:
     endpoint: internal
     service: glance
 spec:
   ports:
-  - name: glance-default-single-internal
+  - name: glance-default-internal
     port: 9292
     protocol: TCP
     targetPort: 9292
@@ -115,13 +115,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: glance-default-single-public
+  name: glance-default-public
   labels:
     endpoint: public
     service: glance
 spec:
   ports:
-  - name: glance-default-single-public
+  - name: glance-default-public
     port: 9292
     protocol: TCP
     targetPort: 9292

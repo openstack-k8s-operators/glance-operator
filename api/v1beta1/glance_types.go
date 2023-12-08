@@ -100,6 +100,7 @@ type GlanceSpec struct {
 	StorageRequest string `json:"storageRequest"`
 
 	// +kubebuilder:validation:Required
+	// +kubebuilder:default={}
 	// GlanceAPIs - Spec definition for the API service of this Glance deployment
 	GlanceAPIs map[string]GlanceAPITemplate `json:"glanceAPIs"`
 
@@ -118,6 +119,7 @@ type GlanceSpec struct {
 	ImageCacheSize string `json:"imageCacheSize"`
 
 	// +kubebuilder:validation:Required
+	// +kubebuilder:default=""
 	// KeystoneEndpoint - indicates which glanceAPI should be registered in the
 	// keystone catalog, and it acts as a selector for the underlying glanceAPI(s)
 	// that can be specified by name

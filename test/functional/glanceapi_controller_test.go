@@ -176,8 +176,8 @@ var _ = Describe("Glanceapi controller", func() {
 			)
 		})
 		It("creates a StatefulSet for glance-single-api service", func() {
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingleAPI)
-			ss := th.GetStatefulSet(glanceTest.GlanceSingleAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
+			ss := th.GetStatefulSet(glanceTest.GlanceSingle)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(3))
@@ -215,7 +215,7 @@ var _ = Describe("Glanceapi controller", func() {
 		It("creates KeystoneEndpoint", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceExternal)
 			endpoints := keystoneEndpoint.Spec.Endpoints
-			Expect(endpoints).To(HaveKeyWithValue("public", "http://glance-default-external-public."+glanceTest.Instance.Namespace+".svc:9292"))
+			Expect(endpoints).To(HaveKeyWithValue("public", "http://glance-default-public."+glanceTest.Instance.Namespace+".svc:9292"))
 			th.ExpectCondition(
 				glanceTest.GlanceExternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
@@ -249,7 +249,7 @@ var _ = Describe("Glanceapi controller", func() {
 		It("creates KeystoneEndpoint - Internal", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceInternal)
 			endpoints := keystoneEndpoint.Spec.Endpoints
-			Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-default-internal-internal."+glanceTest.Instance.Namespace+".svc:9292"))
+			Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-default-internal."+glanceTest.Instance.Namespace+".svc:9292"))
 			th.ExpectCondition(
 				glanceTest.GlanceInternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
@@ -262,7 +262,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, GetDefaultGlanceAPISpec(GlanceAPITypeSingle)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceSingle.Namespace))
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingleAPI)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 		})
 		It("reports that StatefulSet is ready", func() {
@@ -277,13 +277,13 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(glanceAPI.Status.ReadyCount).To(BeNumerically(">", 0))
 		})
 		It("exposes the service", func() {
-			apiInstance := th.GetService(glanceTest.GlanceSingleInternalSvc)
+			apiInstance := th.GetService(glanceTest.GlanceInternal)
 			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
 		})
 		It("creates KeystoneEndpoint", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceSingle)
 			endpoints := keystoneEndpoint.Spec.Endpoints
-			Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-default-single-internal."+glanceTest.Instance.Namespace+".svc:9292"))
+			Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-default-internal."+glanceTest.Instance.Namespace+".svc:9292"))
 			//Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-default-public."+glanceTest.Instance.Namespace+".svc:9292"))
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
@@ -328,7 +328,7 @@ var _ = Describe("Glanceapi controller", func() {
 		It("creates KeystoneEndpoint", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceInternal)
 			endpoints := keystoneEndpoint.Spec.Endpoints
-			Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-default-internal-internal."+glanceTest.GlanceInternal.Namespace+".svc:9292"))
+			Expect(endpoints).To(HaveKeyWithValue("internal", "http://glance-default-internal."+glanceTest.GlanceInternal.Namespace+".svc:9292"))
 			th.ExpectCondition(
 				glanceTest.GlanceInternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),

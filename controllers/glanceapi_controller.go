@@ -299,7 +299,8 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	for endpointType, data := range glanceEndpoints {
 		endpointTypeStr := string(endpointType)
-		endpointName := fmt.Sprintf("%s-%s", instance.Name, endpointTypeStr)
+		apiName := glance.GetGlanceAPIName(instance.Name)
+		endpointName := fmt.Sprintf("%s-%s-%s", glance.ServiceName, apiName, endpointTypeStr)
 		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
 			svcOverride.EmbeddedLabelsAnnotations = &service.EmbeddedLabelsAnnotations{}

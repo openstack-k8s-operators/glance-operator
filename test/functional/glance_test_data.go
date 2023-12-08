@@ -42,14 +42,12 @@ type GlanceTestData struct {
 	GlanceQuotas                map[string]interface{}
 	Instance                    types.NamespacedName
 	GlanceSingle                types.NamespacedName
-	GlanceSingleInternalSvc     types.NamespacedName
 	GlanceInternal              types.NamespacedName
 	GlanceExternal              types.NamespacedName
 	GlanceRole                  types.NamespacedName
 	GlanceRoleBinding           types.NamespacedName
 	GlanceSA                    types.NamespacedName
 	GlanceDBSync                types.NamespacedName
-	GlancePublicRoute           types.NamespacedName
 	GlancePublicSvc             types.NamespacedName
 	GlanceInternalSvc           types.NamespacedName
 	GlanceInternalKeystoneEP    types.NamespacedName
@@ -58,7 +56,6 @@ type GlanceTestData struct {
 	GlanceInternalConfigMapData types.NamespacedName
 	GlanceSingleConfigMapData   types.NamespacedName
 	GlanceConfigMapScripts      types.NamespacedName
-	GlanceSingleAPI             types.NamespacedName
 	InternalAPINAD              types.NamespacedName
 	GlanceCache                 types.NamespacedName
 }
@@ -75,38 +72,26 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-db-sync", glanceName.Name),
 		},
-		GlanceSingleAPI: types.NamespacedName{
-			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-default-single", glanceName.Name),
-		},
 		GlanceSingle: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-default-single", glanceName.Name),
-		},
-		GlanceSingleInternalSvc: types.NamespacedName{
-			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-default-single-internal", glanceName.Name),
 		},
 		GlanceInternal: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-default-internal", glanceName.Name),
 		},
-		// Also used to identify GlanceKeystoneService
-		GlanceInternalSvc: types.NamespacedName{
-			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-default-internal-internal", glanceName.Name),
-		},
 		GlanceExternal: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-default-external", glanceName.Name),
 		},
-		GlancePublicRoute: types.NamespacedName{
+		// Also used to identify GlanceKeystoneService
+		GlanceInternalSvc: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-default-external", glanceName.Name),
+			Name:      fmt.Sprintf("%s-default-internal", glanceName.Name),
 		},
 		GlancePublicSvc: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-default-external-public", glanceName.Name),
+			Name:      fmt.Sprintf("%s-default-public", glanceName.Name),
 		},
 		GlanceRole: types.NamespacedName{
 			Namespace: glanceName.Namespace,

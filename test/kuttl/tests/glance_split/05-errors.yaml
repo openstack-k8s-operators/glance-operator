@@ -51,9 +51,9 @@ metadata:
 apiVersion: v1
 kind: Service
 metadata:
-  name: glance-default-internal-internal
+  name: glance-default-internal
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: glance-default-external-public
+  name: glance-default-public
