@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	github.com/gophercloud/gophercloud v1.8.0
-	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20231128185906-0b4579c3dadf
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20231204114424-a857120974fc
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20231204114424-a857120974fc
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20231204114424-a857120974fc
+	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20231208104910-f8433c1c9399
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20231208084806-7d16c97927fe
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20231208084806-7d16c97927fe
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20231208084806-7d16c97927fe
 	k8s.io/api v0.26.11
 	k8s.io/apimachinery v0.26.11
 	sigs.k8s.io/controller-runtime v0.14.7
@@ -46,6 +46,7 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.8.3 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
