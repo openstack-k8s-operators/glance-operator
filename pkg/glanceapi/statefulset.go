@@ -21,6 +21,7 @@ import (
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -143,6 +144,9 @@ func StatefulSet(
 		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
 	}
 
+	extraVolPropagation := append(glance.GlanceAPIPropagation,
+		storage.PropagationType(glance.GetGlanceAPIName(instance.Name)))
+
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      instance.Name,
@@ -223,7 +227,7 @@ func StatefulSet(
 								instance.Spec.CustomServiceConfigSecrets,
 								privileged,
 								instance.Spec.ExtraMounts,
-								glance.GlanceAPIPropagation),
+								extraVolPropagation),
 								apiVolumeMounts...,
 							),
 							Resources:      instance.Spec.Resources,
@@ -255,7 +259,7 @@ func StatefulSet(
 		privileged,
 		instance.Spec.CustomServiceConfigSecrets,
 		instance.Spec.ExtraMounts,
-		glance.GlanceAPIPropagation),
+		extraVolPropagation),
 		apiVolumes...)
 
 	// If possible two pods of the same service should not

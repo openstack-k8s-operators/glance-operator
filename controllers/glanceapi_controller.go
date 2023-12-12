@@ -463,10 +463,11 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// Generate serviceLabels that will be passed to all the Service related resource
 	// By doing this we can `oc get` all the resources associated to Glance making
 	// queries by label
+
 	serviceLabels := map[string]string{
 		common.AppSelector:       glance.ServiceName,
 		common.ComponentSelector: glance.Component,
-		glance.GlanceAPIName:     instance.Name,
+		glance.GlanceAPIName:     fmt.Sprintf("%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name)),
 	}
 
 	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
