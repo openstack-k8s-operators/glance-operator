@@ -1,7 +1,9 @@
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
 metadata:
-  name: glanceapi
+  name: default
+  annotation:
+    keystoneEndpoint: "true"
 spec:
   serviceUser: glance
   serviceAccount: glance

@@ -1,6 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-  - script: |
-      oc kustomize deploy | oc delete -n $NAMESPACE -f -
-      rm deploy/glance_v1beta1_glance.yaml

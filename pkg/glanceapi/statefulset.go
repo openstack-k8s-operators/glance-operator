@@ -16,13 +16,12 @@ limitations under the License.
 package glanceapi
 
 import (
-	"fmt"
-
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -145,15 +144,12 @@ func StatefulSet(
 		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
 	}
 
-	// Do not append apiType if we only have a single glanceAPI instance
-	instanceName := fmt.Sprintf("%s-api", instance.Name)
-	if instance.Spec.APIType == "single" {
-		instanceName = fmt.Sprintf("%s-api", glance.ServiceName)
-	}
+	extraVolPropagation := append(glance.GlanceAPIPropagation,
+		storage.PropagationType(glance.GetGlanceAPIName(instance.Name)))
 
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instanceName,
+			Name:      instance.Name,
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -231,7 +227,7 @@ func StatefulSet(
 								instance.Spec.CustomServiceConfigSecrets,
 								privileged,
 								instance.Spec.ExtraMounts,
-								glance.GlanceAPIPropagation),
+								extraVolPropagation),
 								apiVolumeMounts...,
 							),
 							Resources:      instance.Spec.Resources,
@@ -263,7 +259,7 @@ func StatefulSet(
 		privileged,
 		instance.Spec.CustomServiceConfigSecrets,
 		instance.Spec.ExtraMounts,
-		glance.GlanceAPIPropagation),
+		extraVolPropagation),
 		apiVolumes...)
 
 	// If possible two pods of the same service should not

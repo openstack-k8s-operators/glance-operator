@@ -19,12 +19,66 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
+	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
+	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
+
+type conditionUpdater interface {
+	Set(c *condition.Condition)
+	MarkTrue(t condition.Type, messageFormat string, messageArgs ...interface{})
+}
+
+// ensureNAD - common function called in the glance controllers that GetNAD based
+// on the string[] passed as input and produces the required Annotation for the
+// glanceAPI component
+func ensureNAD(
+	ctx context.Context,
+	conditionUpdater conditionUpdater,
+	nAttach []string,
+	helper *helper.Helper,
+) (map[string]string, ctrl.Result, error) {
+
+	var serviceAnnotations map[string]string
+	var err error
+	// Iterate over the []networkattachment, get the corresponding NAD and create
+	// the required annotation
+	for _, netAtt := range nAttach {
+		_, err = nad.GetNADWithName(ctx, helper, netAtt, helper.GetBeforeObject().GetNamespace())
+		if err != nil {
+			if k8s_errors.IsNotFound(err) {
+				conditionUpdater.Set(condition.FalseCondition(
+					condition.NetworkAttachmentsReadyCondition,
+					condition.RequestedReason,
+					condition.SeverityInfo,
+					condition.NetworkAttachmentsReadyWaitingMessage,
+					netAtt))
+				return serviceAnnotations, ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("network-attachment-definition %s not found", netAtt)
+			}
+			conditionUpdater.Set(condition.FalseCondition(
+				condition.NetworkAttachmentsReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.NetworkAttachmentsReadyErrorMessage,
+				err.Error()))
+			return serviceAnnotations, ctrl.Result{}, err
+		}
+	}
+	// Create NetworkAnnotations
+	serviceAnnotations, err = nad.CreateNetworksAnnotation(helper.GetBeforeObject().GetNamespace(), nAttach)
+	if err != nil {
+		return serviceAnnotations, ctrl.Result{}, fmt.Errorf("failed create network annotation from %s: %w",
+			nAttach, err)
+	}
+	return serviceAnnotations, ctrl.Result{}, err
+}
 
 // GenerateConfigsGeneric -
 func GenerateConfigsGeneric(

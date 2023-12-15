@@ -67,15 +67,45 @@ var _ = Describe("Samples", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
-	When("glance_v1beta1_glance_single.yaml sample is applied", func() {
-		It("Glance is created", func() {
-			name := CreateGlanceFromSample("glance_v1beta1_glance_single.yaml", glanceTest.Instance)
+	When("glance_v1beta1_glance.yaml sample is applied", func() {
+		It("Glance Sample is created - Empty", func() {
+			name := CreateGlanceFromSample("glance_v1beta1_glance.yaml", glanceTest.Instance)
 			GetGlance(name)
 		})
 	})
 	When("glance_v1beta1_glance_quota.yaml sample is applied", func() {
-		It("Glance is created", func() {
+		It("Glance Sample is created - Quota", func() {
 			name := CreateGlanceFromSample("quotas/glance_v1beta1_glance_quota.yaml", glanceTest.Instance)
+			GetGlance(name)
+		})
+	})
+	When("layout/base/glance_v1beta1_glance.yaml sample is applied", func() {
+		It("Glance Sample is created - Base", func() {
+			name := CreateGlanceFromSample("layout/base/glance_v1beta1_glance.yaml", glanceTest.Instance)
+			GetGlance(name)
+		})
+	})
+	When("layout/edge/glance_v1beta1_glance.yaml sample is applied", func() {
+		It("Glance Sample is created - Edge", func() {
+			name := CreateGlanceFromSample("layout/edge/glance_v1beta1_glance.yaml", glanceTest.Instance)
+			GetGlance(name)
+		})
+	})
+	When("layout/multiple/glance_v1beta1_glance.yaml sample is applied", func() {
+		It("Glance Sample is created - Multiple", func() {
+			name := CreateGlanceFromSample("layout/multiple/glance_v1beta1_glance.yaml", glanceTest.Instance)
+			GetGlance(name)
+		})
+	})
+	When("layout/single/glance_v1beta1_glance.yaml sample is applied", func() {
+		It("Glance Sample is created - Single", func() {
+			name := CreateGlanceFromSample("layout/single/glance_v1beta1_glance.yaml", glanceTest.Instance)
+			GetGlance(name)
+		})
+	})
+	When("layout/split/glance_v1beta1_glance.yaml sample is applied", func() {
+		It("Glance Sample is created - Split", func() {
+			name := CreateGlanceFromSample("layout/split/glance_v1beta1_glance.yaml", glanceTest.Instance)
 			GetGlance(name)
 		})
 	})

@@ -954,6 +954,7 @@ spec:
                 enum:
                 - split
                 - single
+                - edge
                 type: string
             required:
             - containerImage

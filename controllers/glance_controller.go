@@ -44,7 +44,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
-	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
 	common_rbac "github.com/openstack-k8s-operators/lib-common/modules/common/rbac"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
@@ -174,6 +173,9 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	if instance.Status.APIEndpoints == nil {
 		instance.Status.APIEndpoints = map[string]string{}
 	}
+	if instance.Status.GlanceAPIReadyCounts == nil {
+		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
+	}
 
 	// Handle service delete
 	if !instance.DeletionTimestamp.IsZero() {
@@ -232,22 +234,11 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 		}
 	}
 
-	// Remove finalizers from any existing child GlanceAPIs
-	for _, apiType := range []string{glancev1.APIInternal, glancev1.APIExternal, glancev1.APISingle} {
-		glanceAPI := &glancev1.GlanceAPI{}
-		err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", instance.Name, apiType), Namespace: instance.Namespace}, glanceAPI)
-		if err != nil && !k8s_errors.IsNotFound(err) {
+	// Remove the finalizer on each GlanceAPI CR
+	for name := range instance.Spec.GlanceAPIs {
+		err = r.removeAPIFinalizer(ctx, instance, helper, name)
+		if err != nil {
 			return ctrl.Result{}, err
-		}
-
-		if err == nil {
-			if controllerutil.RemoveFinalizer(glanceAPI, helper.GetFinalizer()) {
-				err = r.Update(ctx, glanceAPI)
-				if err != nil && !k8s_errors.IsNotFound(err) {
-					return ctrl.Result{}, err
-				}
-				util.LogForObject(helper, fmt.Sprintf("Removed finalizer from GlanceAPI %s", glanceAPI.Name), glanceAPI)
-			}
 		}
 	}
 
@@ -272,6 +263,37 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
 
 	return ctrl.Result{}, nil
+}
+
+// removeFinalizer - iterates over the supported GlanceAPI types and, if the
+// associated resource is found, the finalizer is removed from the CR and the
+// resource can be deleted
+func (r *GlanceReconciler) removeAPIFinalizer(
+	ctx context.Context,
+	instance *glancev1.Glance,
+	helper *helper.Helper,
+	name string,
+) error {
+	var err error
+	// Remove finalizers from any existing GlanceAPIs instance
+	glanceAPI := &glancev1.GlanceAPI{}
+	for _, apiType := range []string{glancev1.APIInternal, glancev1.APIExternal, glancev1.APISingle} {
+		err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", glance.ServiceName, name, apiType), Namespace: instance.Namespace}, glanceAPI)
+		if err != nil && !k8s_errors.IsNotFound(err) {
+			return err
+		}
+		// GlanceAPI instance successfully found, remove the finalizer
+		if err == nil {
+			if controllerutil.RemoveFinalizer(glanceAPI, helper.GetFinalizer()) {
+				err = r.Update(ctx, glanceAPI)
+				if err != nil && !k8s_errors.IsNotFound(err) {
+					return err
+				}
+				util.LogForObject(helper, fmt.Sprintf("Removed finalizer from GlanceAPI %s", glanceAPI.Name), glanceAPI)
+			}
+		}
+	}
+	return nil
 }
 
 func (r *GlanceReconciler) reconcileInit(
@@ -513,7 +535,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	//
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -530,37 +552,17 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// TODO check when/if Init, Update, or Upgrade should/could be skipped
 	//
 
+	var serviceAnnotations map[string]string
+	var ctrlResult ctrl.Result
 	// networks to attach to
-	for _, netAtt := range instance.Spec.GlanceAPI.NetworkAttachments {
-		_, err := nad.GetNADWithName(ctx, helper, netAtt, instance.Namespace)
+	for _, glanceAPI := range instance.Spec.GlanceAPIs {
+		serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, glanceAPI.NetworkAttachments, helper)
 		if err != nil {
-			if k8s_errors.IsNotFound(err) {
-				instance.Status.Conditions.Set(condition.FalseCondition(
-					condition.NetworkAttachmentsReadyCondition,
-					condition.RequestedReason,
-					condition.SeverityInfo,
-					condition.NetworkAttachmentsReadyWaitingMessage,
-					netAtt))
-				return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("network-attachment-definition %s not found", netAtt)
-			}
-			instance.Status.Conditions.Set(condition.FalseCondition(
-				condition.NetworkAttachmentsReadyCondition,
-				condition.ErrorReason,
-				condition.SeverityWarning,
-				condition.NetworkAttachmentsReadyErrorMessage,
-				err.Error()))
-			return ctrl.Result{}, err
+			return ctrlResult, err
 		}
 	}
-
-	serviceAnnotations, err := nad.CreateNetworksAnnotation(instance.Namespace, instance.Spec.GlanceAPI.NetworkAttachments)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed create network annotation from %s: %w",
-			instance.Spec.GlanceAPI.NetworkAttachments, err)
-	}
-
 	// Handle service init
-	ctrlResult, err := r.reconcileInit(ctx, instance, helper, serviceLabels, serviceAnnotations)
+	ctrlResult, err = r.reconcileInit(ctx, instance, helper, serviceLabels, serviceAnnotations)
 	if err != nil {
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
@@ -586,7 +588,14 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// Reconcile the GlanceAPI deployment
 	//
-	err = r.apiDeployment(ctx, instance, instance.Spec.GlanceAPI, helper)
+
+	for name, glanceAPI := range instance.Spec.GlanceAPIs {
+		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	err = r.glanceAPICleanup(ctx, instance)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -611,7 +620,14 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 // in the main CR according to a given strategy (split vs single). It handles
 // the deployment logic itself, as well as the output settings mirrored in the
 // main Glance CR status
-func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1.Glance, current glancev1.GlanceAPITemplate, helper *helper.Helper) error {
+func (r *GlanceReconciler) apiDeployment(
+	ctx context.Context,
+	instance *glancev1.Glance,
+	instanceName string,
+	current glancev1.GlanceAPITemplate,
+	helper *helper.Helper,
+	serviceLabels map[string]string,
+) error {
 
 	// By default internal and external points to diff instances, but we might
 	// want to override "external" with "single" in case APIType == "single":
@@ -627,7 +643,15 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 	if current.Type == "single" {
 		external = glancev1.APISingle
 	}
-	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, instance.Spec.GlanceAPI, external, helper)
+	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(
+		ctx,
+		instance,
+		instance.Spec.GlanceAPIs[instanceName],
+		external,
+		instanceName,
+		helper,
+		serviceLabels,
+	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -640,14 +664,20 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 	if op != controllerutil.OperationResultNone {
 		r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 	}
+	if instance.Status.GlanceAPIReadyCounts == nil {
+		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
+	}
+	instance.Status.GlanceAPIReadyCounts[instanceName] = glanceAPI.Status.ReadyCount
 
+	apiPubEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointPublic))
+	apiIntEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointInternal))
 	// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
-		instance.Status.APIEndpoints[string(endpoint.EndpointPublic)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+		instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
 		// if we don't split, both apiEndpoints (public and internal) should be
 		// reflected to the main Glance CR
 		if current.Type == "single" {
-			instance.Status.APIEndpoints[string(endpoint.EndpointInternal)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
+			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 	}
 
@@ -658,7 +688,15 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 	// level CR: in this case we deploy an additional glanceAPI instance (Internal)
 	if current.Type == "split" || len(current.Type) == 0 {
 		// we force "internal" here by passing glancev1.APIInternal for the apiType arg
-		glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(ctx, instance, current, internal, helper)
+		glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(
+			ctx,
+			instance,
+			instance.Spec.GlanceAPIs[instanceName],
+			internal,
+			instanceName,
+			helper,
+			serviceLabels,
+		)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				glancev1.GlanceAPIReadyCondition,
@@ -681,7 +719,7 @@ func (r *GlanceReconciler) apiDeployment(ctx context.Context, instance *glancev1
 
 		// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 		if glanceAPI.Status.APIEndpoints != nil {
-			instance.Status.APIEndpoints[string(endpoint.EndpointInternal)] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
+			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 
 		// Get internal GlanceAPI's condition status for comparison with external below
@@ -702,9 +740,12 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	instance *glancev1.Glance,
 	apiTemplate glancev1.GlanceAPITemplate,
 	apiType string,
+	apiName string,
 	helper *helper.Helper,
+	serviceLabels map[string]string,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 
+	apiAnnotations := map[string]string{}
 	apiSpec := glancev1.GlanceAPISpec{
 		GlanceAPITemplate: apiTemplate,
 		APIType:           apiType,
@@ -727,16 +768,24 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
 	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
 
+	// We select which glanceAPI should register the keystoneEndpoint by using
+	// an API selector defined in the main glance CR; if it matches with the
+	// current APIName, an annotation is added to the glanceAPI instance
+	if instance.Spec.KeystoneEndpoint == apiName {
+		apiAnnotations[glance.KeystoneEndpoint] = "true"
+	}
 	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", instance.Name, apiType),
-			Namespace: instance.Namespace,
+			Name:        fmt.Sprintf("%s-%s-%s", instance.Name, apiName, apiType),
+			Annotations: apiAnnotations,
+			Labels:      serviceLabels,
+			Namespace:   instance.Namespace,
 		},
 	}
-
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, glanceStatefulset, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
+		glanceStatefulset.ObjectMeta.Annotations = apiAnnotations
 		glanceStatefulset.Spec = apiSpec
 
 		// We might want to create instances pointing to different backends in
@@ -765,10 +814,6 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		if err != nil {
 			return err
 		}
-
-		// Add a finalizer to prevent user from manually removing child GlanceAPI
-		controllerutil.AddFinalizer(glanceStatefulset, helper.GetFinalizer())
-
 		return nil
 	})
 
@@ -781,8 +826,9 @@ func (r *GlanceReconciler) generateServiceConfig(
 	h *helper.Helper,
 	instance *glancev1.Glance,
 	envVars *map[string]env.Setter,
+	serviceLabels map[string]string,
 ) error {
-	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
+	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
 	ospSecret, _, err := secret.GetSecret(ctx, h, instance.Spec.Secret, instance.Namespace)
 	if err != nil {
@@ -927,6 +973,49 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 		err = o.DeleteRegisteredLimit(r.Log, l.ID)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// GlanceAPICleanup - Delete the glanceAPI instance if it no longer appears
+// in the spec.
+func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glancev1.Glance) error {
+	// Generate a list of GlanceAPI CRs
+	apis := &glancev1.GlanceAPIList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(instance.Namespace),
+	}
+	if err := r.Client.List(ctx, apis, listOpts...); err != nil {
+		r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %v")
+		return nil
+	}
+	for _, glanceAPI := range apis.Items {
+		// Skip any GlanceAPI that we don't own
+		if glance.GetOwningGlanceName(&glanceAPI) != instance.Name {
+			continue
+		}
+		apiName := glance.GetGlanceAPIName(glanceAPI.Name)
+		// Simply return if the apiName doesn't match the existing pattern, log but do not
+		// raise an error
+		if apiName == "" {
+			r.Log.Info(fmt.Sprintf("GlanceAPI %s does not match the pattern", glanceAPI.Name))
+			return nil
+		}
+		_, exists := instance.Spec.GlanceAPIs[apiName]
+		// Delete the api if it's no longer in the spec
+		if !exists && glanceAPI.DeletionTimestamp.IsZero() {
+			err := r.Client.Delete(ctx, &glanceAPI)
+			if err != nil && !k8s_errors.IsNotFound(err) {
+				err = fmt.Errorf("Error cleaning up %s: %w", glanceAPI.Name, err)
+				return err
+			}
+			// Update the APIEndpoints in the top-level CR
+			endpoints := []endpoint.Endpoint{endpoint.EndpointPublic, endpoint.EndpointInternal}
+			for _, ep := range endpoints {
+				endpointKey := fmt.Sprintf("%s-%s", apiName, ep)
+				delete(instance.Status.APIEndpoints, endpointKey)
+			}
 		}
 	}
 	return nil

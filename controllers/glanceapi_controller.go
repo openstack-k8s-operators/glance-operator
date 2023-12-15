@@ -256,21 +256,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
-
-	// Remove the finalizer from our KeystoneEndpoint CR
-	keystoneEndpoint, err := keystonev1.GetKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
-	if err != nil && !k8s_errors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
-
-	if err == nil {
-		if controllerutil.RemoveFinalizer(keystoneEndpoint, helper.GetFinalizer()) {
-			err = r.Update(ctx, keystoneEndpoint)
-			if err != nil && !k8s_errors.IsNotFound(err) {
-				return ctrl.Result{}, err
-			}
-			util.LogForObject(helper, "Removed finalizer from our KeystoneEndpoint", instance)
-		}
+	if ctrlResult, err := r.ensureDeletedEndpoints(ctx, instance, helper); err != nil {
+		return ctrlResult, err
 	}
 
 	// Endpoints are deleted so remove the finalizer.
@@ -292,7 +279,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	// create service/s
 	//
 	glanceEndpoints := map[service.Endpoint]endpoint.Data{}
-	// split
 	if instance.Spec.APIType == glancev1.APIInternal {
 		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
@@ -303,7 +289,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		}
 	}
 	// if we're not splitting the API and deploying a single instance, we have
-	// to add both internal and public endpoints
+	// to add both internal and public endpoints, hence the || condition here
 	if instance.Spec.APIType == glancev1.APISingle {
 		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
@@ -313,7 +299,8 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	for endpointType, data := range glanceEndpoints {
 		endpointTypeStr := string(endpointType)
-		endpointName := glance.ServiceName + "-" + endpointTypeStr
+		apiName := glance.GetGlanceAPIName(instance.Name)
+		endpointName := fmt.Sprintf("%s-%s-%s", glance.ServiceName, apiName, endpointTypeStr)
 		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
 			svcOverride.EmbeddedLabelsAnnotations = &service.EmbeddedLabelsAnnotations{}
@@ -412,35 +399,11 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	// expose service - end
 
-	//
-	// create keystone endpoints
-	//
-
-	ksEndpointSpec := keystonev1.KeystoneEndpointSpec{
-		ServiceName: glance.ServiceName,
-		Endpoints:   instance.Status.APIEndpoints,
-	}
-
-	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, time.Duration(10)*time.Second)
-	ctrlResult, err := ksSvc.CreateOrPatch(ctx, helper)
+	// Create/Patch the KeystoneEndpoints
+	ctrlResult, err := r.ensureKeystoneEndpoints(ctx, helper, instance, serviceLabels)
 	if err != nil {
 		return ctrlResult, err
 	}
-
-	// mirror the Status, Reason, Severity and Message of the latest keystoneendpoint condition
-	// into a local condition with the type condition.KeystoneEndpointReadyCondition
-	c := ksSvc.GetConditions().Mirror(condition.KeystoneEndpointReadyCondition)
-	if c != nil {
-		instance.Status.Conditions.Set(c)
-	}
-
-	if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-
-	//
-	// create keystone endpoints - end
-	//
 
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
 	return ctrl.Result{}, nil
@@ -497,11 +460,17 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
-	//
-	// Create Secrets required as input for the Service and calculate an overall hash of hashes
-	//
+	// Generate serviceLabels that will be passed to all the Service related resource
+	// By doing this we can `oc get` all the resources associated to Glance making
+	// queries by label
 
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars)
+	serviceLabels := map[string]string{
+		common.AppSelector:       glance.ServiceName,
+		common.ComponentSelector: glance.Component,
+		glance.GlanceAPIName:     fmt.Sprintf("%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name)),
+	}
+
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -512,6 +481,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrl.Result{}, err
 	}
 
+	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
 	//
 	// create hash over all the different input resources to identify if any those changed
 	// and a restart/recreate is required.
@@ -558,42 +528,16 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			privileged = true
 		}
 	}
-
-	serviceLabels := map[string]string{
-		common.AppSelector: fmt.Sprintf("%s-%s", glance.ServiceName, instance.Spec.APIType),
-	}
-
+	var serviceAnnotations map[string]string
+	var ctrlResult ctrl.Result
 	// networks to attach to
-	for _, netAtt := range instance.Spec.NetworkAttachments {
-		_, err := nad.GetNADWithName(ctx, helper, netAtt, instance.Namespace)
-		if err != nil {
-			if k8s_errors.IsNotFound(err) {
-				instance.Status.Conditions.Set(condition.FalseCondition(
-					condition.NetworkAttachmentsReadyCondition,
-					condition.RequestedReason,
-					condition.SeverityInfo,
-					condition.NetworkAttachmentsReadyWaitingMessage,
-					netAtt))
-				return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("network-attachment-definition %s not found", netAtt)
-			}
-			instance.Status.Conditions.Set(condition.FalseCondition(
-				condition.NetworkAttachmentsReadyCondition,
-				condition.ErrorReason,
-				condition.SeverityWarning,
-				condition.NetworkAttachmentsReadyErrorMessage,
-				err.Error()))
-			return ctrl.Result{}, err
-		}
-	}
-
-	serviceAnnotations, err := nad.CreateNetworksAnnotation(instance.Namespace, instance.Spec.NetworkAttachments)
+	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed create network annotation from %s: %w",
-			instance.Spec.NetworkAttachments, err)
+		return ctrlResult, err
 	}
 
 	// Handle service init
-	ctrlResult, err := r.reconcileInit(ctx, instance, helper, serviceLabels)
+	ctrlResult, err = r.reconcileInit(ctx, instance, helper, serviceLabels)
 	if err != nil {
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
@@ -691,9 +635,10 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	h *helper.Helper,
 	instance *glancev1.GlanceAPI,
 	envVars *map[string]env.Setter,
+	serviceLabels map[string]string,
 ) error {
 
-	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), map[string]string{})
+	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
 	// 02-config.conf
 	customData := map[string]string{glance.CustomServiceConfigFileName: instance.Spec.CustomServiceConfig}
@@ -798,4 +743,90 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 		r.Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
 	}
 	return hash, changed, nil
+}
+
+// ensureKeystoneEndpoints -  create or update keystone endpoints
+func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
+	ctx context.Context,
+	helper *helper.Helper,
+	instance *glancev1.GlanceAPI,
+	serviceLabels map[string]string,
+) (ctrl.Result, error) {
+
+	var ctrlResult ctrl.Result
+	var err error
+
+	// If the parent controller didn't set the annotation, the current glanceAPIs
+	// shouldn't register the endpoints in keystone
+	if len(instance.ObjectMeta.Annotations) == 0 ||
+		instance.ObjectMeta.Annotations[glance.KeystoneEndpoint] != "true" {
+		// Mark the KeystoneEndpointReadyCondition as True because there's nothing
+		// to do here
+		instance.Status.Conditions.MarkTrue(
+			condition.KeystoneEndpointReadyCondition, condition.ReadyMessage)
+		// If the current glanceAPI was the main one and the annotation has been removed, there is
+		// an associated keystone endpoint that should be removed to keep the 1:1 relation between
+		// image service - keystone Endpoint. For this reason here we try to delete the existing
+		// KeystoneEndpoints associated to the current glanceAPI, so that the new API can update
+		// the registered endpoints with the new URL.
+		err = keystonev1.DeleteKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
+		if err != nil {
+			r.Log.Info(fmt.Sprintf("Endpoint %s not found", instance.Name))
+			return ctrlResult, nil
+		}
+		return ctrlResult, nil
+	}
+
+	// Build the keystoneEndpoints Spec
+	ksEndpointSpec := keystonev1.KeystoneEndpointSpec{
+		ServiceName: glance.ServiceName,
+		Endpoints:   instance.Status.APIEndpoints,
+	}
+
+	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, time.Duration(10)*time.Second)
+	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
+	if err != nil {
+		return ctrlResult, err
+	}
+
+	// mirror the Status, Reason, Severity and Message of the latest keystoneendpoint condition
+	// into a local condition with the type condition.KeystoneEndpointReadyCondition
+	c := ksSvc.GetConditions().Mirror(condition.KeystoneEndpointReadyCondition)
+	if c != nil {
+		instance.Status.Conditions.Set(c)
+	}
+
+	return ctrlResult, nil
+}
+
+// ensureDeletedEndpoints -
+func (r *GlanceAPIReconciler) ensureDeletedEndpoints(
+	ctx context.Context,
+	instance *glancev1.GlanceAPI,
+	h *helper.Helper,
+) (ctrl.Result, error) {
+
+	// Remove the finalizer from our KeystoneEndpoint CR
+	keystoneEndpoint, err := keystonev1.GetKeystoneEndpointWithName(ctx, h, instance.Name, instance.Namespace)
+
+	// It might happen that the resource is not found because it does not match
+	// with the one exposing the keystone endpoints. If the keystoneendpoints
+	// CR does not exist it doesn't mean there's an issue, hence we don't have
+	// to do nothing, just return without an error
+	if k8s_errors.IsNotFound(err) {
+		return ctrl.Result{}, nil
+	}
+	if err != nil && !k8s_errors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+	if err == nil {
+		if controllerutil.RemoveFinalizer(keystoneEndpoint, h.GetFinalizer()) {
+			err = r.Update(ctx, keystoneEndpoint)
+			if err != nil && !k8s_errors.IsNotFound(err) {
+				return ctrl.Result{}, err
+			}
+			util.LogForObject(h, "Removed finalizer from our KeystoneEndpoint", instance)
+		}
+	}
+	return ctrl.Result{}, err
 }

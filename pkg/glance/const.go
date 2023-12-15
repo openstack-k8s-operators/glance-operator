@@ -32,7 +32,10 @@ const (
 	ServiceType = "image"
 	// DatabaseName -
 	DatabaseName = "glance"
-
+	// Component -
+	Component = "glance-api"
+	// GlanceAPIName -
+	GlanceAPIName = "glanceAPI"
 	// PvcLocal for a generic glanceAPI instance
 	PvcLocal PvcType = "local"
 	// PvcCache is used to define a PVC mounted for image caching purposes
@@ -70,6 +73,9 @@ const (
 	// LogVolume is the default logVolume name used to mount logs on both
 	// GlanceAPI and the sidecar container
 	LogVolume = "logs"
+	// KeystoneEndpoint - indicates whether the glanceAPI should register the
+	// endpoints in keystone
+	KeystoneEndpoint = "keystoneEndpoint"
 
 	//DBPurgeAge -
 	DBPurgeAge = 30

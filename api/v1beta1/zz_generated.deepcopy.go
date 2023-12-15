@@ -382,7 +382,13 @@ func (in *GlanceSpec) DeepCopyInto(out *GlanceSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	in.GlanceAPI.DeepCopyInto(&out.GlanceAPI)
+	if in.GlanceAPIs != nil {
+		in, out := &in.GlanceAPIs, &out.GlanceAPIs
+		*out = make(map[string]GlanceAPITemplate, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
 	if in.ExtraMounts != nil {
 		in, out := &in.ExtraMounts, &out.ExtraMounts
 		*out = make([]GlanceExtraVolMounts, len(*in))
@@ -425,6 +431,13 @@ func (in *GlanceStatus) DeepCopyInto(out *GlanceStatus) {
 		*out = make(condition.Conditions, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.GlanceAPIReadyCounts != nil {
+		in, out := &in.GlanceAPIReadyCounts, &out.GlanceAPIReadyCounts
+		*out = make(map[string]int32, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 }

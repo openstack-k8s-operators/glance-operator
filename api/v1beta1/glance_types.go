@@ -100,9 +100,9 @@ type GlanceSpec struct {
 	StorageRequest string `json:"storageRequest"`
 
 	// +kubebuilder:validation:Required
-	// GlanceAPI - Spec definition for the API service of this Glance deployment
 	// +kubebuilder:default={}
-	GlanceAPI GlanceAPITemplate `json:"glanceAPI"`
+	// GlanceAPIs - Spec definition for the API service of this Glance deployment
+	GlanceAPIs map[string]GlanceAPITemplate `json:"glanceAPIs"`
 
 	// +kubebuilder:validation:Optional
 	// ExtraMounts containing conf files and credentials
@@ -117,6 +117,13 @@ type GlanceSpec struct {
 	// Local storage request, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
 	// +kubebuilder:default=""
 	ImageCacheSize string `json:"imageCacheSize"`
+
+	// +kubebuilder:validation:Required
+	// +kubebuilder:default=""
+	// KeystoneEndpoint - indicates which glanceAPI should be registered in the
+	// keystone catalog, and it acts as a selector for the underlying glanceAPI(s)
+	// that can be specified by name
+	KeystoneEndpoint string `json:"keystoneEndpoint"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret
@@ -160,6 +167,9 @@ type GlanceStatus struct {
 
 	// Glance Database Hostname
 	DatabaseHostname string `json:"databaseHostname,omitempty"`
+
+	// GlanceAPIReadyCounts -
+	GlanceAPIReadyCounts map[string]int32 `json:"glanceAPIReadyCounts,omitempty"`
 }
 
 //+kubebuilder:object:root=true

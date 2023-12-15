@@ -1,6 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-  - script: |
-      cp ../../../../config/samples/glance_v1beta1_glance.yaml deploy
-      oc kustomize deploy | oc apply -n $NAMESPACE -f -

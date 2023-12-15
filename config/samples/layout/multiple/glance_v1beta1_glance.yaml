@@ -1,24 +1,26 @@
-# Sample of a Glance CR where quotas are customized
 apiVersion: glance.openstack.org/v1beta1
 kind: Glance
 metadata:
   name: glance
 spec:
   serviceUser: glance
+  customServiceConfig: |
+    [DEFAULT]
+    debug = true
   databaseInstance: openstack
   databaseUser: glance
-  keystoneEndpoint: default
+  keystoneEndpoint: api1
   glanceAPIs:
-    default:
+    api1:
+      debug:
+        service: false
+      preserveJobs: false
+      replicas: 1
+    api2:
       debug:
         service: false
       preserveJobs: false
       replicas: 1
   secret: osp-secret
-  storageClass: ""
-  storageRequest: 1G
-  quotas:
-    imageSizeTotal: 1000
-    imageStageTotal: 1000
-    imageCountUpload: 100
-    imageCountTotal: 100
+  storageClass: local-storage
+  storageRequest: 10G
