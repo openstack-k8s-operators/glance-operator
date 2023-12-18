@@ -600,7 +600,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 
 	instance.Status.NetworkAttachments = networkAttachmentStatus
-	if networkReady {
+	if networkReady || *instance.Spec.Replicas == 0 {
 		instance.Status.Conditions.MarkTrue(condition.NetworkAttachmentsReadyCondition, condition.NetworkAttachmentsReadyMessage)
 	} else {
 		err := fmt.Errorf("not all pods have interfaces with ips as configured in NetworkAttachments: %s", instance.Spec.NetworkAttachments)
