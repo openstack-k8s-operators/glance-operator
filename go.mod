@@ -11,14 +11,14 @@ require (
 	github.com/openstack-k8s-operators/glance-operator/api v0.1.2-0.20230904092048-ae90414f6e25
 	github.com/openstack-k8s-operators/infra-operator/apis v0.3.1-0.20231218083014-f777af139aa2
 	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20231208104910-f8433c1c9399
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20231219100655-bf6e709d8019
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20240108143014-3f12c3253835
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20231219100655-bf6e709d8019
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20231219100655-bf6e709d8019
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.3.0
-	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
-	k8s.io/api v0.26.11
-	k8s.io/apimachinery v0.26.11
-	k8s.io/client-go v0.26.11
+	golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc
+	k8s.io/api v0.26.12
+	k8s.io/apimachinery v0.26.12
+	k8s.io/client-go v0.26.12
 	sigs.k8s.io/controller-runtime v0.14.7
 )
 
@@ -75,11 +75,11 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/apiextensions-apiserver v0.26.11 //indirect
-	k8s.io/component-base v0.26.11 //indirect
+	k8s.io/apiextensions-apiserver v0.26.12 //indirect
+	k8s.io/component-base v0.26.12 //indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230327201221-f5883ff37f0c //indirect
-	k8s.io/utils v0.0.0-20231127182322-b307cd553661 //indirect
+	k8s.io/utils v0.0.0-20240102154912-e7106e64919e //indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd //indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
