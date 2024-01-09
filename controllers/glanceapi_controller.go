@@ -345,7 +345,13 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		})
 
 		// add Annotation to whether creating an ingress is required or not
-		if endpointType == service.EndpointPublic && svc.GetServiceType() == corev1.ServiceTypeClusterIP {
+		// A route should get created for the glance-api instance which has
+		// - annotation with glance.KeystoneEndpoint -> true
+		// - it is the service.EndpointPublic
+		// - and the k8s service is corev1.ServiceTypeClusterIP
+		if keystoneEndpoint, ok := instance.GetAnnotations()[glance.KeystoneEndpoint]; ok &&
+			keystoneEndpoint == "true" && endpointType == service.EndpointPublic &&
+			svc.GetServiceType() == corev1.ServiceTypeClusterIP {
 			svc.AddAnnotation(map[string]string{
 				service.AnnotationIngressCreateKey: "true",
 			})
