@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	github.com/gophercloud/gophercloud v1.8.0
-	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20231208104910-f8433c1c9399
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20240108143014-3f12c3253835
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20231219100655-bf6e709d8019
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20231219100655-bf6e709d8019
+	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20240104144437-5355d932c316
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20240110131857-e70e1dec4d14
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20240110131857-e70e1dec4d14
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20240110131857-e70e1dec4d14
 	k8s.io/api v0.26.12
 	k8s.io/apimachinery v0.26.12
 	sigs.k8s.io/controller-runtime v0.14.7
