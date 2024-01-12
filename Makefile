@@ -86,6 +86,10 @@ endif
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+# CGO_ENABLED
+CGO_ENABLED ?= 1
+export CGO_ENABLED := $(CGO_ENABLED)
+
 .PHONY: all
 all: build
 
@@ -148,7 +152,7 @@ test: manifests generate fmt vet envtest ginkgo ## Run tests.
 
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	CGO_ENABLED=${CGO_ENABLED} go build -o bin/manager main.go
 
 .PHONY: run
 run: export METRICS_PORT?=8080
