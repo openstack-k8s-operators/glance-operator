@@ -1,0 +1,29 @@
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  serviceUser: glance
+  databaseInstance: openstack
+  databaseUser: glance
+  keystoneEndpoint: default
+  customServiceConfig: |
+    [DEFAULT]
+    debug = true
+  glanceAPIs:
+    default:
+      debug:
+        service: false
+      preserveJobs: false
+      replicas: 1
+      tls:
+        api:
+          internal:
+            secretName: cert-glance-default-internal-svc
+          public:
+            secretName: cert-glance-default-public-svc
+        caBundleSecretName: combined-ca-bundle
+      type: single
+  secret: osp-secret
+  storageClass: local-storage
+  storageRequest: 10G
