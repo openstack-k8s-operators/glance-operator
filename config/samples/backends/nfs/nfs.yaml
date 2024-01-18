@@ -5,22 +5,24 @@ kind: OpenStackControlPlane
 metadata:
   name: openstack
 spec:
-  serviceUser: glance
-  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
-  customServiceConfig: |
-    [DEFAULT]
-    enabled_backends = default_backend:file
-    [glance_store]
-    default_backend = default_backend
-    [default_backend]
-    filesystem_store_datadir = /var/lib/glance/images/
-  databaseInstance: openstack
-  databaseUser: glance
-  glanceAPI:
-    debug:
-      service: false
-    preserveJobs: false
-    replicas: 1
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:file
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        filesystem_store_datadir = /var/lib/glance/images/
+      databaseInstance: openstack
+      databaseUser: glance
+      glanceAPIs:
+        debug:
+          service: false
+        preserveJobs: false
+        replicas: 1
+      storageClass: ""
+      storageRequest: 1G
   extraMounts:
     - extraVol:
       - propagation:

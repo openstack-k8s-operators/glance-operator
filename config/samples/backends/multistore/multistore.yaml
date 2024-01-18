@@ -1,6 +1,4 @@
-# Sample using Ceph as a glance backend
-# Requires a running Ceph cluster and its `/etc/ceph` files in secret `ceph-conf-files`
-# This can be achieved with the `ceph` target of `install_yamls`
+# Sample using multistore with two Ceph clusters (ceph-0 and ceph-1) and swift-0.
 apiVersion: core.openstack.org/v1beta1
 kind: OpenStackControlPlane
 metadata:
@@ -10,14 +8,27 @@ spec:
     template:
       customServiceConfig: |
         [DEFAULT]
-        enabled_backends = default_backend:rbd
+        debug=True
+        enabled_backends = ceph-0:rbd,ceph-1:rbd,swift-0:swift
         [glance_store]
-        default_backend = default_backend
-        [default_backend]
-        rbd_store_ceph_conf = /etc/ceph/ceph.conf
+        default_backend = ceph-1
+        [ceph-0]
+        rbd_store_ceph_conf = /etc/ceph/ceph-0.conf
         store_description = "RBD backend"
         rbd_store_pool = images
         rbd_store_user = openstack
+        [ceph-1]
+        rbd_store_ceph_conf = /etc/ceph/ceph-1.conf
+        store_description = "RBD backend 1"
+        rbd_store_pool = images
+        rbd_store_user = openstack
+        [swift-0]
+        swift_store_create_container_on_put = True
+        swift_store_auth_version = 3
+        swift_store_auth_address = {{ .KeystoneInternalURL }}
+        swift_store_key = {{ .ServicePassword }}
+        swift_store_user = service:glance
+        swift_store_endpoint_type = internalURL
       databaseInstance: openstack
       databaseUser: glance
       glanceAPIs:
@@ -26,7 +37,6 @@ spec:
             service: false
           preserveJobs: false
           replicas: 1
-          type: split
       secret: osp-secret
       storageClass: ""
       storageRequest: 1G
@@ -35,14 +45,16 @@ spec:
       region: r1
       extraVol:
         - propagation:
-          - Glance
+          - GlanceAPI
           extraVolType: Ceph
           volumes:
           - name: ceph
             projected:
               sources:
               - secret:
-                  name: ceph-client-conf
+                  name: ceph-client-conf-0
+              - secret:
+                  name: ceph-client-conf-1
           mounts:
           - name: ceph
             mountPath: "/etc/ceph"

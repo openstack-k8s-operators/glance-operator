@@ -126,6 +126,100 @@ openstack role add --project admin --user admin swiftoperator
 Additional details on the `Ceph RGW` configuration are described in the
 [openstack-k8s-operators/docs repo](https://github.com/openstack-k8s-operators/docs/blob/main/ceph.md#configure-swift-with-a-rgw-backend).
 
+## Multistore
+
+It is possible to configure multiple backends (known as `stores`) for a single
+GlanceAPI instance.
+This is the case of `multistore`: `enabled_backends` must be set as a `key:value`
+pair, where:
+- key: represents the identifier for the store
+- value: represents the type of the store (valid values are `file`, `http`, `rbd`,
+  `swift`, `cinder`).
+
+More information around multistore configuration can be found in the [upstream](https://docs.openstack.org/glance/latest/admin/multistores.html)
+documentation.
+The `glance-operator` provides an example of `OpenStackControlPlane` CR that
+provides three stores:
+
+```bash
+...
+customServiceConfig: |
+  [DEFAULT]
+  debug=True
+  enabled_backends = ceph-0:rbd,ceph-1:rbd,swift-0:swift
+```
+
+To deploy the multistore sample file, run the following commands:
+
+```bash
+$ cd install_yamls
+$ CEPH_CLUSTERS=2 TIMEOUT=120 make ceph
+```
+
+The commands above will generate two Ceph clusters and exports the associated
+secrets.
+
+```bash
+$ oc get pods -l app=ceph
+NAME     READY   STATUS    RESTARTS
+ceph-0   1/1     Running   0
+ceph-1   1/1     Running   0
+
+$ oc get secret -l app=ceph
+ceph-conf-files-0
+ceph-conf-files-1
+```
+
+At this point, deploy the `OpenStackControlPlane` using the [multistore samples](https://github.com/openstack-k8s-operators/glance-operator/tree/main/config/samples/backends/multistore).
+
+```bash
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/multistore > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
+
+Once the `OpenStackControlPlane` is ready, it is possible to upload an image on
+a particular store, or just upload an image to the three of them (useful for testing
+purposes).
+To list the available stores, run the following command:
+
+```bash
+$ glance --os-auth-url $keystone --os-project-name admin --os-username admin \
+         --os-password $password --os-user-domain-name default \
+         --os-project-domain-name default stores-info
+
++----------+----------------------------------------------------------------------------------+
+| Property | Value                                                                            |
++----------+----------------------------------------------------------------------------------+
+| stores   | [{"id": "ceph-0", "description": "RBD backend"}, {"id": "ceph-1", "description": |
+|          | "RBD backend 1", "default": "true"}, {"id": "swift-0"}]                          |
++----------+----------------------------------------------------------------------------------+
+```
+
+To upload an image (e.g., cirros) on a particular store, for instance `swift-0`,
+run the following command:
+
+```bash
+$ glance --os-auth-url $keystone --os-project-name admin --os-username admin \
+         --os-password $password --os-user-domain-name default \
+         image-create-via-import --store swift-0 --container-format bare \
+         --disk-format raw \
+         --uri http://download.cirros-cloud.net/0.5.2/cirros-0.5.2-x86_64-disk.img \
+         --import-method web-download --name cirros
+```
+
+To upload an image (e.g., cirros) on all the stores, run the following command:
+
+```bash
+$ glance --os-auth-url $keystone --os-project-name admin --os-username admin \
+         --os-password $password --os-user-domain-name default \
+         image-create-via-import --all-stores true --container-format bare \
+         --disk-format raw --uri http://download.cirros-cloud.net/0.5.2/cirros-0.5.2-x86_64-disk.img \
+         --import-method web-download --name cirros
+```
+
+
 ## Adding new samples
 
 We are open to PRs adding new samples for other backends.

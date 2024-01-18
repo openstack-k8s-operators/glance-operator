@@ -22,10 +22,11 @@ spec:
       customServiceConfigSecrets:
         - osp-glance-cinder-secret
       databaseInstance: openstack
-      glanceAPI:
-        debug:
-          service: false
-        preserveJobs: false
-        replicas: 1
+      glanceAPIs:
+        default:
+          debug:
+            service: false
+          preserveJobs: false
+          replicas: 1
       storageClass: ""
       storageRequest: 1G

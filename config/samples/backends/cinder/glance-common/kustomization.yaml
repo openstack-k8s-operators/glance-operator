@@ -5,4 +5,4 @@ resources:
   - glance-cinder-secret.yaml
 
 patches:
-  - glance.yaml
+  - path: glance.yaml

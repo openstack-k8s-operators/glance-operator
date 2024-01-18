@@ -11,15 +11,7 @@ spec:
     template:
       databaseInstance: openstack
       secret: osp-secret
-  mariadb:
-    enabled: false
-    templates:
-      openstack:
-        storageRequest: 500M
-      openstack-cell1:
-        storageRequest: 500M
   galera:
-    enabled: true
     templates:
       openstack:
         storageRequest: 500M
@@ -33,11 +25,28 @@ spec:
     templates:
       rabbitmq:
         replicas: 1
+        #resources:
+        #  requests:
+        #    cpu: 500m
+        #    memory: 1Gi
+        #  limits:
+        #    cpu: 800m
+        #    memory: 1Gi
       rabbitmq-cell1:
         replicas: 1
   memcached:
     templates:
       memcached:
+        replicas: 1
+  barbican:
+    template:
+      databaseInstance: openstack
+      secret: osp-secret
+      barbicanAPI:
+        replicas: 1
+      barbicanWorker:
+        replicas: 1
+      barbicanKeystoneListener:
         replicas: 1
   placement:
     template:
@@ -45,9 +54,15 @@ spec:
       secret: osp-secret
   glance:
     template:
+      secret: osp-secret
       databaseInstance: openstack
       storageClass: ""
       storageRequest: 10G
+      keystoneEndpoint: default
+      glanceAPIs:
+        default:
+          type: single
+          replicas: 1
   cinder:
     template:
       databaseInstance: openstack
@@ -62,6 +77,7 @@ spec:
         volume1:
           replicas: 0 # backend needs to be configured
   manila:
+    enabled: false
     template:
       manilaAPI:
         replicas: 1
@@ -122,14 +138,27 @@ spec:
       ironicNeutronAgent:
         replicas: 1
       secret: osp-secret
-  ceilometer:
+  telemetry:
+    enabled: false
     template:
-      passwordSelector:
-        service: CeilometerPassword
-      secret: osp-secret
-      serviceUser: ceilometer
+      metricStorage:
+        enabled: false
+        monitoringStack:
+          type: prometheus
+      autoscaling:
+        enabled: false
+        prometheus:
+          deployPrometheus: false
+        aodh:
+          databaseInstance: openstack
+          memcachedInstance: memcached
+          secret: osp-secret
+        heatInstance: heat
+      ceilometer:
+        enabled: true
+        secret: osp-secret
   swift:
-    enabled: true
+    enabled: false
     template:
       swiftRing:
         ringReplicas: 1
@@ -144,3 +173,39 @@ spec:
       octaviaAPI:
         replicas: 1
       secret: osp-secret
+  redis:
+    enabled: false
+  designate:
+    enabled: false
+    apiOverride:
+      route: {}
+    template:
+      databaseInstance: openstack
+      secret: osp-secret
+      designateAPI:
+        override:
+          service:
+            internal:
+              metadata:
+                annotations:
+                  metallb.universe.tf/address-pool: internalapi
+                  metallb.universe.tf/allow-shared-ip: internalapi
+                  metallb.universe.tf/loadBalancerIPs: 172.17.0.80
+              spec:
+                type: LoadBalancer
+      designateCentral:
+        replicas: 1
+      designateWorker:
+        replicas: 0
+        networkAttachements:
+          - designate
+      designateProducer:
+        replicas: 0
+      designateMdns:
+        replicas: 0
+        networkAttachements:
+          - designate
+      designateBackendbind9:
+        replicas: 0
+        networkAttachements:
+          - designate
