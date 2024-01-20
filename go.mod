@@ -15,7 +15,7 @@ require (
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20240110131857-e70e1dec4d14
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20240110131857-e70e1dec4d14
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.3.0
-	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
+	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	k8s.io/api v0.26.12
 	k8s.io/apimachinery v0.26.12
 	k8s.io/client-go v0.26.12
