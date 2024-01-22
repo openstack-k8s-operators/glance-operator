@@ -473,7 +473,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	serviceLabels := map[string]string{
 		common.AppSelector:       glance.ServiceName,
 		common.ComponentSelector: glance.Component,
-		glance.GlanceAPIName:     fmt.Sprintf("%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name)),
+		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name), instance.Spec.APIType),
 	}
 
 	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
