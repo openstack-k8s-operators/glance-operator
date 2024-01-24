@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/go-logr/logr v1.4.1
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
-	github.com/onsi/ginkgo/v2 v2.14.0
+	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.30.0
 	github.com/openstack-k8s-operators/cinder-operator/api v0.3.1-0.20240117163806-35ec35f91628
 	github.com/openstack-k8s-operators/glance-operator/api v0.1.2-0.20230904092048-ae90414f6e25
