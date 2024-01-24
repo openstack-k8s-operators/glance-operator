@@ -14,6 +14,7 @@ spec:
         service: false
       preserveJobs: false
       replicas: 1
+      type: single
   secret: osp-secret
   storageClass: ""
   storageRequest: 1G

@@ -14,9 +14,6 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
-  customServiceConfig: |
-    [DEFAULT]
-    debug = true
   databaseInstance: openstack
   databaseUser: glance
   glanceAPIs:

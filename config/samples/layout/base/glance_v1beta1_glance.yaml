@@ -7,6 +7,7 @@ spec:
   customServiceConfig: |
     [DEFAULT]
     debug = true
+    enabled_backends=foo:bar
   databaseInstance: openstack
   databaseUser: glance
   secret: osp-secret

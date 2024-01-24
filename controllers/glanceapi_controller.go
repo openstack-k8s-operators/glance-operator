@@ -642,7 +642,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 
 	// Get Enabled backends from customServiceConfig and run pre backend conditions
-	availableBackends := glance.GetEnabledBackends(instance.Spec.CustomServiceConfig)
+	availableBackends := glancev1.GetEnabledBackends(instance.Spec.CustomServiceConfig)
 	// iterate over availableBackends for backend specific cases
 	for i := 0; i < len(availableBackends); i++ {
 		backendToken := strings.SplitN(availableBackends[i], ":", 2)

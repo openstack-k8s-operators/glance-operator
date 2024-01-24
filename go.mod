@@ -15,12 +15,13 @@ require (
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20240124141114-55d029e4658b
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20240124141114-55d029e4658b
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.3.0
-	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	k8s.io/api v0.26.13
 	k8s.io/apimachinery v0.26.13
 	k8s.io/client-go v0.26.13
 	sigs.k8s.io/controller-runtime v0.14.7
 )
+
+require golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

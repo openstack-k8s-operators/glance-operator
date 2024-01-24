@@ -12,7 +12,7 @@ spec:
     debug = true
   glanceAPIs:
     default:
-      type: "single"
+      type: single
       debug:
         service: false
       preserveJobs: false

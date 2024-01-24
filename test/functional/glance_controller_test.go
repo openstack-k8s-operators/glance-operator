@@ -107,9 +107,14 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("defaults the containerImages", func() {
 			glance := GetGlance(glanceName)
+			// (Updates) We let the Glance webhooks override the top-level CR
+			// ContainerImage, but we pass an override for each glanceAPI
+			// instance, so we can manage them independently
 			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
 			for _, api := range glance.Spec.GlanceAPIs {
-				Expect(api.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
+				// We expect the containerImage enforced in the Spec by GlanceAPI()
+				// function
+				Expect(api.ContainerImage).To(Equal(glanceTest.ContainerImage))
 			}
 		})
 		It("should not have a pvc yet", func() {
@@ -204,8 +209,8 @@ var _ = Describe("Glance controller", func() {
 				corev1.ConditionTrue,
 			)
 		})
-		It("GlanceAPI CRs are created", func() {
-			GlanceAPIExists(glanceTest.GlanceExternal)
+		It("GlanceAPI CR is created", func() {
+			GlanceAPIExists(glanceTest.GlanceSingle)
 		})
 	})
 	When("Glance CR is created without container images defined", func() {
@@ -239,13 +244,13 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
-			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 		})
 		It("Creates glanceAPI", func() {
 			// Default type is "split", make sure that behind the scenes two
 			// glanceAPI deployment are created
-			GlanceAPIExists(glanceTest.GlanceExternal)
-			GlanceAPIExists(glanceTest.GlanceInternal)
+			GlanceAPIExists(glanceTest.GlanceSingle)
+			//GlanceAPIExists(glanceTest.GlanceInternal)
 		})
 		It("Assert Services are created", func() {
 			// Both glance-public and glance-internal svc are created regardless
@@ -274,7 +279,7 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
-			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 		})
 		It("removes the finalizers from the Glance DB", func() {
 			mDB := mariadb.GetMariaDBDatabase(glanceTest.Instance)
@@ -305,10 +310,11 @@ var _ = Describe("Glance controller", func() {
 				},
 			}
 			rawSpec := map[string]interface{}{
-				"storageRequest":   glanceTest.GlancePVCSize,
-				"secret":           SecretName,
-				"databaseInstance": "openstack",
-				"keystoneEndpoint": "default",
+				"storageRequest":      glanceTest.GlancePVCSize,
+				"secret":              SecretName,
+				"databaseInstance":    "openstack",
+				"keystoneEndpoint":    "default",
+				"customServiceConfig": GlanceDummyBackend,
 				"glanceAPIs": map[string]interface{}{
 					"default": map[string]interface{}{
 						"containerImage":     glancev1.GlanceAPIContainerImage,
