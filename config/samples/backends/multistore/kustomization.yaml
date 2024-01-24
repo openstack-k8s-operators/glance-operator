@@ -2,4 +2,4 @@ resources:
  - ../base/openstack
 
 patches:
-  - multibackend.yaml
+  - path: multistore.yaml

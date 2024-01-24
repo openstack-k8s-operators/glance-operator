@@ -22,11 +22,12 @@ spec:
         rbd_store_pool = images
         rbd_store_user = openstack
       databaseUser: glance
-      glanceAPI:
-        debug:
-          service: false
-        preserveJobs: false
-        replicas: 1
+      glanceAPIs:
+        default:
+          debug:
+            service: false
+          preserveJobs: false
+          replicas: 1
       secret: osp-secret
       storageClass: ""
       storageRequest: 1G

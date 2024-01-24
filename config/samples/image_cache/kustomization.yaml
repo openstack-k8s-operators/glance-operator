@@ -2,4 +2,4 @@ resources:
  - ../backends/base/openstack
 
 patches:
-  - image-cache.yaml
+  - path: image-cache.yaml
