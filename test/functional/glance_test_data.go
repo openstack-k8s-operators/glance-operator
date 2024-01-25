@@ -16,6 +16,7 @@ package functional
 
 import (
 	"fmt"
+
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -29,6 +30,12 @@ const (
 	GlanceAPITypeExternal APIType = "external"
 	//GlanceAPITypeSingle -
 	GlanceAPITypeSingle APIType = "single"
+	//PublicCertSecretName -
+	PublicCertSecretName = "public-tls-certs"
+	//InternalCertSecretName -
+	InternalCertSecretName = "internal-tls-certs"
+	//CABundleSecretName -
+	CABundleSecretName = "combined-ca-bundle"
 )
 
 // GlanceTestData is the data structure used to provide input data to envTest
@@ -58,6 +65,9 @@ type GlanceTestData struct {
 	GlanceConfigMapScripts      types.NamespacedName
 	InternalAPINAD              types.NamespacedName
 	GlanceCache                 types.NamespacedName
+	CABundleSecret              types.NamespacedName
+	InternalCertSecret          types.NamespacedName
+	PublicCertSecret            types.NamespacedName
 }
 
 // GetGlanceTestData is a function that initialize the GlanceTestData
@@ -146,5 +156,18 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		GlancePVCSize:     "10G",
 		ContainerImage:    "test://glance",
 		GlancePort:        "9292",
+		CABundleSecret: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      CABundleSecretName,
+		},
+
+		InternalCertSecret: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      InternalCertSecretName,
+		},
+		PublicCertSecret: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      PublicCertSecretName,
+		},
 	}
 }

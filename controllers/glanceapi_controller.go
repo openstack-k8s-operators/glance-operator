@@ -24,14 +24,18 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -53,6 +57,7 @@ import (
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/statefulset"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -147,6 +152,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 			condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
 			condition.UnknownCondition(condition.DeploymentReadyCondition, condition.InitReason, condition.DeploymentReadyInitMessage),
+			condition.UnknownCondition(condition.TLSInputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 			// right now we have no dedicated KeystoneEndpointReadyInitMessage
 			condition.UnknownCondition(condition.KeystoneEndpointReadyCondition, condition.InitReason, ""),
 			condition.UnknownCondition(condition.NetworkAttachmentsReadyCondition, condition.InitReason, condition.NetworkAttachmentsReadyInitMessage),
@@ -178,6 +184,53 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// index passwordSecretField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, passwordSecretField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.Secret == "" {
+			return nil
+		}
+		return []string{cr.Spec.Secret}
+	}); err != nil {
+		return err
+	}
+
+	// index caBundleSecretNameField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, caBundleSecretNameField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.TLS.CaBundleSecretName == "" {
+			return nil
+		}
+		return []string{cr.Spec.TLS.CaBundleSecretName}
+	}); err != nil {
+		return err
+	}
+
+	// index tlsAPIInternalField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, tlsAPIInternalField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.TLS.API.Internal.SecretName == nil {
+			return nil
+		}
+		return []string{*cr.Spec.TLS.API.Internal.SecretName}
+	}); err != nil {
+		return err
+	}
+
+	// index tlsAPIPublicField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, tlsAPIPublicField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.TLS.API.Public.SecretName == nil {
+			return nil
+		}
+		return []string{*cr.Spec.TLS.API.Public.SecretName}
+	}); err != nil {
+		return err
+	}
 
 	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
 	svcSecretFn := func(o client.Object) []reconcile.Request {
@@ -251,7 +304,45 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			handler.EnqueueRequestsFromMapFunc(svcSecretFn)).
 		Watches(&source.Kind{Type: &networkv1.NetworkAttachmentDefinition{}},
 			handler.EnqueueRequestsFromMapFunc(nadFn)).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
 		Complete(r)
+}
+
+func (r *GlanceAPIReconciler) findObjectsForSrc(src client.Object) []reconcile.Request {
+	requests := []reconcile.Request{}
+
+	l := log.FromContext(context.Background()).WithName("Controllers").WithName("GlanceAPI")
+
+	for _, field := range glanceAPIWatchFields {
+		crList := &glancev1.GlanceAPIList{}
+		listOps := &client.ListOptions{
+			FieldSelector: fields.OneTermEqualSelector(field, src.GetName()),
+			Namespace:     src.GetNamespace(),
+		}
+		err := r.List(context.TODO(), crList, listOps)
+		if err != nil {
+			return []reconcile.Request{}
+		}
+
+		for _, item := range crList.Items {
+			l.Info(fmt.Sprintf("input source %s changed, reconcile: %s - %s", src.GetName(), item.GetName(), item.GetNamespace()))
+
+			requests = append(requests,
+				reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      item.GetName(),
+						Namespace: item.GetNamespace(),
+					},
+				},
+			)
+		}
+	}
+
+	return requests
 }
 
 func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
@@ -278,23 +369,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	//
 	// create service/s
 	//
-	glanceEndpoints := map[service.Endpoint]endpoint.Data{}
-	if instance.Spec.APIType == glancev1.APIInternal {
-		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
-			Port: glance.GlanceInternalPort,
-		}
-	} else {
-		glanceEndpoints[service.EndpointPublic] = endpoint.Data{
-			Port: glance.GlancePublicPort,
-		}
-	}
-	// if we're not splitting the API and deploying a single instance, we have
-	// to add both internal and public endpoints, hence the || condition here
-	if instance.Spec.APIType == glancev1.APISingle {
-		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
-			Port: glance.GlanceInternalPort,
-		}
-	}
+	glanceEndpoints := glanceapi.GetGlanceEndpoints(instance.Spec.APIType)
 	apiEndpoints := make(map[string]string)
 
 	for endpointType, data := range glanceEndpoints {
@@ -386,7 +461,12 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		}
 		// create service - end
 
-		// TODO: TLS, pass in https as protocol, create TLS cert
+		// if TLS is enabled
+		if instance.Spec.TLS.API.Enabled(endpointType) {
+			// set endpoint protocol to https
+			data.Protocol = ptr.To(service.ProtocolHTTPS)
+		}
+
 		apiEndpoints[string(endpointType)], err = svc.GetAPIEndpoint(
 			svcOverride.EndpointURL, data.Protocol, data.Path)
 		if err != nil {
@@ -474,6 +554,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		common.AppSelector:       glance.ServiceName,
 		common.ComponentSelector: glance.Component,
 		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name), instance.Spec.APIType),
+		common.OwnerSelector:     instance.Name,
 	}
 
 	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
@@ -488,6 +569,53 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 
 	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
+	//
+	// TLS input validation
+	//
+	// Validate the CA cert secret if provided
+	if instance.Spec.TLS.CaBundleSecretName != "" {
+		hash, ctrlResult, err := tls.ValidateCACertSecret(
+			ctx,
+			helper.GetClient(),
+			types.NamespacedName{
+				Name:      instance.Spec.TLS.CaBundleSecretName,
+				Namespace: instance.Namespace,
+			},
+		)
+		if err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.TLSInputReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.TLSInputErrorMessage,
+				err.Error()))
+			return ctrlResult, err
+		} else if (ctrlResult != ctrl.Result{}) {
+			return ctrlResult, nil
+		}
+
+		if hash != "" {
+			configVars[tls.CABundleKey] = env.SetValue(hash)
+		}
+	}
+
+	// Validate API service certs secrets
+	certsHash, ctrlResult, err := instance.Spec.TLS.API.ValidateCertSecrets(ctx, helper, instance.Namespace)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.TLSInputReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.TLSInputErrorMessage,
+			err.Error()))
+		return ctrlResult, err
+	} else if (ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
+	}
+	configVars[tls.TLSHashName] = env.SetValue(certsHash)
+	// all cert input checks out so report InputReady
+	instance.Status.Conditions.MarkTrue(condition.TLSInputReadyCondition, condition.InputReadyMessage)
+
 	//
 	// create hash over all the different input resources to identify if any those changed
 	// and a restart/recreate is required.
@@ -534,8 +662,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			privileged = true
 		}
 	}
+
 	var serviceAnnotations map[string]string
-	var ctrlResult ctrl.Result
 	// networks to attach to
 	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
 	if err != nil {
@@ -681,6 +809,20 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		return err
 	}
 
+	glanceEndpoints := glanceapi.GetGlanceEndpoints(instance.Spec.APIType)
+	httpdVhostConfig := map[string]interface{}{}
+	for endpt := range glanceEndpoints {
+		endptConfig := map[string]interface{}{}
+		endptConfig["ServerName"] = fmt.Sprintf("glance-%s.%s.svc", endpt.String(), instance.Namespace)
+		endptConfig["TLS"] = false // default TLS to false, and set it bellow to true if enabled
+		if instance.Spec.TLS.API.Enabled(endpt) {
+			endptConfig["TLS"] = true
+			endptConfig["SSLCertificateFile"] = fmt.Sprintf("/etc/pki/tls/certs/%s.crt", endpt.String())
+			endptConfig["SSLCertificateKeyFile"] = fmt.Sprintf("/etc/pki/tls/private/%s.key", endpt.String())
+		}
+		httpdVhostConfig[endpt.String()] = endptConfig
+	}
+
 	templateParameters := map[string]interface{}{
 		"ServiceUser":         instance.Spec.ServiceUser,
 		"ServicePassword":     string(ospSecret.Data[instance.Spec.PasswordSelectors.Service]),
@@ -697,6 +839,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		// https://docs.openstack.org/glance/latest/admin/quotas.html
 		"QuotaEnabled": instance.Spec.Quota,
 		"LogFile":      fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
+		"VHosts":       httpdVhostConfig,
 	}
 
 	// Configure the internal GlanceAPI to provide image location data, and the

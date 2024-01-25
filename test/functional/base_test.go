@@ -198,6 +198,26 @@ func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 	return spec
 }
 
+func GetTLSGlanceAPISpec(apiType APIType) map[string]interface{} {
+	spec := GetDefaultGlanceAPITemplate(apiType)
+	maps.Copy(spec, map[string]interface{}{
+		"databaseHostname": "openstack",
+		"secret":           SecretName,
+		"tls": map[string]interface{}{
+			"api": map[string]interface{}{
+				"internal": map[string]interface{}{
+					"secretName": InternalCertSecretName,
+				},
+				"public": map[string]interface{}{
+					"secretName": PublicCertSecretName,
+				},
+			},
+			"caBundleSecretName": CABundleSecretName,
+		},
+	})
+	return spec
+}
+
 func GlanceAPINotExists(name types.NamespacedName) {
 	Consistently(func(g Gomega) {
 		instance := &glancev1.GlanceAPI{}

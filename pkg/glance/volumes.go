@@ -270,6 +270,12 @@ func GetHttpdVolumeMount() []corev1.VolumeMount {
 			SubPath:   "10-glance-httpd.conf",
 			ReadOnly:  true,
 		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/httpd/conf.d/ssl.conf",
+			SubPath:   "ssl.conf",
+			ReadOnly:  true,
+		},
 	}
 }
 
