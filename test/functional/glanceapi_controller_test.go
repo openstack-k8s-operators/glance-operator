@@ -618,6 +618,30 @@ var _ = Describe("Glanceapi controller", func() {
 				corev1.ConditionTrue,
 			)
 		})
+
+		It("reconfigures the glance pods when CA changes", func() {
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCABundleSecret(glanceTest.CABundleSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.InternalCertSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
+
+			// Grab the current config hash
+			apiOriginalHash := GetEnvVarValue(
+				th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.Containers[0].Env, "CONFIG_HASH", "")
+			Expect(apiOriginalHash).NotTo(BeEmpty())
+
+			// Change the content of the CA secret
+			th.UpdateSecret(glanceTest.CABundleSecret, "tls-ca-bundle.pem", []byte("DifferentCAData"))
+
+			// Assert that the deployment is updated
+			Eventually(func(g Gomega) {
+				newHash := GetEnvVarValue(
+					th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.Containers[0].Env, "CONFIG_HASH", "")
+				g.Expect(newHash).NotTo(BeEmpty())
+				g.Expect(newHash).NotTo(Equal(apiOriginalHash))
+			}, timeout, interval).Should(Succeed())
+		})
 	})
 
 	When("A GlanceAPI with TLS is created with service override endpointURL", func() {
