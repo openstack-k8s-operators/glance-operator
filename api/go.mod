@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/gophercloud/gophercloud v1.8.0
-	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20240117115727-432678553b37
+	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20240125201204-a18a1e700034
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20240124141114-55d029e4658b
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20240124141114-55d029e4658b
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20240124141114-55d029e4658b
@@ -47,7 +47,6 @@ require (
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.8.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
