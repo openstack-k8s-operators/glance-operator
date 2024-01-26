@@ -15,24 +15,25 @@ spec:
         [default_backend]
         filesystem_store_datadir = /var/lib/glance/images/
       databaseInstance: openstack
-      databaseUser: glance
       glanceAPIs:
-        debug:
-          service: false
-        preserveJobs: false
-        replicas: 1
-      storageClass: ""
-      storageRequest: 1G
+        default:
+          debug:
+            service: false
+          preserveJobs: false
+          replicas: 1
+          type: single
   extraMounts:
-    - extraVol:
-      - propagation:
-        - Glance
-      - extraVolType: Nfs
-        mounts:
-          - mountPath: /var/lib/glance/images
-            name: nfs
-        volumes:
-          - name: nfs
+  - extraVol:
+    - extraVolType: Nfs
+      mounts:
+      - mountPath: /var/lib/glance/images
+        name: nfs
+      propagation:
+      - Glance
+      volumes:
+      - name: nfs
         nfs:
           path: /var/nfs
-          server: 192.168.130.20
+          server: 172.18.0.5
+    name: r1
+    region: r1
