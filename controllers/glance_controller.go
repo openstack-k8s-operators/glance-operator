@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -300,7 +299,7 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
 
 	// remove db finalizer first
-	db, err := mariadbv1.GetDatabaseByName(ctx, helper, instance.Name)
+	db, err := mariadbv1.GetDatabaseByNameAndAccount(ctx, helper, glance.DatabaseName, instance.Spec.DatabaseAccount, instance.Namespace)
 	if err != nil && !k8s_errors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
@@ -678,6 +677,12 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return ctrl.Result{}, err
 	}
 
+	// remove finalizers from unused MariaDBAccount records
+	err = mariadbv1.DeleteUnusedMariaDBAccountFinalizers(ctx, helper, instance.Name, instance.Spec.DatabaseAccount, instance.Namespace)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// create DBPurge CronJob
 
 	// DBPurge is not optional and always created to purge all soft deleted
@@ -846,7 +851,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		GlanceAPITemplate: apiTemplate,
 		APIType:           apiType,
 		DatabaseHostname:  instance.Status.DatabaseHostname,
-		DatabaseUser:      instance.Spec.DatabaseUser,
+		DatabaseAccount:   instance.Spec.DatabaseAccount,
 		Secret:            instance.Spec.Secret,
 		ExtraMounts:       instance.Spec.ExtraMounts,
 		PasswordSelectors: instance.Spec.PasswordSelectors,
@@ -933,18 +938,16 @@ func (r *GlanceReconciler) generateServiceConfig(
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
-	ospSecret, _, err := secret.GetSecret(ctx, h, instance.Spec.Secret, instance.Namespace)
-	if err != nil {
-		return err
-	}
+	databaseAccount := db.GetAccount()
+	dbSecret := db.GetSecret()
 
 	// We only need a minimal 00-config.conf that is only used by db-sync job,
 	// hence only passing the database related parameters
 	templateParameters := map[string]interface{}{
 		"MinimalConfig": true, // This tells the template to generate a minimal config
 		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s?read_default_file=/etc/my.cnf",
-			instance.Spec.DatabaseUser,
-			string(ospSecret.Data[instance.Spec.PasswordSelectors.Database]),
+			databaseAccount.Spec.UserName,
+			string(dbSecret.Data[mariadbv1.DatabasePasswordSelector]),
 			instance.Status.DatabaseHostname,
 			glance.DatabaseName,
 		),
@@ -1130,24 +1133,45 @@ func (r *GlanceReconciler) ensureDB(
 	h *helper.Helper,
 	instance *glancev1.Glance,
 ) (*mariadbv1.Database, ctrl.Result, error) {
-	//
+	// ensure a MariaDBAccount CR and Secret exist.
+	// this mariadb API function will as an interim step actually generate a
+	// new MariaDBAccount and Secret if one does not exist already.   in a
+	// future release, this function may change to emit an error if the
+	// MariaDBAccount was not already created ahead of time (e.g. by openstack-operator
+	// or end-user YAML declaration)
+	_, _, err := mariadbv1.EnsureMariaDBAccount(
+		ctx, h, instance.Spec.DatabaseAccount,
+		instance.Namespace, false, "glance",
+	)
+
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			mariadbv1.MariaDBAccountReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			mariadbv1.MariaDBAccountNotReadyMessage,
+			err.Error()))
+
+		return nil, ctrl.Result{}, err
+	}
+	instance.Status.Conditions.MarkTrue(
+		mariadbv1.MariaDBAccountReadyCondition,
+		mariadbv1.MariaDBAccountReadyMessage,
+	)
+
 	// create service DB instance
 	//
-	db := mariadbv1.NewDatabase(
-		instance.Name,
-		instance.Spec.DatabaseUser,
-		instance.Spec.Secret,
-		map[string]string{
-			"dbName": instance.Spec.DatabaseInstance,
-		},
+	db := mariadbv1.NewDatabaseForAccount(
+		instance.Spec.DatabaseInstance, // mariadb/galera service to target
+		glance.DatabaseName,            // name used in CREATE DATABASE in mariadb
+		glance.DatabaseName,            // CR name for MariaDBDatabase
+		instance.Spec.DatabaseAccount,  // CR name for MariaDBAccount
+		instance.Namespace,             // namespace
 	)
 
 	// create or patch the DB
-	ctrlResult, err := db.CreateOrPatchDBByName(
-		ctx,
-		h,
-		instance.Spec.DatabaseInstance,
-	)
+	ctrlResult, err := db.CreateOrPatchAll(ctx, h)
+
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.DBReadyCondition,

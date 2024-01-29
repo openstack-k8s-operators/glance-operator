@@ -21,7 +21,7 @@ spec:
     [image_import_opts]
     image_import_plugins = [image_decompression]
   databaseInstance: openstack
-  databaseUser: glance
+  databaseAccount: glance
   glanceAPI:
     preserveJobs: false
     replicas: 1

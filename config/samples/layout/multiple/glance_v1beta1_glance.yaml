@@ -8,7 +8,7 @@ spec:
     [DEFAULT]
     debug = true
   databaseInstance: openstack
-  databaseUser: glance
+  databaseAccount: glance
   keystoneEndpoint: api1
   glanceAPIs:
     api1:

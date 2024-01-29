@@ -19,7 +19,7 @@ spec:
         rbd_store_pool = images
         rbd_store_user = openstack
       databaseInstance: openstack
-      databaseUser: glance
+      databaseAccount: glance
       secret: osp-secret
       storageClass: ""
       storageRequest: 1G

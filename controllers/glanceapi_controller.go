@@ -827,7 +827,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), GetServiceLabels(instance))
 
-	db, err := mariadbv1.GetDatabaseByName(ctx, h, glance.DatabaseName)
+	db, err := mariadbv1.GetDatabaseByNameAndAccount(ctx, h, glance.DatabaseName, instance.Spec.DatabaseAccount, instance.Namespace)
 	if err != nil {
 		return err
 	}
@@ -874,6 +874,9 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		return err
 	}
 
+	databaseAccount := db.GetAccount()
+	dbSecret := db.GetSecret()
+
 	glanceEndpoints := glanceapi.GetGlanceEndpoints(instance.Spec.APIType)
 	httpdVhostConfig := map[string]interface{}{}
 	for endpt := range glanceEndpoints {
@@ -894,8 +897,8 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		"KeystoneInternalURL": keystoneInternalURL,
 		"KeystonePublicURL":   keystonePublicURL,
 		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s?read_default_file=/etc/my.cnf",
-			instance.Spec.DatabaseUser,
-			string(ospSecret.Data[instance.Spec.PasswordSelectors.Database]),
+			databaseAccount.Spec.UserName,
+			string(dbSecret.Data[mariadbv1.DatabasePasswordSelector]),
 			instance.Spec.DatabaseHostname,
 			glance.DatabaseName,
 		),

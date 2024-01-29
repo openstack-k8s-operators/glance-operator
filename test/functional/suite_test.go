@@ -258,4 +258,5 @@ var _ = BeforeEach(func() {
 	DeferCleanup(th.DeleteNamespace, namespace)
 	// Let's create the osp-secret in advance (in common to all the test cases)
 	DeferCleanup(k8sClient.Delete, ctx, CreateGlanceSecret(glanceName.Namespace, SecretName))
+
 })

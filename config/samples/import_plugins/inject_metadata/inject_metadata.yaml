@@ -24,7 +24,7 @@ spec:
     ignore_user_roles = admin,user1
     inject = "property1":"value1","property2":"value2"
   databaseInstance: openstack
-  databaseUser: glance
+  databaseAccount: glance
   glanceAPI:
     preserveJobs: false
     replicas: 1

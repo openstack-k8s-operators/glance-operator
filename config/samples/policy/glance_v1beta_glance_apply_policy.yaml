@@ -10,7 +10,7 @@ spec:
     enforce_scope=true
     enforce_new_defaults=true
   databaseInstance: openstack
-  databaseUser: glance
+  databaseAccount: glance
   glanceAPI:
     preserveJobs: false
     replicas: 1

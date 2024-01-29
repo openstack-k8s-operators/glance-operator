@@ -30,7 +30,7 @@ spec:
         swift_store_user = service:glance
         swift_store_endpoint_type = internalURL
       databaseInstance: openstack
-      databaseUser: glance
+      databaseAccount: glance
       glanceAPIs:
         default:
           preserveJobs: false

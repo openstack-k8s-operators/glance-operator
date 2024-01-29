@@ -55,16 +55,15 @@ type GlanceAPISpec struct {
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=glance
-	// DatabaseUser - optional username used for glance DB, defaults to glance
-	// TODO: -> implement needs work in mariadb-operator, right now only glance
-	DatabaseUser string `json:"databaseUser"`
+	// DatabaseAccount - name of MariaDBAccount which will be used to connect.
+	DatabaseAccount string `json:"databaseAccount"`
 
 	// +kubebuilder:validation:Required
 	// Secret containing OpenStack password information for glance AdminPassword
 	Secret string `json:"secret"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default={database: GlanceDatabasePassword, service: GlancePassword}
+	// +kubebuilder:default={service: GlancePassword}
 	// PasswordSelectors - Selectors to identify the DB and ServiceUser password from the Secret
 	PasswordSelectors PasswordSelector `json:"passwordSelectors"`
 

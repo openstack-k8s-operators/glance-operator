@@ -27,7 +27,9 @@ import (
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
+	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	ptr "k8s.io/utils/ptr"
 )
 
@@ -67,7 +69,7 @@ var _ = Describe("Glance controller", func() {
 		It("initializes Spec fields", func() {
 			Glance := GetGlance(glanceTest.Instance)
 			Expect(Glance.Spec.DatabaseInstance).Should(Equal("openstack"))
-			Expect(Glance.Spec.DatabaseUser).Should(Equal(glanceTest.GlanceDatabaseUser))
+			Expect(Glance.Spec.DatabaseAccount).Should(Equal(glanceTest.GlanceDatabaseAccount.Name))
 			Expect(Glance.Spec.ServiceUser).Should(Equal(glanceTest.GlanceServiceUser))
 			Expect(Glance.Spec.MemcachedInstance).Should(Equal(glanceTest.MemcachedInstance))
 			// No Keystone Quota is present, check the default is 0
@@ -155,8 +157,8 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 		It("Should set DBReady Condition and set DatabaseHostname Status when DB is Created", func() {
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			Glance := GetGlance(glanceTest.Instance)
 			Expect(Glance.Status.DatabaseHostname).To(Equal(fmt.Sprintf("hostname-for-openstack.%s.svc", namespace)))
@@ -181,8 +183,8 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 		It("Should fail if db-sync job fails when DB is Created", func() {
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobFailure(glanceTest.GlanceDBSync)
 			th.ExpectCondition(
 				glanceTest.Instance,
@@ -216,8 +218,8 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
@@ -278,8 +280,8 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
@@ -313,8 +315,8 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
@@ -353,6 +355,7 @@ var _ = Describe("Glance controller", func() {
 				"storageRequest":      glanceTest.GlancePVCSize,
 				"secret":              SecretName,
 				"databaseInstance":    "openstack",
+				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
 				"keystoneEndpoint":    "default",
 				"customServiceConfig": GlanceDummyBackend,
 				"glanceAPIs": map[string]interface{}{
@@ -376,8 +379,8 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
@@ -411,4 +414,73 @@ var _ = Describe("Glance controller", func() {
 			}
 		})
 	})
+
+	// Run MariaDBAccount suite tests.  these are pre-packaged ginkgo tests
+	// that exercise standard account create / update patterns that should be
+	// common to all controllers that ensure MariaDBAccount CRs.
+	mariadbSuite := &mariadb_test.MariaDBTestHarness{
+		PopulateHarness: func(harness *mariadb_test.MariaDBTestHarness) {
+			harness.Setup(
+				"Glance",
+				glanceName.Namespace,
+				glanceTest.Instance.Name,
+				"Glance",
+				mariadb,
+				timeout,
+				interval,
+			)
+		},
+		// Generate a fully running Glance service given an accountName
+		// needs to make it all the way to the end where the mariadb finalizers
+		// are removed from unused accounts since that's part of what we are testing
+		SetupCR: func(accountName types.NamespacedName) {
+
+			memcachedSpec = memcachedv1.MemcachedSpec{
+				Replicas: ptr.To(int32(3)),
+			}
+
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			spec := GetGlanceDefaultSpec()
+			spec["databaseAccount"] = accountName.Name
+
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, spec))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			mariadb.SimulateMariaDBAccountCompleted(accountName)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
+			GlanceAPIExists(glanceTest.GlanceSingle)
+		},
+		// Change the account name in the service to a new name
+		UpdateAccount: func(newAccountName types.NamespacedName) {
+
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				glance.Spec.DatabaseAccount = newAccountName.Name
+				g.Expect(th.K8sClient.Update(ctx, glance)).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+		},
+		// delete the service, allowing finalizer removal tests
+		DeleteCR: func() {
+			th.DeleteInstance(GetGlance(glanceTest.Instance))
+		},
+	}
+
+	mariadbSuite.RunBasicSuite()
+
 })
