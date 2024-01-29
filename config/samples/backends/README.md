@@ -126,6 +126,166 @@ openstack role add --project admin --user admin swiftoperator
 Additional details on the `Ceph RGW` configuration are described in the
 [openstack-k8s-operators/docs repo](https://github.com/openstack-k8s-operators/docs/blob/main/ceph.md#configure-swift-with-a-rgw-backend).
 
+
+## NFS Example
+
+It is possible to configure Glance with a NFS backend.
+However, unlike Cinder, Glance has no notion of a NFS backend, and it relies on
+the File driver when this strategy is chosen.
+Glance does not recommend that you use NFS storage because its capabilities are
+limited compared to the other backends like Ceph, Cinder, Swift.
+To configure Glance with the NFS backend, the top-level CR exposes the required
+k8s parameters via the [ExtraMounts](https://github.com/openstack-k8s-operators/docs/blob/main/extra_mounts.md)
+feature, and it assumes a NFS export already exists and is reachable by the
+OpenStack control plane.
+
+
+### Configure the NFS backend
+
+Create the GlanceCR, and use extraMounts to add both the IP address and the path
+of the NFS share: it's mapped to `/var/lib/glance/images`, path used by the
+GlanceAPI service to store and retrieve the images:
+
+```
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+...
+...
+  extraMounts:
+    - extraVol:
+      - propagation:
+        - GlanceAPI
+      - extraVolType: NFS
+        mounts:
+          - mountPath: /var/lib/glance/images
+            name: nfs
+        volumes:
+          - name: nfs
+            nfs:
+              path: {{ NFS_EXPORT_PATH }}
+              server: {{ NFS_IP_ADDRESS }}
+```
+
+#### Note
+
+The `NFS_IP_ADDRESS` must be part of the overlay network reachable by Glance.
+In general, when the OpenStack control plane is created, a
+`NodeNetworkConfigurationPolicy (nncp)` CR file is generated and applied, as
+well as the corresponding `NetworkAttachmentDefinition (net-att-def)` CR that
+defines the resources for the isolated network where the NFS share is exported.
+In a deployed OpenStack control plane, you can check both the interfaces
+(`nncp`) and the `NetworkAttachmentDefinition(s)` with the following commands:
+
+```
+$ oc get nncp
+NAME                        STATUS      REASON
+enp6s0-crc-8cf2w-master-0   Available   SuccessfullyConfigured
+
+$ oc get net-attach-def
+
+NAME
+ctlplane
+internalapi
+storage
+tenant
+
+$ oc get ipaddresspool -n metallb-system
+
+NAME          AUTO ASSIGN   AVOID BUGGY IPS   ADDRESSES
+ctlplane      true          false             ["192.168.122.80-192.168.122.90"]
+internalapi   true          false             ["172.17.0.80-172.17.0.90"]
+storage       true          false             ["172.18.0.80-172.18.0.90"]
+tenant        true          false             ["172.19.0.80-172.19.0.90"]
+```
+
+
+### Deploy Glance with a NFS backend
+
+Assuming you are using `install_yamls` and you already have a crc environment
+running you can deploy Glance with the NFS backend with the following commands:
+
+```
+$ cd install_yamls
+$ pushd devsetup; make crc_attach_default_interface; popd
+$ make crc_storage openstack
+$ crc_ssh
+$ curl -O https://raw.githubusercontent.com/openstack-k8s-operators/glance-operator/main/config/samples/backends/nfs/create_export.sh
+$ NFS_NET_INTERFACE=enp6s0.21 ./create_export.sh
+$ oc kustomize ../glance-operator/config/samples/backends/nfs > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
+
+When `GlanceAPI` is active, you can see a single API instance:
+
+```
+$ oc get pods -l service=glance
+
+NAME                      READY   STATUS    RESTARTS
+glance-default-single-0   3/3     Running   0
+```
+
+and the description of the pod reports:
+
+```
+Mounts:
+...
+  nfs:
+    Type:      NFS (an NFS mount that lasts the lifetime of a pod)
+    Server:    172.18.0.5
+    Path:      /var/nfs
+    ReadOnly:  false
+...
+```
+
+It is also possible to double check the mount point by running the following:
+
+```
+oc rsh -c glance-api glance-default-single-0
+sh-5.1# mount
+...
+...
+172.18.0.5:/var/nfs on /var/lib/glance/images type nfs4 (rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=172.18.0.5,local_lock=none,addr=172.18.0.5)
+...
+...
+```
+
+At this point, you can run an `openstack image create` command and double check,
+on the NFS node, the `uuid` has been created in the exported directory:
+
+
+```
+$ oc rsh openstackclient
+$ openstack image list
+
+sh-5.1$  curl -L -o /tmp/cirros-0.5.2-x86_64-disk.img http://download.cirros-cloud.net/0.5.2/cirros-0.5.2-x86_64-disk.img
+...
+...
+
+sh-5.1$ openstack image create --container-format bare --disk-format raw --file /tmp/cirros-0.5.2-x86_64-disk.img cirros
+...
+...
+
+sh-5.1$ openstack image list
++--------------------------------------+--------+--------+
+| ID                                   | Name   | Status |
++--------------------------------------+--------+--------+
+| 634482ca-4002-4a6d-b1d5-64502ad02630 | cirros | active |
++--------------------------------------+--------+--------+
+```
+
+and, on the crc node, we can see the same `uuid` in the exported `/var/nfs`:
+
+```
+$ crc_ssh
+$ ls /var/nfs/
+634482ca-4002-4a6d-b1d5-64502ad02630
+```
+
+
 ## Multistore
 
 It is possible to configure multiple backends (known as `stores`) for a single
