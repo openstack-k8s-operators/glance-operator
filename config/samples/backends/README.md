@@ -20,6 +20,7 @@ Currently available samples are:
 - Ceph
 - NFS
 - CEPH + NFS
+- CEPH + Sparse Image Upload
 - Cinder backends
 - Swift
 
@@ -45,6 +46,23 @@ $ cd install_yamls
 $ make ceph TIMEOUT=90
 $ make crc_storage openstack
 $ oc kustomize ../glance-operator/config/samples/backends/ceph > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
+
+If we already have a deployment working we can always use
+`oc kustomize ceph | oc apply -f -`. from this directory to make the changes.
+
+## Ceph with Sparse Image Upload example
+
+Assuming you are using `install_yamls` and you already have `crc` running you
+can use the Ceph example with:
+
+```
+$ cd install_yamls
+$ make ceph TIMEOUT=90
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/ceph_thin_provisioning > ~/openstack-deployment.yaml
 $ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
 $ make openstack_deploy
 ```
