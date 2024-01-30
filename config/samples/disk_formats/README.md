@@ -44,17 +44,17 @@ For example, use the following configuration to reject QCOW2 disk images:
 ## Configuring supported disk-formats
 
 Assuming you are using `install_yamls` and you already have `crc` running, you
-can use the provided `disk-formats` example with:
+can use the provided `disk_formats` example with:
 
 ```
 $ cd install_yamls
 $ make crc_storage openstack
-$ oc kustomize ../glance-operator/config/samples/disk-formats > ~/openstack-deployment.yaml
+$ oc kustomize ../glance-operator/config/samples/disk_formats > ~/openstack-deployment.yaml
 $ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
 $ make openstack_deploy
 ```
 
-If we already have a deployment working we can always use `oc kustomize ../disk-formats | oc apply -f -`
+If we already have a deployment working we can always use `oc kustomize ../disk_formats | oc apply -f -`
 from this directory to make the changes.
 
 You can find more about disk-formats configuration options in the

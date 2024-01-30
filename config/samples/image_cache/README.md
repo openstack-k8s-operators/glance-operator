@@ -37,18 +37,18 @@ which is used to define a regular `storageRequest` when Glance is deployed.
 ## Enable image-cache with a Ceph backend
 
 Assuming you are using `install_yamls` and you already have `crc` running, you
-can use the provided `image-cache` example with:
+can use the provided `image_cache` example with:
 
 ```
 $ cd install_yamls
 $ make ceph TIMEOUT=90
 $ make crc_storage openstack
-$ oc kustomize ../glance-operator/config/samples/image-cache > ~/openstack-deployment.yaml
+$ oc kustomize ../glance-operator/config/samples/image_cache > ~/openstack-deployment.yaml
 $ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
 $ make openstack_deploy
 ```
 
-If we already have a deployment working we can always use `oc kustomize ../image-cache | oc apply -f -`
+If we already have a deployment working we can always use `oc kustomize ../image_cache | oc apply -f -`
 from this directory to make the changes.
 
 ## Glance Cache cleaner and pruner utilities
