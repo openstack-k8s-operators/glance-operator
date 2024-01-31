@@ -7,13 +7,13 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.3.1-0.20240117163806-35ec35f91628
+	github.com/openstack-k8s-operators/cinder-operator/api v0.3.1-0.20240130192816-f8ef86260449
 	github.com/openstack-k8s-operators/glance-operator/api v0.1.2-0.20230904092048-ae90414f6e25
-	github.com/openstack-k8s-operators/infra-operator/apis v0.3.1-0.20240125112246-15881e3c5305
+	github.com/openstack-k8s-operators/infra-operator/apis v0.3.1-0.20240131020128-fea7453a8039
 	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20240125201204-a18a1e700034
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20240124141114-55d029e4658b
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20240124141114-55d029e4658b
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20240124141114-55d029e4658b
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20240129151020-c9467a8fbbfc
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20240129151020-c9467a8fbbfc
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20240129151020-c9467a8fbbfc
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.3.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	k8s.io/api v0.26.13
@@ -52,7 +52,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20240124141114-55d029e4658b
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20240129151020-c9467a8fbbfc
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
