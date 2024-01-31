@@ -247,10 +247,7 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 		})
 		It("Creates glanceAPI", func() {
-			// Default type is "split", make sure that behind the scenes two
-			// glanceAPI deployment are created
 			GlanceAPIExists(glanceTest.GlanceSingle)
-			//GlanceAPIExists(glanceTest.GlanceInternal)
 		})
 		It("Assert Services are created", func() {
 			// Both glance-public and glance-internal svc are created regardless
