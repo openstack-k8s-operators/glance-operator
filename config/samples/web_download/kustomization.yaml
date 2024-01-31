@@ -1,0 +1,24 @@
+resources:
+- ../backends/base/openstack
+
+patches:
+- target:
+    kind: OpenStackControlPlane
+  patch: |-
+    - op: replace
+      path: /spec/glance/template/customServiceConfig
+      value: |
+        [DEFAULT]
+        enabled_backends = default_backend:file
+        allowed_schemes = [http,https,ftp]
+        disallowed_schemes = []
+        allowed_hosts = []
+        disallowed_hosts = []
+        allowed_ports = [80,443]
+        disallowed_ports = []
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        filesystem_store_datadir = /var/lib/glance/images/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
