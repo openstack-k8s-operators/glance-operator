@@ -4,6 +4,7 @@
   # Whole OpenStack deployment using a Cinder NVMe-TCP LVM backend
 resources:
 - https://github.com/openstack-k8s-operators/cinder-operator/config/samples/backends/lvm/nvme-tcp
+
 components:
 - ../glance-common
 apiVersion: kustomize.config.k8s.io/v1beta1

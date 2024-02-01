@@ -28,5 +28,6 @@ spec:
             service: false
           preserveJobs: false
           replicas: 1
+          type: split
       storageClass: ""
       storageRequest: 1G

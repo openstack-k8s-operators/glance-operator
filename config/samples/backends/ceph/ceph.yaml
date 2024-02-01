@@ -20,13 +20,6 @@ spec:
         rbd_store_user = openstack
       databaseInstance: openstack
       databaseUser: glance
-      glanceAPIs:
-        default:
-          debug:
-            service: false
-          preserveJobs: false
-          replicas: 1
-          type: split
       secret: osp-secret
       storageClass: ""
       storageRequest: 1G
