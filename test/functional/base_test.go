@@ -18,7 +18,6 @@ package functional
 
 import (
 	"golang.org/x/exp/maps"
-
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -69,9 +68,7 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 			"keystoneEndpoint": "default",
 			"databaseInstance": "openstack",
 			"storageRequest":   glanceTest.GlancePVCSize,
-			"glanceAPIs": map[string]interface{}{
-				"default": GetGlanceAPIDefaultSpec(GlanceAPITypeSingle),
-			},
+			"glanceAPIs":       GetAPIList(),
 		},
 	}
 	return th.CreateUnstructured(raw)
@@ -97,7 +94,6 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
 		"glanceAPIs":       GetAPIList(),
-		"type":             "split",
 		"storageRequest":   glanceTest.GlancePVCSize,
 	}
 }
@@ -178,28 +174,36 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 	}
 }
 
-func GetDefaultGlanceAPITemplate(apiType APIType) map[string]interface{} {
-	return map[string]interface{}{
-		"replicas":       1,
-		"containerImage": glanceTest.ContainerImage,
-		"serviceAccount": glanceTest.GlanceSA.Name,
-		"apiType":        apiType,
-		"storageRequest": glanceTest.GlancePVCSize,
+func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
+	spec := map[string]interface{}{
+		"replicas":         1,
+		"serviceAccount":   glanceTest.GlanceSA.Name,
+		"containerImage":   glanceTest.ContainerImage,
+		"storageRequest":   glanceTest.GlancePVCSize,
+		"apiType":          apiType,
+		"name":             "default",
+		"databaseHostname": "openstack",
+		"secret":           SecretName,
 	}
+	return spec
 }
 
 func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
-	spec := GetDefaultGlanceAPITemplate(apiType)
-	maps.Copy(spec, map[string]interface{}{
+	spec := map[string]interface{}{
+		"replicas":         1,
+		"containerImage":   glanceTest.ContainerImage,
+		"serviceAccount":   glanceTest.GlanceSA.Name,
+		"storageRequest":   glanceTest.GlancePVCSize,
+		"type":             apiType,
+		"name":             "default",
 		"databaseHostname": "openstack",
 		"secret":           SecretName,
-		"name":             "default",
-	})
+	}
 	return spec
 }
 
 func GetTLSGlanceAPISpec(apiType APIType) map[string]interface{} {
-	spec := GetDefaultGlanceAPITemplate(apiType)
+	spec := CreateGlanceAPISpec(apiType)
 	maps.Copy(spec, map[string]interface{}{
 		"databaseHostname": "openstack",
 		"secret":           SecretName,

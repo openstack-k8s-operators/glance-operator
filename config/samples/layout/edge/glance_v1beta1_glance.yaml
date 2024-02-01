@@ -16,18 +16,19 @@ spec:
         service: false
       preserveJobs: false
       replicas: 1
+      type: single
     edge1:
       debug:
         service: false
       preserveJobs: false
       replicas: 1
-      type: "single"
+      type: single
     edge2:
       debug:
         service: false
       preserveJobs: false
       replicas: 1
-      type: "single"
+      type: single
   secret: osp-secret
   storageClass: local-storage
   storageRequest: 10G

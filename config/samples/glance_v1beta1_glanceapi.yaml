@@ -10,6 +10,11 @@ spec:
   customServiceConfig: |
     [DEFAULT]
     debug = true
+    enabled_backends=foo:bar,foo1:bar1
+    [foo]
+    here-foo-config
+    [foo1]
+    here-foo1-config
   databaseUser: glance
   databaseHostname: glance
   debug:

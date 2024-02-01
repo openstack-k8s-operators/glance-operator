@@ -36,6 +36,8 @@ const (
 	InternalCertSecretName = "internal-tls-certs"
 	//CABundleSecretName -
 	CABundleSecretName = "combined-ca-bundle"
+	//GlanceDummyBackend -
+	GlanceDummyBackend = "[DEFAULT]\nenabled_backends=foo:bar"
 )
 
 // GlanceTestData is the data structure used to provide input data to envTest
