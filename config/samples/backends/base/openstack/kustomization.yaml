@@ -1,2 +1,17 @@
 resources:
-  - openstack.yaml
+  - https://raw.githubusercontent.com/openstack-k8s-operators/openstack-operator/main/config/samples/core_v1beta1_openstackcontrolplane_galera_network_isolation.yaml
+
+patches:
+  - target:
+      kind: OpenStackControlPlane
+      name: .*
+    patch: |-
+      - op: remove
+        path: /spec/glance/template/glanceAPIs/default/type
+  - target:
+      kind: OpenStackControlPlane
+      name: .*
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: openstack
