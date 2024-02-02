@@ -21,8 +21,6 @@ spec:
   databaseUser: glance
   glanceAPIs:
     default:
-      debug:
-        service: false
       replicas: 1
   secret: osp-secret
   storageRequest: 10G
@@ -37,8 +35,6 @@ spec:
   apiType: external
   databaseUser: glance
   databaseHostname: openstack
-  debug:
-    service: false
   passwordSelectors:
     database: GlanceDatabasePassword
     service: GlancePassword
@@ -52,8 +48,6 @@ spec:
   apiType: internal
   databaseUser: glance
   databaseHostname: openstack
-  debug:
-    service: false
   passwordSelectors:
     database: GlanceDatabasePassword
     service: GlancePassword

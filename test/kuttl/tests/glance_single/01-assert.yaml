@@ -18,8 +18,6 @@ spec:
   databaseUser: glance
   glanceAPIs:
     default:
-      debug:
-        service: false
       replicas: 1
       type: "single"
   secret: osp-secret
@@ -35,8 +33,6 @@ spec:
   apiType: single
   databaseUser: glance
   databaseHostname: openstack
-  debug:
-    service: false
   passwordSelectors:
     database: GlanceDatabasePassword
     service: GlancePassword
