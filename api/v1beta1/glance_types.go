@@ -143,10 +143,6 @@ type PasswordSelector struct {
 type GlanceDebug struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
-	// DBSync enable debug
-	DBSync bool `json:"dbSync"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
 	// CronJob enable debug
 	CronJob bool `json:"cronJob"`
 }

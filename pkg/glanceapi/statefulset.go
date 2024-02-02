@@ -66,57 +66,36 @@ func StatefulSet(
 		InitialDelaySeconds: 5,
 	}
 
-	args := []string{"-c"}
-	if instance.Spec.Debug.Service {
-		args = append(args, common.DebugCommand)
-		startupProbe.Exec = &corev1.ExecAction{
-			Command: []string{
-				"/bin/true",
-			},
-		}
-		livenessProbe.Exec = &corev1.ExecAction{
-			Command: []string{
-				"/bin/true",
-			},
-		}
+	args := []string{"-c", GlanceAPIServiceCommand}
+	//
+	// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+	//
 
-		readinessProbe.Exec = &corev1.ExecAction{
-			Command: []string{
-				"/bin/true",
-			},
-		}
-	} else {
-		args = append(args, GlanceAPIServiceCommand)
-		//
-		// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-		//
+	port := int32(glance.GlancePublicPort)
+	tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
 
-		port := int32(glance.GlancePublicPort)
-		tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
+	if instance.Spec.APIType == glancev1.APIInternal {
+		port = int32(glance.GlanceInternalPort)
+		tlsEnabled = instance.Spec.TLS.API.Enabled(service.EndpointInternal)
+	}
 
-		if instance.Spec.APIType == glancev1.APIInternal {
-			port = int32(glance.GlanceInternalPort)
-			tlsEnabled = instance.Spec.TLS.API.Enabled(service.EndpointInternal)
-		}
+	livenessProbe.HTTPGet = &corev1.HTTPGetAction{
+		Path: "/healthcheck",
+		Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
+	}
+	readinessProbe.HTTPGet = &corev1.HTTPGetAction{
+		Path: "/healthcheck",
+		Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
+	}
 
-		livenessProbe.HTTPGet = &corev1.HTTPGetAction{
-			Path: "/healthcheck",
-			Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
-		}
-		readinessProbe.HTTPGet = &corev1.HTTPGetAction{
-			Path: "/healthcheck",
-			Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
-		}
-
-		if tlsEnabled {
-			livenessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
-			readinessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
-		}
-		startupProbe.Exec = &corev1.ExecAction{
-			Command: []string{
-				"/bin/true",
-			},
-		}
+	if tlsEnabled {
+		livenessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
+		readinessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
+	}
+	startupProbe.Exec = &corev1.ExecAction{
+		Command: []string{
+			"/bin/true",
+		},
 	}
 
 	envVars := map[string]env.Setter{}

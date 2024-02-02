@@ -83,14 +83,6 @@ type GlanceAPISpec struct {
 	ImageCacheSize string `json:"imageCacheSize"`
 }
 
-// GlanceAPIDebug defines the observed state of GlanceAPIDebug
-type GlanceAPIDebug struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Service enable debug
-	Service bool `json:"service"`
-}
-
 // GlanceAPIStatus defines the observed state of GlanceAPI
 type GlanceAPIStatus struct {
 	// ReadyCount of glance API instances
