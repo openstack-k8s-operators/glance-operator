@@ -47,6 +47,7 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	cronjob "github.com/openstack-k8s-operators/lib-common/modules/common/cronjob"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
@@ -156,6 +157,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// right now we have no dedicated KeystoneEndpointReadyInitMessage
 			condition.UnknownCondition(condition.KeystoneEndpointReadyCondition, condition.InitReason, ""),
 			condition.UnknownCondition(condition.NetworkAttachmentsReadyCondition, condition.InitReason, condition.NetworkAttachmentsReadyInitMessage),
+			condition.UnknownCondition(condition.CronJobReadyCondition, condition.InitReason, condition.CronJobReadyInitMessage),
 		)
 
 		instance.Status.Conditions.Init(&cl)
@@ -778,6 +780,38 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 	// create StatefulSet - end
 
+	// create ImageCache cronJobs
+
+	if len(instance.Spec.ImageCacheSize) > 0 {
+		// If image-cache has been enabled, create two additional cronJobs:
+		// - CacheCleanerJob: clean stalled images or in an invalid state
+		// - CachePrunerJob: clean the image-cache folder to stay under ImageCacheSize
+		//   limit
+		for _, item := range []glance.CronJobType{glance.CacheCleaner, glance.CachePruner} {
+			ctrlResult, err = r.ensureImageCacheJob(
+				ctx,
+				helper,
+				instance,
+				serviceLabels,
+				serviceAnnotations,
+				item,
+			)
+			if err != nil {
+				instance.Status.Conditions.Set(condition.FalseCondition(
+					condition.CronJobReadyCondition,
+					condition.ErrorReason,
+					condition.SeverityWarning,
+					condition.CronJobReadyErrorMessage,
+					err.Error()))
+				return ctrlResult, err
+			}
+		}
+	}
+
+	// Mark the CronJobReadyCondition as True because there's nothing to do here
+	instance.Status.Conditions.MarkTrue(condition.CronJobReadyCondition, condition.CronJobReadyMessage)
+
+	// create ImageCache cronJobs - end
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
@@ -1014,4 +1048,58 @@ func (r *GlanceAPIReconciler) ensureDeletedEndpoints(
 		}
 	}
 	return ctrl.Result{}, err
+}
+
+func (r *GlanceAPIReconciler) ensureImageCacheJob(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.GlanceAPI,
+	serviceLabels map[string]string,
+	serviceAnnotations map[string]string,
+	cjType glance.CronJobType,
+) (ctrl.Result, error) {
+
+	var err error
+	var ctrlResult ctrl.Result
+
+	command := glance.GlanceCacheCleaner
+	schedule := glance.CacheCleanerDefaultSchedule
+	// TODO: Fix debug option depending on the API
+	debugArg := ""
+
+	if cjType == glance.CachePruner {
+		command = glance.GlanceCachePruner
+		schedule = glance.CachePrunerDefaultSchedule
+	}
+	cachePVCs, _ := GetPvcListWithLabel(ctx, h, instance.Namespace, serviceLabels)
+	for _, vc := range cachePVCs.Items {
+		var pvcName string = vc.GetName()
+		cacheAnnotations := vc.GetAnnotations()
+		if _, ok := cacheAnnotations["image-cache"]; ok {
+			cronSpec := glance.CronJobSpec{
+				Name:        fmt.Sprintf("%s-%s", instance.Name, cjType),
+				PvcClaim:    &pvcName,
+				Command:     command,
+				CjType:      cjType,
+				Schedule:    schedule,
+				Debug:       debugArg,
+				Labels:      serviceLabels,
+				Annotations: serviceAnnotations,
+			}
+			cronjobDef := glanceapi.ImageCacheJob(
+				instance,
+				cronSpec,
+			)
+			imageCacheCronJob := cronjob.NewCronJob(
+				cronjobDef,
+				5*time.Second,
+			)
+			ctrlResult, err := imageCacheCronJob.CreateOrPatch(ctx, h)
+			if err != nil {
+				return ctrlResult, err
+			}
+		}
+	}
+
+	return ctrlResult, err
 }

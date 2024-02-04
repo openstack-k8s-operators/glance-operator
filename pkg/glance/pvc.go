@@ -16,7 +16,10 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 	var err error
 	requestSize := api.Spec.StorageRequest
 	pvcName := ServiceName
-	if pvcType == "cache" {
+	pvcAnnotation := map[string]string{}
+
+	if pvcType == PvcCache {
+		pvcAnnotation["image-cache"] = "true"
 		requestSize = api.Spec.ImageCacheSize
 		// append -cache to avoid confusion when listing PVCs
 		pvcName = fmt.Sprintf("%s-cache", ServiceName)
@@ -25,9 +28,10 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 	// Build the basic pvc object
 	pvc := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pvcName,
-			Namespace: api.Namespace,
-			Labels:    labels,
+			Name:        pvcName,
+			Namespace:   api.Namespace,
+			Labels:      labels,
+			Annotations: pvcAnnotation,
 		},
 	}
 

@@ -34,6 +34,8 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	corev1 "k8s.io/api/core/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -217,4 +219,22 @@ func GetHeadlessService(
 	}
 
 	return ctrlResult, nil
+}
+
+// GetPvcListWithLabel -
+func GetPvcListWithLabel(
+	ctx context.Context,
+	h *helper.Helper,
+	namespace string,
+	labelSelectorMap map[string]string,
+) (*corev1.PersistentVolumeClaimList, error) {
+
+	labelSelectorString := labels.Set(labelSelectorMap).String()
+	pvcList, err := h.GetKClient().CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelectorString})
+
+	if err != nil {
+		err = fmt.Errorf("Error listing PVC for labels: %v - %w", labelSelectorMap, err)
+		return nil, err
+	}
+	return pvcList, nil
 }
