@@ -43,8 +43,8 @@ func CronJob(
 	case "purge":
 		cronJobCommand = DBPurgeCommandBase[:]
 		// Extend the resulting command with the DBPurgeAge int in case purge is
-		cronJobCommand = append(cronJobCommand, strconv.Itoa(DBPurgeAge))
-		cronJobSchedule = DBPurgeDefaultSchedule
+		cronJobCommand = append(cronJobCommand, strconv.Itoa(instance.Spec.DBPurge.Age))
+		cronJobSchedule = instance.Spec.DBPurge.Schedule
 	case "cleaner":
 		cronJobCommand = CacheCleanerCommandBase[:]
 		cronJobSchedule = CacheCleanerDefaultSchedule
@@ -53,13 +53,13 @@ func CronJob(
 		cronJobSchedule = CachePrunerDefaultSchedule
 	default:
 		cronJobCommand = DBPurgeCommandBase[:]
-		cronJobSchedule = DBPurgeDefaultSchedule
+		cronJobSchedule = instance.Spec.DBPurge.Schedule
 	}
 
 	var cronCommand []string = cronJobCommand[:]
 	args := []string{"-c"}
 
-	if !instance.Spec.Debug.CronJob {
+	if !instance.Spec.Debug.DBPurge {
 		// If debug mode is not requested, remove the --debug option
 		cronCommand = append(cronJobCommand[:1], cronJobCommand[2:]...)
 	}

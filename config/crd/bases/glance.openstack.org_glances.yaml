@@ -49,9 +49,19 @@ spec:
               databaseUser:
                 default: glance
                 type: string
+              dbPurge:
+                properties:
+                  age:
+                    default: 30
+                    minimum: 1
+                    type: integer
+                  schedule:
+                    default: 1 0 * * *
+                    type: string
+                type: object
               debug:
                 properties:
-                  cronJob:
+                  dbPurge:
                     default: false
                     type: boolean
                 type: object

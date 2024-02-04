@@ -29,6 +29,8 @@ import (
 // GlanceDefaults -
 type GlanceDefaults struct {
 	ContainerImageURL string
+	DBPurgeAge int
+	DBPurgeSchedule string
 }
 
 var glanceDefaults GlanceDefaults
@@ -83,6 +85,14 @@ func (spec *GlanceSpec) Default() {
 	var rep int32 = 0
 	if len(spec.ContainerImage) == 0 {
 		spec.ContainerImage = glanceDefaults.ContainerImageURL
+	}
+
+	if spec.DBPurge.Age == 0 {
+		spec.DBPurge.Age = glanceDefaults.DBPurgeAge
+	}
+
+	if spec.DBPurge.Schedule == "" {
+		spec.DBPurge.Schedule = glanceDefaults.DBPurgeSchedule
 	}
 	// When no glanceAPI(s) are specified in the top-level CR
 	// we build one by default, but we set replicas=0 and we
