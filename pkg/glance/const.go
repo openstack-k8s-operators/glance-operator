@@ -77,16 +77,12 @@ const (
 	// endpoints in keystone
 	KeystoneEndpoint = "keystoneEndpoint"
 
-	//DBPurgeAge -
-	DBPurgeAge = 30
 	//DBPurge -
 	DBPurge CronJobType = "purge"
 	//CacheCleaner -
 	CacheCleaner CronJobType = "cleaner"
 	//CachePruner -
 	CachePruner CronJobType = "pruner"
-	//DBPurgeDefaultSchedule -
-	DBPurgeDefaultSchedule = "1 0 * * *"
 	//CacheCleanerDefaultSchedule -
 	CacheCleanerDefaultSchedule = "1 0 * * *"
 	//CachePrunerDefaultSchedule -
