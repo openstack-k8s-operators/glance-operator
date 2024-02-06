@@ -813,11 +813,15 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		ServiceUser:       instance.Spec.ServiceUser,
 		ServiceAccount:    instance.RbacResourceName(),
 		Quota:             instance.IsQuotaEnabled(),
-		ImageCacheSize:    instance.Spec.ImageCacheSize,
 	}
 
 	if apiSpec.GlanceAPITemplate.NodeSelector == nil {
 		apiSpec.GlanceAPITemplate.NodeSelector = instance.Spec.NodeSelector
+	}
+
+	// Inherit the ImageCacheSize from the top level if not specified
+	if apiSpec.GlanceAPITemplate.ImageCacheSize == "" {
+		apiSpec.GlanceAPITemplate.ImageCacheSize = instance.Spec.ImageCacheSize
 	}
 
 	// Inherit the values required for PVC creation from the top-level CR

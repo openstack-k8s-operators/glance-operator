@@ -283,7 +283,7 @@ func GetHttpdVolumeMount() []corev1.VolumeMount {
 func GetCacheVolume(pvcName string) []corev1.Volume {
 	return []corev1.Volume{
 		{
-			Name: "image-cache",
+			Name: "glance-cache",
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: pvcName,
@@ -297,7 +297,7 @@ func GetCacheVolume(pvcName string) []corev1.Volume {
 func GetCacheVolumeMount() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
-			Name:      "image-cache",
+			Name:      "glance-cache",
 			MountPath: ImageCacheDir,
 			ReadOnly:  false,
 		},

@@ -131,7 +131,6 @@ func StatefulSet(
 	// If cache is provided, we expect the main glance_controller to request a
 	// PVC that should be used for that purpose (according to ImageCacheSize)
 	if len(instance.Spec.ImageCacheSize) > 0 {
-		apiVolumes = append(apiVolumes, glance.GetCacheVolume(glance.ServiceName+"-cache")...)
 		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
 	}
 

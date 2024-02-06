@@ -107,6 +107,10 @@ type GlanceAPITemplate struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	// TLS - Parameters related to the TLS
 	TLS tls.API `json:"tls,omitempty"`
+
+	// ImageCacheSize, provides the size of the cache that will be reflected in the image_cache_max_size parameter
+	// +kubebuilder:default=""
+	ImageCacheSize string `json:"imageCacheSize"`
 }
 
 // APIOverrideSpec to override the generated manifest of several child resources.
