@@ -17,20 +17,22 @@ limitations under the License.
 package v1beta1
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"strings"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // GlanceDefaults -
 type GlanceDefaults struct {
 	ContainerImageURL string
-	DBPurgeAge int
-	DBPurgeSchedule string
+	DBPurgeAge        int
+	DBPurgeSchedule   string
 }
 
 var glanceDefaults GlanceDefaults
@@ -131,13 +133,12 @@ func (spec *GlanceSpec) Default() {
 
 // Check if File is used as a backend for Glance
 func isFileBackend(customServiceConfig string, topLevel bool) bool {
-
 	availableBackends := GetEnabledBackends(customServiceConfig)
 	// if we have "enabled_backends=backend1:type1,backend2:type2 ..
 	// we need to iterate over this list and look for type=file
 	for i := 0; i < len(availableBackends); i++ {
 		backendToken := strings.SplitN(availableBackends[i], ":", 2)
-		if (backendToken[1] == "file") {
+		if backendToken[1] == "file" {
 			return true
 		}
 	}
@@ -158,7 +159,7 @@ func (r *Glance) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel bool) bo
 	// made by "type: split && backend: file": raise an issue if this config
 	// is found. However, do not fail if 'replica: 0' because it means the
 	// operator has not made any choice about the backend yet
-	if (*glanceAPI.Replicas != rep && glanceAPI.Type == "split" && isFileBackend(glanceAPI.CustomServiceConfig, topLevel)) {
+	if *glanceAPI.Replicas != rep && glanceAPI.Type == "split" && isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
 		return true
 	}
 	return false
@@ -167,12 +168,12 @@ func (r *Glance) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel bool) bo
 var _ webhook.Validator = &Glance{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Glance) ValidateCreate() error {
+func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	glancelog.Info("validate create", "name", r.Name)
 	// At creation time, if the CR has an invalid keystoneEndpoint value (that
 	// doesn't match with any defined backend), return an error.
 	if !r.Spec.isValidKeystoneEP() {
-		return errors.New("KeystoneEndpoint is assigned to an invalid glanceAPI instance")
+		return nil, errors.New("KeystoneEndpoint is assigned to an invalid glanceAPI instance")
 	}
 	// Check if the top-level CR has a "customServiceConfig" with an explicit
 	// "backend:file || empty string" and save the result into topLevel var.
@@ -187,14 +188,14 @@ func (r *Glance) ValidateCreate() error {
 	// detected
 	for _, glanceAPI := range r.Spec.GlanceAPIs {
 		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
-			return errors.New("Invalid backend configuration detected")
+			return nil, errors.New("Invalid backend configuration detected")
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Glance) ValidateUpdate(old runtime.Object) error {
+func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	glancelog.Info("validate update", "name", r.Name)
 
 	// Type can either be "split" or "single": we do not support changing layout
@@ -212,21 +213,21 @@ func (r *Glance) ValidateUpdate(old runtime.Object) error {
 		}
 		// The current glanceAPI exists and the layout is different
 		if glanceAPI.Type != o.Spec.GlanceAPIs[key].Type {
-			return errors.New("GlanceAPI deployment layout can't be updated")
+			return nil, errors.New("GlanceAPI deployment layout can't be updated")
 		}
 		// Fail if an invalid configuration/layout is detected for the current
 		// glanceAPI instance
 		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
-			return errors.New("Invalid backend configuration detected")
+			return nil, errors.New("Invalid backend configuration detected")
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Glance) ValidateDelete() error {
+func (r *Glance) ValidateDelete() (admission.Warnings, error) {
 	glancelog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+	return nil, nil
 }

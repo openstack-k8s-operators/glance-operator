@@ -21,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // GlanceAPIDefaults -
@@ -69,25 +70,25 @@ func (spec *GlanceAPISpec) Default() {
 var _ webhook.Validator = &GlanceAPI{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *GlanceAPI) ValidateCreate() error {
+func (r *GlanceAPI) ValidateCreate() (admission.Warnings, error) {
 	glancelog.Info("validate create", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object creation.
-	return nil
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *GlanceAPI) ValidateUpdate(old runtime.Object) error {
+func (r *GlanceAPI) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	glancelog.Info("validate update", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object update.
-	return nil
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *GlanceAPI) ValidateDelete() error {
+func (r *GlanceAPI) ValidateDelete() (admission.Warnings, error) {
 	glancelog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+	return nil, nil
 }
