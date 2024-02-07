@@ -17,10 +17,11 @@ spec:
         [default_backend]
         rootwrap_config = /etc/glance/rootwrap.conf
         description = Default cinder backend
+        cinder_store_user_name = {{ .ServiceUser }}
+        cinder_store_password = {{ .ServicePassword }}
+        cinder_store_project_name = service
         cinder_catalog_info = volumev3::internalURL
         cinder_use_multipath = true
-      customServiceConfigSecrets:
-        - osp-glance-cinder-secret
       databaseInstance: openstack
       glanceAPIs:
         default:
