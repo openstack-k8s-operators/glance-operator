@@ -19,6 +19,7 @@ Currently available samples are:
 
 - Ceph
 - NFS
+- File
 - CEPH + NFS
 - CEPH + Sparse Image Upload
 - Cinder backends
@@ -170,6 +171,55 @@ openstack role add --project admin --user admin swiftoperator
 Additional details on the `Ceph RGW` configuration are described in the
 [openstack-k8s-operators/docs repo](https://github.com/openstack-k8s-operators/docs/blob/main/ceph.md#configure-swift-with-a-rgw-backend).
 
+## FILE example
+
+**For development only purposes**, as this is an unsupported configuration,
+you can configure Glance with `File` backend.
+Set `glanceAPI` to `replicas: 1` since it assumes that Persistent Volume Claims
+are `RWO`, and image data are local on the Pod.
+However, you can scale up the number of replicas if an `RWX` PVC is provided
+through the `extraMounts` interface.
+
+### Configure the File backend
+
+The following snippet shows how the Glance configuration looks like in the
+OpenStackControlPlane when File is set as a backend:
+
+```
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+...
+...
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:file
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        filesystem_store_datadir = /var/lib/glance/images/
+      databaseInstance: openstack
+      glanceAPIs:
+        default:
+          replicas: 1
+          type: single
+```
+
+Once you have `crc` running making a deployment with File as a backend is
+trivial:
+
+```
+$ cd install_yamls
+$ make ceph TIMEOUT=90
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/file > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
 
 ## NFS Example
 
@@ -198,6 +248,20 @@ metadata:
 spec:
 ...
 ...
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:file
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        filesystem_store_datadir = /var/lib/glance/images/
+      databaseInstance: openstack
+      glanceAPIs:
+        default:
+          replicas: 1
+          type: single
   extraMounts:
   - extraVol:
     - extraVolType: Nfs
