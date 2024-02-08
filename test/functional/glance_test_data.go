@@ -37,7 +37,7 @@ const (
 	//CABundleSecretName -
 	CABundleSecretName = "combined-ca-bundle"
 	//GlanceDummyBackend -
-	GlanceDummyBackend = "[DEFAULT]\nenabled_backends=foo:bar"
+	GlanceDummyBackend = "enabled_backends=backend1:type1 # CHANGE_ME"
 )
 
 // GlanceTestData is the data structure used to provide input data to envTest

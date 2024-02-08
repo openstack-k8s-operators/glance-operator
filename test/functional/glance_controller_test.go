@@ -225,6 +225,11 @@ var _ = Describe("Glance controller", func() {
 				Expect(api.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
 			}
 		})
+		It("has a dummy backend set when and empty spec is passed", func() {
+			glanceDefault := GetGlance(glanceTest.Instance)
+			Expect(glanceDefault.Spec.CustomServiceConfig).To((ContainSubstring(GlanceDummyBackend)))
+		})
+
 	})
 	When("All the Resources are ready", func() {
 		BeforeEach(func() {

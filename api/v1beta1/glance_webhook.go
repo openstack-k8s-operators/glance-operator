@@ -74,10 +74,9 @@ func (spec *GlanceSpec) isValidKeystoneEP() bool {
 
 // GetTemplateBackend -
 func GetTemplateBackend() string {
-	return fmt.Sprintf(`
-		[DEFAULT]\n
-		enabled_backends=backend1:type1 # CHANGE_ME
-	`)
+	section := "[DEFAULT]"
+	dummyBackend := "enabled_backends=backend1:type1 # CHANGE_ME"
+	return fmt.Sprintf("%s\n%s", section, dummyBackend)
 }
 
 // Default - set defaults for this Glance spec
