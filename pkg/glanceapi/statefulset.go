@@ -101,6 +101,7 @@ func StatefulSet(
 	envVars := map[string]env.Setter{}
 	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
+	envVars["GLANCE_DOMAIN"] = env.SetValue(instance.Status.Domain)
 
 	apiVolumes := []corev1.Volume{
 		{
@@ -174,6 +175,7 @@ func StatefulSet(
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{
+			ServiceName: instance.Name,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},

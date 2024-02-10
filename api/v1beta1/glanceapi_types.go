@@ -95,6 +95,12 @@ type GlanceAPIStatus struct {
 
 	// NetworkAttachments status of the deployment pods
 	NetworkAttachments map[string][]string `json:"networkAttachments,omitempty"`
+
+	// Domain is a parameter used by each glanceAPI replicas to setup a worker
+	// and set the worker_self_url config option. It's requierd when distributed
+	// image import is enabled and it enables pod to pod communication via the
+	// associated hostnames
+	Domain string `json:"domain,omitempty"`
 }
 
 // +kubebuilder:object:root=true
