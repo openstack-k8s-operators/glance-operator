@@ -125,9 +125,13 @@ func StatefulSet(
 			ReadOnly:  true,
 		},
 	}
-	// Append LogVolume to the apiVolumes: this will be used to stream
-	// logging
+
+	// Append LogVolume to the apiVolumes: this will be used to stream logging
 	apiVolumeMounts = append(apiVolumeMounts, glance.GetLogVolumeMount()...)
+
+	// Append scripts
+	apiVolumes = append(apiVolumes, glance.GetScriptVolume()...)
+	apiVolumeMounts = append(apiVolumeMounts, glance.GetScriptVolumeMount()...)
 
 	// If cache is provided, we expect the main glance_controller to request a
 	// PVC that should be used for that purpose (according to ImageCacheSize)

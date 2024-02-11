@@ -97,9 +97,9 @@ type GlanceAPIStatus struct {
 	NetworkAttachments map[string][]string `json:"networkAttachments,omitempty"`
 
 	// Domain is a parameter used by each glanceAPI replicas to setup a worker
-	// and set the worker_self_url config option. It's requierd when distributed
-	// image import is enabled and it enables pod to pod communication via the
-	// associated hostnames
+	// and set the worker_self_reference_url config option. It's requierd when
+	// distributed image import is enabled and it enables pod to pod communication
+	// via the associated hostnames
 	Domain string `json:"domain,omitempty"`
 }
 

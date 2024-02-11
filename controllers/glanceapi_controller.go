@@ -373,11 +373,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	for endpointType, data := range glanceEndpoints {
 		endpointTypeStr := string(endpointType)
-		apiName := glance.GetGlanceAPIName(instance.Name)
-		endpointName := fmt.Sprintf("%s-%s-%s", glance.ServiceName, apiName, endpointTypeStr)
-		if instance.Spec.APIType == "single" {
-			endpointName = instance.Name
-		}
 		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
 			svcOverride.EmbeddedLabelsAnnotations = &service.EmbeddedLabelsAnnotations{}
@@ -393,12 +388,12 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		// Create the (headless) service
 		svc, err := service.NewService(
 			service.GenericService(&service.GenericServiceDetails{
-				Name:      endpointName,
+				Name:      instance.Name,
 				Namespace: instance.Namespace,
 				Labels:    exportLabels,
 				Selector:  serviceLabels,
 				Port: service.GenericServicePort{
-					Name:     endpointName,
+					Name:     instance.Name,
 					Port:     data.Port,
 					Protocol: corev1.ProtocolTCP,
 				},
@@ -443,7 +438,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 				})
 			}
 		}
-		// register the service hostname as base domain to build the work_self_url
+		// register the service hostname as base domain to build the worker_self_reference_url
 		// that will be used for distributed image import across multiple replicas
 		instance.Status.Domain = svc.GetServiceHostname()
 

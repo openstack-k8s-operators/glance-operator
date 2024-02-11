@@ -1,0 +1,16 @@
+#!/bin/bash
+
+GLANCE_PORT=${GLANCE_PORT:-9292}
+GLOBAL_CONF=${GLOBAL_CONF:-/etc/glance/glance.conf.d/01-config.conf}
+
+function set_worker_self_reference_url {
+cat <<EOF > "${GLOBAL_CONF}"
+[DEFAULT]
+worker_self_reference_url="http://$(hostname).${GLANCE_DOMAIN}:${GLANCE_PORT}"
+EOF
+
+}
+
+if [[ -n "${GLANCE_DOMAIN}" ]]; then
+    set_worker_self_reference_url
+fi
