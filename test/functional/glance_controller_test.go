@@ -17,6 +17,8 @@ limitations under the License.
 package functional
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
@@ -139,10 +141,11 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 		It("Should set DBReady Condition and set DatabaseHostname Status when DB is Created", func() {
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			Glance := GetGlance(glanceTest.Instance)
-			Expect(Glance.Status.DatabaseHostname).To(Equal("hostname-for-openstack"))
+			Expect(Glance.Status.DatabaseHostname).To(Equal(fmt.Sprintf("hostname-for-openstack.%s.svc", namespace)))
 			th.ExpectCondition(
 				glanceName,
 				ConditionGetterFunc(GlanceConditionGetter),
@@ -157,6 +160,7 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 		It("Should fail if db-sync job fails when DB is Created", func() {
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobFailure(glanceTest.GlanceDBSync)
 			th.ExpectCondition(
@@ -189,6 +193,7 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
@@ -246,6 +251,7 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
@@ -278,6 +284,7 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
@@ -338,6 +345,7 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)

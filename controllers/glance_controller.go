@@ -79,6 +79,8 @@ type GlanceReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;create;update;delete;watch;patch
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbdatabases,verbs=get;list;watch;create;update;patch;delete;
+// +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbaccounts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbaccounts/finalizers,verbs=update
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneservices,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=k8s.cni.cncf.io,resources=network-attachment-definitions,verbs=get;list;watch
@@ -210,6 +212,7 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&glancev1.Glance{}).
 		Owns(&glancev1.GlanceAPI{}).
 		Owns(&mariadbv1.MariaDBDatabase{}).
+		Owns(&mariadbv1.MariaDBAccount{}).
 		Owns(&keystonev1.KeystoneService{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
 		Owns(&batchv1.Job{}).
@@ -684,7 +687,6 @@ func (r *GlanceReconciler) apiDeployment(
 	helper *helper.Helper,
 	serviceLabels map[string]string,
 ) error {
-
 	// By default internal and external points to diff instances, but we might
 	// want to override "external" with "single" in case APIType == "single":
 	// in this case we only deploy the External instance and skip the internal
@@ -800,7 +802,6 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	helper *helper.Helper,
 	serviceLabels map[string]string,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
-
 	apiAnnotations := map[string]string{}
 	apiSpec := glancev1.GlanceAPISpec{
 		GlanceAPITemplate: apiTemplate,
@@ -923,7 +924,6 @@ func (r *GlanceReconciler) generateServiceConfig(
 
 	// Generate both default 00-config.conf and -scripts
 	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, true)
-
 }
 
 // ensureRegisteredLimits - create registered limits in keystone that will be
@@ -934,11 +934,9 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 	instance *glancev1.Glance,
 	quota map[string]int,
 ) error {
-
 	// get admin
 	var err error
 	keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
-
 	if err != nil {
 		return err
 	}
@@ -972,7 +970,6 @@ func (r *GlanceReconciler) ensureCronJobs(
 	serviceLabels map[string]string,
 	serviceAnnotations map[string]string,
 ) (ctrl.Result, error) {
-
 	// DBPurge cronjob is not optional and always created to purge all soft deleted records.
 	// This command should be executed periodically to avoid glance database becomes
 	// bigger by getting filled by soft-deleted records.
@@ -1013,11 +1010,9 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 	instance *glancev1.Glance,
 	quota map[string]int,
 ) error {
-
 	// get admin
 	var err error
 	keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
-
 	if err != nil {
 		return err
 	}
