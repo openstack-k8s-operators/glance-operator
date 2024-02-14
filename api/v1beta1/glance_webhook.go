@@ -61,7 +61,10 @@ var _ webhook.Defaulter = &Glance{}
 func (r *Glance) Default() {
 	glancelog.Info("default", "name", r.Name)
 
-	r.Spec.Default()
+	if len(r.Spec.ContainerImage) == 0 {
+		r.Spec.ContainerImage = glanceDefaults.ContainerImageURL
+	}
+	r.Spec.GlanceSpecCore.Default()
 }
 
 // Check if the KeystoneEndpoint matches with a deployed glanceAPI
@@ -82,11 +85,8 @@ func GetTemplateBackend() string {
 }
 
 // Default - set defaults for this Glance spec
-func (spec *GlanceSpec) Default() {
+func (spec *GlanceSpecCore) Default() {
 	var rep int32 = 0
-	if len(spec.ContainerImage) == 0 {
-		spec.ContainerImage = glanceDefaults.ContainerImageURL
-	}
 
 	if spec.DBPurge.Age == 0 {
 		spec.DBPurge.Age = glanceDefaults.DBPurgeAge

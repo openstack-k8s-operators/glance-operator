@@ -34,15 +34,11 @@ const (
 )
 
 // GlanceSpec defines the desired state of Glance
-type GlanceSpec struct {
+type GlanceSpecCore struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=glance
 	// ServiceUser - optional username used for this service to register in glance
 	ServiceUser string `json:"serviceUser"`
-
-	// +kubebuilder:validation:Required
-	// Glance Container Image URL (will be set to environmental default if empty)
-	ContainerImage string `json:"containerImage"`
 
 	// +kubebuilder:validation:Required
 	// MariaDB instance name
@@ -127,6 +123,16 @@ type GlanceSpec struct {
 	// +kubebuilder:validation:Optional
 	// DBPurge parameters -
 	DBPurge DBPurge `json:"dbPurge,omitempty"`
+}
+
+// GlanceSpec defines the desired state of Glance
+type GlanceSpec struct {
+
+	// +kubebuilder:validation:Required
+	// Glance Container Image URL (will be set to environmental default if empty)
+	ContainerImage string `json:"containerImage"`
+
+	GlanceSpecCore `json:",inline"`
 }
 
 // PasswordSelector to identify the DB and AdminUser password from the Secret
