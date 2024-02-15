@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/go-logr/logr"
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
@@ -233,7 +232,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
-	svcSecretFn := func(o client.Object) []reconcile.Request {
+	svcSecretFn := func(ctx context.Context, o client.Object) []reconcile.Request {
 		var namespace string = o.GetNamespace()
 		var secretName string = o.GetName()
 		result := []reconcile.Request{}
@@ -266,7 +265,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to NADs
-	nadFn := func(o client.Object) []reconcile.Request {
+	nadFn := func(ctx context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
 
 		// get all GlanceAPI CRs
@@ -300,19 +299,19 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.Secret{}).
 		Owns(&appsv1.StatefulSet{}).
-		Watches(&source.Kind{Type: &corev1.Secret{}},
+		Watches(&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(svcSecretFn)).
-		Watches(&source.Kind{Type: &networkv1.NetworkAttachmentDefinition{}},
+		Watches(&networkv1.NetworkAttachmentDefinition{},
 			handler.EnqueueRequestsFromMapFunc(nadFn)).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Complete(r)
 }
 
-func (r *GlanceAPIReconciler) findObjectsForSrc(src client.Object) []reconcile.Request {
+func (r *GlanceAPIReconciler) findObjectsForSrc(ctx context.Context, src client.Object) []reconcile.Request {
 	requests := []reconcile.Request{}
 
 	l := log.FromContext(context.Background()).WithName("Controllers").WithName("GlanceAPI")
@@ -771,7 +770,6 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	envVars *map[string]env.Setter,
 	serviceLabels map[string]string,
 ) error {
-
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
 	// 02-config.conf
@@ -901,7 +899,6 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 	instance *glancev1.GlanceAPI,
 	serviceLabels map[string]string,
 ) (ctrl.Result, error) {
-
 	var ctrlResult ctrl.Result
 	var err error
 
@@ -954,7 +951,6 @@ func (r *GlanceAPIReconciler) ensureDeletedEndpoints(
 	instance *glancev1.GlanceAPI,
 	h *helper.Helper,
 ) (ctrl.Result, error) {
-
 	// Remove the finalizer from our KeystoneEndpoint CR
 	keystoneEndpoint, err := keystonev1.GetKeystoneEndpointWithName(ctx, h, instance.Name, instance.Namespace)
 

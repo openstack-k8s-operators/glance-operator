@@ -34,6 +34,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	cinderv1 "github.com/openstack-k8s-operators/cinder-operator/api/v1beta1"
@@ -88,12 +91,18 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: metricsAddr,
+		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "c569355b.openstack.org",
+		LeaderElectionID:       "c8c223a1.openstack.org",
+		WebhookServer: webhook.NewServer(
+			webhook.Options{
+				Port:    9443,
+				TLSOpts: []func(config *tls.Config){disableHTTP2},
+			}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -136,9 +145,6 @@ func main() {
 	// Setup webhooks if requested
 	checker := healthz.Ping
 	if strings.ToLower(os.Getenv("ENABLE_WEBHOOKS")) != "false" {
-		// overriding the default values
-		srv := mgr.GetWebhookServer()
-		srv.TLSOpts = []func(config *tls.Config){disableHTTP2}
 
 		if err = (&glancev1.Glance{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Glance")
