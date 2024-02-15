@@ -24,11 +24,15 @@ import (
 
 	"time"
 
+	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
+	corev1 "k8s.io/api/core/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,4 +141,80 @@ func GenerateConfigsGeneric(
 		})
 	}
 	return secret.EnsureSecrets(ctx, h, instance, cms, envVars)
+}
+
+// GetHeadlessService -
+func GetHeadlessService(
+	ctx context.Context,
+	helper *helper.Helper,
+	instance *glancev1.GlanceAPI,
+	serviceLabels map[string]string,
+) (ctrl.Result, error) {
+
+	endpointName := instance.Name
+	// The endpointName for headless services **must** match with:
+	// - statefulset.metadata.name
+	// - statefulset.spec.servicename
+	if instance.Spec.APIType != "single" {
+		endpointName = instance.Name + "-api"
+	}
+
+	// Create the (headless) service
+	svc, err := service.NewService(
+		service.GenericService(&service.GenericServiceDetails{
+			Name:      endpointName,
+			Namespace: instance.Namespace,
+			Labels:    serviceLabels,
+			Selector:  serviceLabels,
+			Port: service.GenericServicePort{
+				Name:     endpointName,
+				Port:     glance.GlanceInternalPort,
+				Protocol: corev1.ProtocolTCP,
+			},
+			ClusterIP: "None",
+		}),
+		5,
+		nil,
+	)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ExposeServiceReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.ExposeServiceReadyErrorMessage,
+			err.Error()))
+		return ctrl.Result{}, err
+	}
+
+	svc.AddAnnotation(map[string]string{
+		service.AnnotationEndpointKey: "headless",
+	})
+	svc.AddAnnotation(map[string]string{
+		service.AnnotationIngressCreateKey: "false",
+	})
+
+	// register the service hostname as base domain to build the worker_self_reference_url
+	// that will be used for distributed image import across multiple replicas
+	instance.Status.Domain = svc.GetServiceHostname()
+
+	ctrlResult, err := svc.CreateOrPatch(ctx, helper)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ExposeServiceReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.ExposeServiceReadyErrorMessage,
+			err.Error()))
+
+		return ctrlResult, err
+	} else if (ctrlResult != ctrl.Result{}) {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ExposeServiceReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.ExposeServiceReadyRunningMessage))
+		return ctrlResult, nil
+	}
+
+	return ctrlResult, nil
 }

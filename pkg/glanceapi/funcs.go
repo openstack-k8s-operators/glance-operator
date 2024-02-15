@@ -12,24 +12,22 @@ import (
 // default is split, in case of single both internal and public endpoint get returned
 func GetGlanceEndpoints(apiType string) map[service.Endpoint]endpoint.Data {
 	glanceEndpoints := map[service.Endpoint]endpoint.Data{}
-	// if we're not splitting the API and deploying a single instance, we can
-	// define a single service for both internal and public endpoints
+	// split
+	if apiType == glancev1.APIInternal {
+		glanceEndpoints["private"] = endpoint.Data{
+			Port: glance.GlanceInternalPort,
+		}
+	} else {
+		glanceEndpoints[service.EndpointPublic] = endpoint.Data{
+			Port: glance.GlancePublicPort,
+		}
+	}
+	// if we're not splitting the API and deploying a single instance, we have
+	// to add both internal and public endpoints
 	if apiType == glancev1.APISingle {
 		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
 		}
-	} else {
-		// split
-		if apiType == glancev1.APIInternal {
-			glanceEndpoints[service.EndpointInternal] = endpoint.Data{
-				Port: glance.GlanceInternalPort,
-			}
-		} else {
-			glanceEndpoints[service.EndpointPublic] = endpoint.Data{
-				Port: glance.GlancePublicPort,
-			}
-		}
 	}
-
 	return glanceEndpoints
 }

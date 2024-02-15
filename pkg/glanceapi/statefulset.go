@@ -173,13 +173,20 @@ func StatefulSet(
 		}
 	}
 
+	stsName := instance.Name
+	// The StatefulSet name **must** match with the headless service
+	// endpoint Name (see GetHeadlessService() function under controllers/
+	// glance_common)
+	if instance.Spec.APIType != "single" {
+		stsName = instance.Name + "-api"
+	}
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name,
+			Name:      stsName,
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			ServiceName: instance.Name,
+			ServiceName: stsName,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},

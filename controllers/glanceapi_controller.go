@@ -373,6 +373,8 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	for endpointType, data := range glanceEndpoints {
 		endpointTypeStr := string(endpointType)
+		apiName := glance.GetGlanceAPIName(instance.Name)
+		endpointName := fmt.Sprintf("%s-%s-%s", glance.ServiceName, apiName, endpointTypeStr)
 		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
 			svcOverride.EmbeddedLabelsAnnotations = &service.EmbeddedLabelsAnnotations{}
@@ -385,19 +387,18 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			},
 		)
 
-		// Create the (headless) service
+		// Create the internal/externl service(s) associated to the current API
 		svc, err := service.NewService(
 			service.GenericService(&service.GenericServiceDetails{
-				Name:      instance.Name,
+				Name:      endpointName,
 				Namespace: instance.Namespace,
 				Labels:    exportLabels,
 				Selector:  serviceLabels,
 				Port: service.GenericServicePort{
-					Name:     instance.Name,
+					Name:     endpointName,
 					Port:     data.Port,
 					Protocol: corev1.ProtocolTCP,
 				},
-				ClusterIP: "None",
 			}),
 			5,
 			&svcOverride.OverrideSpec,
@@ -440,7 +441,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		}
 		// register the service hostname as base domain to build the worker_self_reference_url
 		// that will be used for distributed image import across multiple replicas
-		instance.Status.Domain = svc.GetServiceHostname()
+		//instance.Status.Domain = svc.GetServiceHostname()
 
 		ctrlResult, err := svc.CreateOrPatch(ctx, helper)
 		if err != nil {
@@ -460,6 +461,20 @@ func (r *GlanceAPIReconciler) reconcileInit(
 				condition.ExposeServiceReadyRunningMessage))
 			return ctrlResult, nil
 		}
+
+		// For each StatefulSet associated with a given glanceAPI (single, internal, external)
+		// we create a headless service that allow to resolve pods by hostname (using kube-dns)
+		// and it allows to enable the glance-direct import method
+		ctrlResult, err = GetHeadlessService(
+			ctx,
+			helper,
+			instance,
+			serviceLabels,
+		)
+		if err != nil {
+			return ctrlResult, err
+		}
+
 		// create service - end
 
 		// if TLS is enabled
@@ -936,7 +951,13 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		Endpoints:   instance.Status.APIEndpoints,
 	}
 
-	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, time.Duration(10)*time.Second)
+	ksSvc := keystonev1.NewKeystoneEndpoint(
+		instance.Name,
+		instance.Namespace,
+		ksEndpointSpec,
+		serviceLabels,
+		time.Duration(10)*time.Second,
+	)
 	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err
