@@ -56,7 +56,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-default-external
+  name: glance-default-external-api
 spec:
   replicas: 1
   selector:
@@ -99,7 +99,7 @@ status:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-default-internal
+  name: glance-default-internal-api
 spec:
   replicas: 1
   selector:
@@ -181,6 +181,36 @@ metadata:
 spec:
   ports:
   - name: glance-default-public
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-external-api
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-default-external-api
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal-api
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-default-internal-api
     port: 9292
     protocol: TCP
     targetPort: 9292

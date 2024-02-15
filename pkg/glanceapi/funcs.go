@@ -14,7 +14,7 @@ func GetGlanceEndpoints(apiType string) map[service.Endpoint]endpoint.Data {
 	glanceEndpoints := map[service.Endpoint]endpoint.Data{}
 	// split
 	if apiType == glancev1.APIInternal {
-		glanceEndpoints["private"] = endpoint.Data{
+		glanceEndpoints[service.EndpointInternal] = endpoint.Data{
 			Port: glance.GlanceInternalPort,
 		}
 	} else {

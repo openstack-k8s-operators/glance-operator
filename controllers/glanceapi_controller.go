@@ -439,9 +439,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 				})
 			}
 		}
-		// register the service hostname as base domain to build the worker_self_reference_url
-		// that will be used for distributed image import across multiple replicas
-		//instance.Status.Domain = svc.GetServiceHostname()
 
 		ctrlResult, err := svc.CreateOrPatch(ctx, helper)
 		if err != nil {
