@@ -177,8 +177,8 @@ func StatefulSet(
 	// The StatefulSet name **must** match with the headless service
 	// endpoint Name (see GetHeadlessService() function under controllers/
 	// glance_common)
-	if instance.Spec.APIType != "single" {
-		stsName = instance.Name + "-api"
+	if instance.Spec.APIType != glancev1.APISingle {
+		stsName = fmt.Sprintf("%s-api", instance.Name)
 	}
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{

@@ -697,7 +697,7 @@ func (r *GlanceReconciler) apiDeployment(
 	// we only deploy the External instance passing "glancev1.APISingle" to the
 	// GlanceAPI controller, so we can properly handle this use case (nad and
 	// service creation).
-	if current.Type == "single" {
+	if current.Type == glancev1.APISingle {
 		external = glancev1.APISingle
 	}
 	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(
@@ -733,7 +733,7 @@ func (r *GlanceReconciler) apiDeployment(
 		instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
 		// if we don't split, both apiEndpoints (public and internal) should be
 		// reflected to the main Glance CR
-		if current.Type == "single" {
+		if current.Type == glancev1.APISingle {
 			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 	}
