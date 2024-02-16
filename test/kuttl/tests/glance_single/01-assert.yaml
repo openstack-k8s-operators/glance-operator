@@ -121,6 +121,21 @@ spec:
   selector:
     service: glance
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-single
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-default-single
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
 # the actual addresses of the apiEndpoints are platform specific, so we can't rely on
 # kuttl asserts to check them. This short script gathers the addresses and checks that
 # the three endpoints are defined and their addresses follow the default pattern

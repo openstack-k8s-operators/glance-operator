@@ -55,6 +55,12 @@
         "dest": "/usr/sbin/nvme",
         "owner": "root:root",
         "perm": "0755"
+      },
+      {
+        "source": "/usr/local/bin/container-scripts/kolla_extend_start",
+        "dest": "/usr/local/bin/kolla_extend_start",
+        "owner": "root:root",
+        "perm": "0755"
       }
     ],
     "permissions": [

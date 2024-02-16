@@ -53,6 +53,8 @@ type GlanceTestData struct {
 	GlanceSingle                types.NamespacedName
 	GlanceInternal              types.NamespacedName
 	GlanceExternal              types.NamespacedName
+	GlanceInternalStatefulSet   types.NamespacedName
+	GlanceExternalStatefulSet   types.NamespacedName
 	GlanceRole                  types.NamespacedName
 	GlanceRoleBinding           types.NamespacedName
 	GlanceSA                    types.NamespacedName
@@ -95,6 +97,14 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		GlanceExternal: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-default-external", glanceName.Name),
+		},
+		GlanceExternalStatefulSet: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-default-external-api", glanceName.Name),
+		},
+		GlanceInternalStatefulSet: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-default-internal-api", glanceName.Name),
 		},
 		// Also used to identify GlanceKeystoneService
 		GlanceInternalSvc: types.NamespacedName{

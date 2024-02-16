@@ -387,7 +387,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			},
 		)
 
-		// Create the service
+		// Create the internal/externl service(s) associated to the current API
 		svc, err := service.NewService(
 			service.GenericService(&service.GenericServiceDetails{
 				Name:      endpointName,
@@ -458,6 +458,20 @@ func (r *GlanceAPIReconciler) reconcileInit(
 				condition.ExposeServiceReadyRunningMessage))
 			return ctrlResult, nil
 		}
+
+		// For each StatefulSet associated with a given glanceAPI (single, internal, external)
+		// we create a headless service that allow to resolve pods by hostname (using kube-dns)
+		// and it allows to enable the glance-direct import method
+		ctrlResult, err = GetHeadlessService(
+			ctx,
+			helper,
+			instance,
+			serviceLabels,
+		)
+		if err != nil {
+			return ctrlResult, err
+		}
+
 		// create service - end
 
 		// if TLS is enabled
@@ -698,7 +712,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 
 	// Define a new StatefuleSet object
-	deplDef, err := glanceapi.StatefulSet(instance, inputHash, serviceLabels, serviceAnnotations, privileged)
+	deplDef, err := glanceapi.StatefulSet(instance,
+		inputHash,
+		serviceLabels,
+		serviceAnnotations,
+		privileged,
+	)
 	if err != nil {
 		return ctrlResult, err
 	}
@@ -929,7 +948,13 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		Endpoints:   instance.Status.APIEndpoints,
 	}
 
-	ksSvc := keystonev1.NewKeystoneEndpoint(instance.Name, instance.Namespace, ksEndpointSpec, serviceLabels, time.Duration(10)*time.Second)
+	ksSvc := keystonev1.NewKeystoneEndpoint(
+		instance.Name,
+		instance.Namespace,
+		ksEndpointSpec,
+		serviceLabels,
+		time.Duration(10)*time.Second,
+	)
 	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err

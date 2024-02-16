@@ -29,6 +29,5 @@ func GetGlanceEndpoints(apiType string) map[service.Endpoint]endpoint.Data {
 			Port: glance.GlanceInternalPort,
 		}
 	}
-
 	return glanceEndpoints
 }

@@ -101,6 +101,7 @@ func StatefulSet(
 	envVars := map[string]env.Setter{}
 	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
+	envVars["GLANCE_DOMAIN"] = env.SetValue(instance.Status.Domain)
 
 	apiVolumes := []corev1.Volume{
 		{
@@ -124,9 +125,13 @@ func StatefulSet(
 			ReadOnly:  true,
 		},
 	}
-	// Append LogVolume to the apiVolumes: this will be used to stream
-	// logging
+
+	// Append LogVolume to the apiVolumes: this will be used to stream logging
 	apiVolumeMounts = append(apiVolumeMounts, glance.GetLogVolumeMount()...)
+
+	// Append scripts
+	apiVolumes = append(apiVolumes, glance.GetScriptVolume()...)
+	apiVolumeMounts = append(apiVolumeMounts, glance.GetScriptVolumeMount()...)
 
 	// If cache is provided, we expect the main glance_controller to request a
 	// PVC that should be used for that purpose (according to ImageCacheSize)
@@ -168,12 +173,20 @@ func StatefulSet(
 		}
 	}
 
+	stsName := instance.Name
+	// The StatefulSet name **must** match with the headless service
+	// endpoint Name (see GetHeadlessService() function under controllers/
+	// glance_common)
+	if instance.Spec.APIType != "single" {
+		stsName = instance.Name + "-api"
+	}
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name,
+			Name:      stsName,
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{
+			ServiceName: stsName,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},

@@ -114,6 +114,9 @@ spec:
           subPath: glance-api-config.json
         - mountPath: /var/log/glance
           name: logs
+        - mountPath: /usr/local/bin/container-scripts
+          name: scripts
+          readOnly: true
         - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
           name: combined-ca-bundle
           readOnly: true
@@ -130,6 +133,10 @@ spec:
           secretName: glance-default-single-config-data
       - emptyDir: {}
         name: logs
+      - name: scripts
+        secret:
+          defaultMode: 493
+          secretName: glance-scripts
       - name: combined-ca-bundle
         secret:
           defaultMode: 292
@@ -151,8 +158,8 @@ kind: TestAssert
 namespaced: true
 commands:
   - script: |
-      template='{{.status.apiEndpoint.default-internal}}{{":"}}{{.status.apiEndpoint.default-public}}{{"\n"}}'
-      regex="https:\/\/glance-internal.$NAMESPACE.*:https:\/\/glance-public.$NAMESPACE.*"
+      template='{{index .status.apiEndpoint "default-internal"}}{{":"}}{{index .status.apiEndpoint "default-public"}}{{"\n"}}'
+      regex="https:\/\/glance-default-internal.$NAMESPACE.*:https:\/\/glance-default-public.$NAMESPACE.*"
       apiEndpoints=$(oc get -n $NAMESPACE Glance glance -o go-template="$template")
       matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")
       if [ -z "$matches" ]; then

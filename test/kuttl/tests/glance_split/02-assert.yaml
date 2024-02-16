@@ -17,7 +17,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-default-external
+  name: glance-default-external-api
 spec:
   replicas: 2
 status:
@@ -27,7 +27,7 @@ status:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: glance-default-internal
+  name: glance-default-internal-api
 spec:
   replicas: 2
 status:
