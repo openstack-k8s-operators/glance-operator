@@ -155,8 +155,8 @@ func GetHeadlessService(
 	// The endpointName for headless services **must** match with:
 	// - statefulset.metadata.name
 	// - statefulset.spec.servicename
-	if instance.Spec.APIType != "single" {
-		endpointName = instance.Name + "-api"
+	if instance.Spec.APIType != glancev1.APISingle {
+		endpointName = fmt.Sprintf("%s-api", instance.Name)
 	}
 
 	// Create the (headless) service
