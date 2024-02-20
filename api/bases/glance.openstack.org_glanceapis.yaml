@@ -817,9 +817,20 @@ spec:
                   - extraVol
                   type: object
                 type: array
-              imageCacheSize:
-                default: ""
-                type: string
+              imageCache:
+                properties:
+                  cleanerScheduler:
+                    default: 1 0 * * *
+                    type: string
+                  prunerScheduler:
+                    default: 1 0 * * *
+                    type: string
+                  size:
+                    default: ""
+                    type: string
+                required:
+                - size
+                type: object
               networkAttachments:
                 items:
                   type: string
@@ -972,7 +983,6 @@ spec:
             required:
             - containerImage
             - databaseHostname
-            - imageCacheSize
             - secret
             - serviceAccount
             - storageRequest

@@ -33,6 +33,8 @@ type GlanceDefaults struct {
 	ContainerImageURL string
 	DBPurgeAge        int
 	DBPurgeSchedule   string
+	CleanerSchedule   string
+	PrunerSchedule   string
 }
 
 var glanceDefaults GlanceDefaults
@@ -119,6 +121,14 @@ func (spec *GlanceSpec) Default() {
 		// Check the sub-cr ContainerImage parameter
 		if glanceAPI.ContainerImage == "" {
 			glanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
+			spec.GlanceAPIs[key] = glanceAPI
+		}
+		if glanceAPI.ImageCache.CleanerScheduler == "" {
+			glanceAPI.ImageCache.CleanerScheduler = glanceDefaults.CleanerSchedule
+			spec.GlanceAPIs[key] = glanceAPI
+		}
+		if glanceAPI.ImageCache.PrunerScheduler == "" {
+			glanceAPI.ImageCache.PrunerScheduler = glanceDefaults.PrunerSchedule
 			spec.GlanceAPIs[key] = glanceAPI
 		}
 	}

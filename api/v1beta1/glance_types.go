@@ -115,10 +115,9 @@ type GlanceSpec struct {
 	// registered keystone limits
 	Quotas QuotaLimits `json:"quotas,omitempty"`
 
-	// ImageCacheSize, provides the size of the cache that will be reflected in the image_cache_max_size parameter
-	// Local storage request, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
-	// +kubebuilder:default=""
-	ImageCacheSize string `json:"imageCacheSize"`
+	// ImageCache -
+	// +kubebuilder:default={}
+	ImageCache ImageCache `json:"imageCache"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:default=""
@@ -164,6 +163,14 @@ type GlanceDebug struct {
 	// +kubebuilder:default=false
 	// DBPurge increases log verbosity by executing the db_purge command with "--debug".
 	DBPurge bool `json:"dbPurge"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// Cleaner increases log verbosity by executing the glance-manage command with "--debug".
+	Cleaner bool `json:"cleaner"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// Pruner increases log verbosity by executing the glance-manage command with "--debug".
+	Pruner bool `json:"pruner"`
 }
 
 // GlanceStatus defines the observed state of Glance

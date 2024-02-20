@@ -43,6 +43,10 @@ const (
 	DBPurgeDefaultAge = 30
 	//DBPurgeDefaultSchedule is in crontab format, and the default runs the job once every day
 	DBPurgeDefaultSchedule = "1 0 * * *"
+	//CleanerDefaultSchedule is in crontab format, and the default runs the job once every day
+	CleanerDefaultSchedule = "*/30 * * * *"
+	//PrunerDefaultSchedule is in crontab format, and the default runs the job once every day
+	PrunerDefaultSchedule = "1 0 * * *"
 )
 
 // GlanceAPITemplate defines the desired state of GlanceAPI
@@ -108,9 +112,23 @@ type GlanceAPITemplate struct {
 	// TLS - Parameters related to the TLS
 	TLS tls.API `json:"tls,omitempty"`
 
-	// ImageCacheSize, provides the size of the cache that will be reflected in the image_cache_max_size parameter
+	// ImageCache -
+	// +kubebuilder:validation:Optional
+	ImageCache ImageCache `json:"imageCache,omitempty"`
+}
+
+type ImageCache struct {
+	// Size - Local storage request, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
 	// +kubebuilder:default=""
-	ImageCacheSize string `json:"imageCacheSize"`
+	Size string `json:"size"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="1 0 * * *"
+	// Schedule defines the crontab format string to schedule the Cleaner cronJob
+	CleanerScheduler string `json:"cleanerScheduler"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default="1 0 * * *"
+	//Schedule defines the crontab format string to schedule the Pruner cronJob
+	PrunerScheduler string `json:"prunerScheduler"`
 }
 
 // APIOverrideSpec to override the generated manifest of several child resources.
@@ -127,6 +145,8 @@ func SetupDefaults() {
 		ContainerImageURL: util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", GlanceAPIContainerImage),
 		DBPurgeAge: DBPurgeDefaultAge,
 		DBPurgeSchedule: DBPurgeDefaultSchedule,
+		CleanerSchedule: CleanerDefaultSchedule,
+		PrunerSchedule: PrunerDefaultSchedule,
 	}
 
 	SetupGlanceDefaults(glanceDefaults)

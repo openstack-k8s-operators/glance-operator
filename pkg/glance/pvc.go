@@ -20,7 +20,7 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 
 	if pvcType == PvcCache {
 		pvcAnnotation["image-cache"] = "true"
-		requestSize = api.Spec.ImageCacheSize
+		requestSize = api.Spec.GlanceAPITemplate.ImageCache.Size
 		// append -cache to avoid confusion when listing PVCs
 		pvcName = fmt.Sprintf("%s-cache", ServiceName)
 	}

@@ -76,17 +76,12 @@ const (
 	// KeystoneEndpoint - indicates whether the glanceAPI should register the
 	// endpoints in keystone
 	KeystoneEndpoint = "keystoneEndpoint"
-
 	//DBPurge -
 	DBPurge CronJobType = "purge"
 	//CacheCleaner -
 	CacheCleaner CronJobType = "cleaner"
 	//CachePruner -
 	CachePruner CronJobType = "pruner"
-	//CacheCleanerDefaultSchedule -
-	CacheCleanerDefaultSchedule = "1 0 * * *"
-	//CachePrunerDefaultSchedule -
-	CachePrunerDefaultSchedule = "*/30 * * * *"
 	//ImageCacheDir -
 	ImageCacheDir = "/var/lib/glance/image-cache"
 	// GlanceManage base command (required for DBPurge)

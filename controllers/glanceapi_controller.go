@@ -782,7 +782,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 
 	// create ImageCache cronJobs
 
-	if len(instance.Spec.ImageCacheSize) > 0 {
+	if len(instance.Spec.ImageCache.Size) > 0 {
 		// If image-cache has been enabled, create two additional cronJobs:
 		// - CacheCleanerJob: clean stalled images or in an invalid state
 		// - CachePrunerJob: clean the image-cache folder to stay under ImageCacheSize
@@ -920,9 +920,9 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	}
 
 	// Configure the cache bits accordingly as global options (00-config.conf)
-	if len(instance.Spec.ImageCacheSize) > 0 {
+	if len(instance.Spec.ImageCache.Size) > 0 {
 		// if ImageCacheSize is not a valid k8s Quantity, return an error
-		cacheSize, err := resource.ParseQuantity(instance.Spec.ImageCacheSize)
+		cacheSize, err := resource.ParseQuantity(instance.Spec.ImageCache.Size)
 		if err != nil {
 			return err
 		}
@@ -1063,13 +1063,13 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 	var ctrlResult ctrl.Result
 
 	command := glance.GlanceCacheCleaner
-	schedule := glance.CacheCleanerDefaultSchedule
+	schedule := instance.Spec.ImageCache.CleanerScheduler
 	// TODO: Fix debug option depending on the API
 	debugArg := ""
 
 	if cjType == glance.CachePruner {
 		command = glance.GlanceCachePruner
-		schedule = glance.CachePrunerDefaultSchedule
+		schedule = instance.Spec.ImageCache.PrunerScheduler
 	}
 	cachePVCs, _ := GetPvcListWithLabel(ctx, h, instance.Namespace, serviceLabels)
 	for _, vc := range cachePVCs.Items {
@@ -1077,7 +1077,7 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 		cacheAnnotations := vc.GetAnnotations()
 		if _, ok := cacheAnnotations["image-cache"]; ok {
 			cronSpec := glance.CronJobSpec{
-				Name:        fmt.Sprintf("%s-%s", instance.Name, cjType),
+				Name:        fmt.Sprintf("%s-%s", pvcName, cjType),
 				PvcClaim:    &pvcName,
 				Command:     command,
 				CjType:      cjType,

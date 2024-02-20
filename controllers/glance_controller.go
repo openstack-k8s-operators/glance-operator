@@ -786,8 +786,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	}
 
 	// Inherit the ImageCacheSize from the top level if not specified
-	if apiSpec.GlanceAPITemplate.ImageCacheSize == "" {
-		apiSpec.GlanceAPITemplate.ImageCacheSize = instance.Spec.ImageCacheSize
+	if apiSpec.ImageCache.Size == "" {
+		apiSpec.ImageCache.Size = instance.Spec.ImageCache.Size
 	}
 
 	// Inherit the values required for PVC creation from the top-level CR
@@ -875,9 +875,9 @@ func (r *GlanceReconciler) generateServiceConfig(
 	}
 	// We set in the main 00-config-default.conf the image-cache bits that will
 	// be used by CronJobs cleaner and pruner
-	if len(instance.Spec.ImageCacheSize) > 0 {
-		// if ImageCacheSize is not a valid k8s Quantity, return an error
-		cacheSize, err := resource.ParseQuantity(instance.Spec.ImageCacheSize)
+	if len(instance.Spec.ImageCache.Size) > 0 {
+		// if ImageCache.Size is not a valid k8s Quantity, return an error
+		cacheSize, err := resource.ParseQuantity(instance.Spec.ImageCache.Size)
 		if err != nil {
 			return err
 		}

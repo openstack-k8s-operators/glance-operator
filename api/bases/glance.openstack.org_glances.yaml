@@ -61,7 +61,13 @@ spec:
                 type: object
               debug:
                 properties:
+                  cleaner:
+                    default: false
+                    type: boolean
                   dbPurge:
+                    default: false
+                    type: boolean
+                  pruner:
                     default: false
                     type: boolean
                 type: object
@@ -832,9 +838,20 @@ spec:
                       items:
                         type: string
                       type: array
-                    imageCacheSize:
-                      default: ""
-                      type: string
+                    imageCache:
+                      properties:
+                        cleanerScheduler:
+                          default: 1 0 * * *
+                          type: string
+                        prunerScheduler:
+                          default: 1 0 * * *
+                          type: string
+                        size:
+                          default: ""
+                          type: string
+                      required:
+                      - size
+                      type: object
                     networkAttachments:
                       items:
                         type: string
@@ -964,13 +981,23 @@ spec:
                       type: string
                   required:
                   - containerImage
-                  - imageCacheSize
                   - storageRequest
                   type: object
                 type: object
-              imageCacheSize:
-                default: ""
-                type: string
+              imageCache:
+                properties:
+                  cleanerScheduler:
+                    default: 1 0 * * *
+                    type: string
+                  prunerScheduler:
+                    default: 1 0 * * *
+                    type: string
+                  size:
+                    default: ""
+                    type: string
+                required:
+                - size
+                type: object
               keystoneEndpoint:
                 default: ""
                 type: string
@@ -1026,7 +1053,7 @@ spec:
             - containerImage
             - databaseInstance
             - glanceAPIs
-            - imageCacheSize
+            - imageCache
             - keystoneEndpoint
             - secret
             - storageRequest
