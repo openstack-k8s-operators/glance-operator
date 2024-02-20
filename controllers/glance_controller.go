@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
@@ -364,66 +365,9 @@ func (r *GlanceReconciler) reconcileInit(
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' init", instance.Name))
 
 	//
-	// create service DB instance
-	//
-	db := mariadbv1.NewDatabase(
-		instance.Name,
-		instance.Spec.DatabaseUser,
-		instance.Spec.Secret,
-		map[string]string{
-			"dbName": instance.Spec.DatabaseInstance,
-		},
-	)
-	// create or patch the DB
-	ctrlResult, err := db.CreateOrPatchDB(
-		ctx,
-		helper,
-	)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.DBReadyErrorMessage,
-			err.Error()))
-		return ctrl.Result{}, err
-	}
-	if (ctrlResult != ctrl.Result{}) {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBReadyCondition,
-			condition.RequestedReason,
-			condition.SeverityInfo,
-			condition.DBReadyRunningMessage))
-		return ctrlResult, nil
-	}
-	// wait for the DB to be setup
-	ctrlResult, err = db.WaitForDBCreated(ctx, helper)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.DBReadyErrorMessage,
-			err.Error()))
-		return ctrlResult, err
-	}
-	if (ctrlResult != ctrl.Result{}) {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DBReadyCondition,
-			condition.RequestedReason,
-			condition.SeverityInfo,
-			condition.DBReadyRunningMessage))
-		return ctrlResult, nil
-	}
-	// update Status.DatabaseHostname, used to config the service
-	instance.Status.DatabaseHostname = db.GetDatabaseHostname()
-	instance.Status.Conditions.MarkTrue(condition.DBReadyCondition, condition.DBReadyMessage)
-	// create service DB - end
-
-	//
 	// create Keystone service and users - https://docs.openstack.org/Glance/latest/install/install-rdo.html#configure-user-and-endpoints
 	//
-	_, _, err = oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
+	_, _, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
 			return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
@@ -442,7 +386,7 @@ func (r *GlanceReconciler) reconcileInit(
 	}
 
 	ksSvc := keystonev1.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, time.Duration(10)*time.Second)
-	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
+	ctrlResult, err := ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err
 	}
@@ -588,12 +532,19 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
+	db, ctrlResult, err := r.ensureDB(ctx, helper, instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	} else if (ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
+	}
+
 	//
 	// Create Secrets required as input for the Service and calculate an overall hash of hashes
 	//
 
 	//
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels, db)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -611,7 +562,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	var serviceAnnotations map[string]string
-	var ctrlResult ctrl.Result
 	// networks to attach to
 	for _, glanceAPI := range instance.Spec.GlanceAPIs {
 		serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, glanceAPI.NetworkAttachments, helper)
@@ -898,6 +848,7 @@ func (r *GlanceReconciler) generateServiceConfig(
 	instance *glancev1.Glance,
 	envVars *map[string]env.Setter,
 	serviceLabels map[string]string,
+	db *mariadbv1.Database,
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
@@ -910,7 +861,7 @@ func (r *GlanceReconciler) generateServiceConfig(
 	// hence only passing the database related parameters
 	templateParameters := map[string]interface{}{
 		"MinimalConfig": true, // This tells the template to generate a minimal config
-		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s",
+		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s?read_default_file=/etc/my.cnf",
 			instance.Spec.DatabaseUser,
 			string(ospSecret.Data[instance.Spec.PasswordSelectors.Database]),
 			instance.Status.DatabaseHostname,
@@ -930,7 +881,17 @@ func (r *GlanceReconciler) generateServiceConfig(
 		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
 	}
 
-	customData := map[string]string{glance.CustomConfigFileName: instance.Spec.CustomServiceConfig}
+	var tlsCfg *tls.Service
+	for _, api := range instance.Spec.GlanceAPIs {
+		if api.TLS.CaBundleSecretName != "" {
+			tlsCfg = &tls.Service{}
+			break
+		}
+	}
+	customData := map[string]string{
+		glance.CustomConfigFileName: instance.Spec.CustomServiceConfig,
+		"my.cnf":                    db.GetDatabaseClientConfig(tlsCfg), //(mschuppert) for now just get the default my.cnf
+	}
 
 	// Generate both default 00-config.conf and -scripts
 	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, true)
@@ -1084,4 +1045,71 @@ func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glanc
 		}
 	}
 	return nil
+}
+
+func (r *GlanceReconciler) ensureDB(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.Glance,
+) (*mariadbv1.Database, ctrl.Result, error) {
+	//
+	// create service DB instance
+	//
+	db := mariadbv1.NewDatabase(
+		instance.Name,
+		instance.Spec.DatabaseUser,
+		instance.Spec.Secret,
+		map[string]string{
+			"dbName": instance.Spec.DatabaseInstance,
+		},
+	)
+
+	// create or patch the DB
+	ctrlResult, err := db.CreateOrPatchDBByName(
+		ctx,
+		h,
+		instance.Spec.DatabaseInstance,
+	)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DBReadyErrorMessage,
+			err.Error()))
+		return db, ctrl.Result{}, err
+	}
+	if (ctrlResult != ctrl.Result{}) {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.DBReadyRunningMessage))
+		return db, ctrlResult, nil
+	}
+	// wait for the DB to be setup
+	// (ksambor) should we use WaitForDBCreatedWithTimeout instead?
+	ctrlResult, err = db.WaitForDBCreated(ctx, h)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DBReadyErrorMessage,
+			err.Error()))
+		return db, ctrlResult, err
+	}
+	if (ctrlResult != ctrl.Result{}) {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.DBReadyRunningMessage))
+		return db, ctrlResult, nil
+	}
+
+	// update Status.DatabaseHostname, used to config the service
+	instance.Status.DatabaseHostname = db.GetDatabaseHostname()
+	instance.Status.Conditions.MarkTrue(condition.DBReadyCondition, condition.DBReadyMessage)
+	return db, ctrlResult, nil
 }

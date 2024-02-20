@@ -58,6 +58,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/statefulset"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
+	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -791,8 +792,20 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
+	db, err := mariadbv1.GetDatabaseByName(ctx, h, glance.DatabaseName)
+	if err != nil {
+		return err
+	}
+
+	var tlsCfg *tls.Service
+	if instance.Spec.TLS.Ca.CaBundleSecretName != "" {
+		tlsCfg = &tls.Service{}
+	}
 	// 02-config.conf
-	customData := map[string]string{glance.CustomServiceConfigFileName: instance.Spec.CustomServiceConfig}
+	customData := map[string]string{
+		glance.CustomServiceConfigFileName: instance.Spec.CustomServiceConfig,
+		"my.cnf":                           db.GetDatabaseClientConfig(tlsCfg), //(mschuppert) for now just get the default my.cnf
+	}
 
 	// 03-config.conf
 	customSecrets := ""
@@ -845,7 +858,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		"ServicePassword":     string(ospSecret.Data[instance.Spec.PasswordSelectors.Service]),
 		"KeystoneInternalURL": keystoneInternalURL,
 		"KeystonePublicURL":   keystonePublicURL,
-		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s",
+		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s?read_default_file=/etc/my.cnf",
 			instance.Spec.DatabaseUser,
 			string(ospSecret.Data[instance.Spec.PasswordSelectors.Database]),
 			instance.Spec.DatabaseHostname,

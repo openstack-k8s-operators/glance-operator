@@ -88,11 +88,26 @@ func CronJob(
 				},
 			},
 		},
+		{
+			Name: "config-data",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					DefaultMode: &config0644AccessMode,
+					SecretName:  ServiceName + "-config-data",
+				},
+			},
+		},
 	}
 	cronJobVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "db-purge-config-data",
 			MountPath: "/etc/glance/glance.conf.d",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/my.cnf",
+			SubPath:   "my.cnf",
 			ReadOnly:  true,
 		},
 	}
