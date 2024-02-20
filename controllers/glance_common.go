@@ -26,6 +26,7 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
@@ -237,4 +238,20 @@ func GetPvcListWithLabel(
 		return nil, err
 	}
 	return pvcList, nil
+}
+
+// GetServiceLabels -
+func GetServiceLabels(
+	instance *glancev1.GlanceAPI,
+) map[string]string {
+
+	// Generate serviceLabels that will be passed to all the Service related resource
+	// By doing this we can `oc get` all the resources associated to Glance making
+	// queries by label
+	return map[string]string{
+		common.AppSelector:       glance.ServiceName,
+		common.ComponentSelector: glance.Component,
+		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name), instance.Spec.APIType),
+		common.OwnerSelector:     instance.Name,
+	}
 }

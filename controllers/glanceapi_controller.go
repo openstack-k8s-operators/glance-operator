@@ -22,6 +22,9 @@ import (
 	"strings"
 	"time"
 
+	batchv1 "k8s.io/api/batch/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/fields"
@@ -562,18 +565,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
-	// Generate serviceLabels that will be passed to all the Service related resource
-	// By doing this we can `oc get` all the resources associated to Glance making
-	// queries by label
-
-	serviceLabels := map[string]string{
-		common.AppSelector:       glance.ServiceName,
-		common.ComponentSelector: glance.Component,
-		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name), instance.Spec.APIType),
-		common.OwnerSelector:     instance.Name,
-	}
-
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -687,7 +679,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 
 	// Handle service init
-	ctrlResult, err = r.reconcileInit(ctx, instance, helper, serviceLabels)
+	ctrlResult, err = r.reconcileInit(ctx, instance, helper, GetServiceLabels(instance))
 	if err != nil {
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
@@ -717,7 +709,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// Define a new StatefuleSet object
 	deplDef, err := glanceapi.StatefulSet(instance,
 		inputHash,
-		serviceLabels,
+		GetServiceLabels(instance),
 		serviceAnnotations,
 		privileged,
 	)
@@ -749,7 +741,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.ReadyCount = depl.GetStatefulSet().Status.ReadyReplicas
 
 	// verify if network attachment matches expectations
-	networkReady, networkAttachmentStatus, err := nad.VerifyNetworkStatusFromAnnotation(ctx, helper, instance.Spec.NetworkAttachments, serviceLabels, instance.Status.ReadyCount)
+	networkReady, networkAttachmentStatus, err := nad.VerifyNetworkStatusFromAnnotation(ctx, helper, instance.Spec.NetworkAttachments, GetServiceLabels(instance), instance.Status.ReadyCount)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -792,7 +784,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 				ctx,
 				helper,
 				instance,
-				serviceLabels,
+				GetServiceLabels(instance),
 				serviceAnnotations,
 				item,
 			)
@@ -822,9 +814,8 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	h *helper.Helper,
 	instance *glancev1.GlanceAPI,
 	envVars *map[string]env.Setter,
-	serviceLabels map[string]string,
 ) error {
-	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
+	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), GetServiceLabels(instance))
 
 	db, err := mariadbv1.GetDatabaseByName(ctx, h, glance.DatabaseName)
 	if err != nil {
@@ -1100,6 +1091,76 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 			}
 		}
 	}
+	// Cleanup any existing (but not used) ImageCache cronJob
+	if ctrlResult, err := r.deleteImageCacheJob(ctx, h, instance, GetServiceLabels(instance)); err != nil {
+		return ctrlResult, err
+	}
+	return ctrlResult, err
+}
 
+// deleteImageCacheJob - delete the ImageCache cronJobs associated to a given
+// GlanceAPI
+func (r *GlanceAPIReconciler) deleteImageCacheJob(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.GlanceAPI,
+	serviceLabels map[string]string,
+) (ctrl.Result, error) {
+	var err error
+	var ctrlResult ctrl.Result
+	// Get the PVCs using labelSelector (only the PVCs associated to the current
+	// GlanceAPI are retrieved)
+	cachePVCs, _ := GetPvcListWithLabel(ctx, h, instance.Namespace, serviceLabels)
+
+	// For each PVC that present the image-cache annotation, check if there's an
+	// associated POD (pvc and pod shares the same StatefulSet templating mechanism)
+	for _, vc := range cachePVCs.Items {
+		cacheAnnotations := vc.GetAnnotations()
+		if _, ok := cacheAnnotations["image-cache"]; ok {
+			var pvcName string = vc.GetName()
+			// Get the pod (by name) associated to the current pvc
+			var pod corev1.Pod
+			if err := r.Client.Get(ctx, types.NamespacedName{
+				Name:      strings.TrimPrefix(pvcName, "glance-cache-"),
+				Namespace: instance.Namespace,
+			}, &pod); err != nil {
+				return ctrlResult, err
+			}
+			// if we have no pod Running with the associated cache pvc,
+			// we can delete the imageCache cronJob
+			if pod.Name == "" {
+				// Get both Cleaner and Pruner CronJobs and delete them
+				if ctrlResult, err = r.deleteJob(ctx, instance, pvcName); err != nil {
+					return ctrlResult, err
+				}
+			}
+		}
+	}
+	return ctrlResult, err
+}
+
+// delete an imageCache cronJob no longer used
+func (r *GlanceAPIReconciler) deleteJob(
+	ctx context.Context,
+	instance *glancev1.GlanceAPI,
+	pvcName string,
+) (ctrl.Result, error) {
+	var err error
+	var ctrlResult ctrl.Result
+	var cronJob batchv1.CronJob
+	// For each imageCache we have both cleaner and pruner cronJobs to check and
+	// cleanup if the conditions are met
+	for _, cj := range []glance.CronJobType{glance.CachePruner, glance.CacheCleaner} {
+		if err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", pvcName, cj), Namespace: instance.Namespace}, &cronJob); err != nil {
+			// It is possible that the pvc still exists, but the GlanceAPI has no
+			// associated replicas anymore: in this case there's no cronJob and
+			// we should move to the next item: we don't have to raise any exception
+			continue
+		}
+		// A cronJob is found and the delete is called
+		if err = r.Delete(ctx, &cronJob, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil {
+			return ctrlResult, err
+		}
+	}
 	return ctrlResult, err
 }
