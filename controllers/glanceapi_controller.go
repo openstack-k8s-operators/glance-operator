@@ -798,6 +798,15 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 				return ctrlResult, err
 			}
 		}
+		// Cleanup any existing (but not used) ImageCache cronJob
+		if ctrlResult, err := r.deleteImageCacheJob(
+			ctx,
+			helper,
+			instance,
+			GetServiceLabels(instance),
+		); err != nil {
+			return ctrlResult, err
+		}
 	}
 
 	// Mark the CronJobReadyCondition as True because there's nothing to do here
@@ -1091,10 +1100,6 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 			}
 		}
 	}
-	// Cleanup any existing (but not used) ImageCache cronJob
-	if ctrlResult, err := r.deleteImageCacheJob(ctx, h, instance, GetServiceLabels(instance)); err != nil {
-		return ctrlResult, err
-	}
 	return ctrlResult, err
 }
 
@@ -1123,15 +1128,11 @@ func (r *GlanceAPIReconciler) deleteImageCacheJob(
 			if err := r.Client.Get(ctx, types.NamespacedName{
 				Name:      strings.TrimPrefix(pvcName, "glance-cache-"),
 				Namespace: instance.Namespace,
-			}, &pod); err != nil {
-				return ctrlResult, err
-			}
-			// if we have no pod Running with the associated cache pvc,
-			// we can delete the imageCache cronJob
-			if pod.Name == "" {
-				// Get both Cleaner and Pruner CronJobs and delete them
+			}, &pod); err != nil && k8s_errors.IsNotFound(err) {
+				// if we have no pod Running with the associated cache pvc,
+				// we can delete the imageCache cronJob if still exists
 				if ctrlResult, err = r.deleteJob(ctx, instance, pvcName); err != nil {
-					return ctrlResult, err
+					return ctrl.Result{}, nil
 				}
 			}
 		}
@@ -1151,7 +1152,13 @@ func (r *GlanceAPIReconciler) deleteJob(
 	// For each imageCache we have both cleaner and pruner cronJobs to check and
 	// cleanup if the conditions are met
 	for _, cj := range []glance.CronJobType{glance.CachePruner, glance.CacheCleaner} {
-		if err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s", pvcName, cj), Namespace: instance.Namespace}, &cronJob); err != nil {
+		if err = r.Client.Get(
+			ctx,
+			types.NamespacedName{
+				Name:      fmt.Sprintf("%s-%s", pvcName, cj),
+				Namespace: instance.Namespace},
+			&cronJob,
+		); err != nil {
 			// It is possible that the pvc still exists, but the GlanceAPI has no
 			// associated replicas anymore: in this case there's no cronJob and
 			// we should move to the next item: we don't have to raise any exception

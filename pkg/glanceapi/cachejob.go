@@ -103,6 +103,7 @@ func ImageCacheJob(
 					Completions: &completions,
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
+							Affinity: GetGlanceAPIPodAffinity(instance),
 							Containers: []corev1.Container{
 								{
 									Name:  cronSpec.Name,

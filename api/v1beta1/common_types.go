@@ -117,6 +117,7 @@ type GlanceAPITemplate struct {
 	ImageCache ImageCache `json:"imageCache,omitempty"`
 }
 
+// ImageCache - struct where the exposed imageCache params are defined
 type ImageCache struct {
 	// Size - Local storage request, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
 	// +kubebuilder:default=""
