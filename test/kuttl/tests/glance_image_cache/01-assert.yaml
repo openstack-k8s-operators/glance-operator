@@ -1,0 +1,168 @@
+#
+# Check for:
+# - Glance CR
+# - GlanceAPI glance-single CR
+# - GlanceAPI glance-api StatefulSet
+# - glance-api Pod
+# - glance-cleaner CronJob
+# - glance-pruner CronJob
+# - glance imageCache PVC
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  serviceUser: glance
+  databaseInstance: openstack
+  databaseUser: glance
+  glanceAPIs:
+    default:
+      replicas: 1
+      type: "single"
+      imageCache:
+        cleanerScheduler: '*/30 * * * *'
+        prunerScheduler: 1 0 * * *
+        size: 2G
+  secret: osp-secret
+  storageRequest: 10G
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-single
+spec:
+  apiType: single
+  replicas: 1
+  imageCache:
+    cleanerScheduler: '*/30 * * * *'
+    prunerScheduler: 1 0 * * *
+    size: 2G
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    service: glance
+status:
+  phase: Running
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: glance-cache-glance-default-single-0-cleaner
+spec:
+  jobTemplate:
+    metadata:
+      labels:
+        component: glance-api
+        glanceAPI: glance-default-single
+        owner: glance-default-single
+        service: glance
+    spec:
+      template:
+        spec:
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: glanceAPI
+                    operator: In
+                    values:
+                    - glance-default-single
+                topologyKey: kubernetes.io/hostname
+          containers:
+          - args:
+            - -c
+            - /usr/bin/glance-cache-cleaner  --config-dir /etc/glance/glance.conf.d
+            command:
+            - /bin/bash
+            name: glance-cache-glance-default-single-0-cleaner
+            volumeMounts:
+            - mountPath: /etc/glance/glance.conf.d
+              name: image-cache-config-data
+              readOnly: true
+            - mountPath: /var/lib/glance/image-cache
+              name: glance-cache
+          volumes:
+          - name: image-cache-config-data
+            secret:
+              items:
+              - key: 00-config.conf
+                path: 00-config.conf
+              secretName: glance-default-single-config-data
+          - name: glance-cache
+            persistentVolumeClaim:
+              claimName: glance-cache-glance-default-single-0
+  schedule: '*/30 * * * *'
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: glance-cache-glance-default-single-0-pruner
+spec:
+  jobTemplate:
+    metadata:
+      labels:
+        component: glance-api
+        glanceAPI: glance-default-single
+        owner: glance-default-single
+        service: glance
+    spec:
+      template:
+        spec:
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: glanceAPI
+                    operator: In
+                    values:
+                    - glance-default-single
+                topologyKey: kubernetes.io/hostname
+          containers:
+          - args:
+            - -c
+            - /usr/bin/glance-cache-pruner  --config-dir /etc/glance/glance.conf.d
+            command:
+            - /bin/bash
+            name: glance-cache-glance-default-single-0-pruner
+            volumeMounts:
+            - mountPath: /etc/glance/glance.conf.d
+              name: image-cache-config-data
+              readOnly: true
+            - mountPath: /var/lib/glance/image-cache
+              name: glance-cache
+          volumes:
+          - name: image-cache-config-data
+            secret:
+              items:
+              - key: 00-config.conf
+                path: 00-config.conf
+              secretName: glance-default-single-config-data
+          - name: glance-cache
+            persistentVolumeClaim:
+              claimName: glance-cache-glance-default-single-0
+  schedule: '1 0 * * *'
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    image-cache: "true"
+    pv.kubernetes.io/bind-completed: "yes"
+    pv.kubernetes.io/bound-by-controller: "yes"
+  labels:
+    component: glance-api
+    glanceAPI: glance-default-single
+    owner: glance-default-single
+    service: glance
+  name: glance-cache-glance-default-single-0
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2G

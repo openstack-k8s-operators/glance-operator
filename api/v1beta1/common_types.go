@@ -123,7 +123,7 @@ type ImageCache struct {
 	// +kubebuilder:default=""
 	Size string `json:"size"`
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="1 0 * * *"
+	// +kubebuilder:default="*/30 * * * *"
 	// Schedule defines the crontab format string to schedule the Cleaner cronJob
 	CleanerScheduler string `json:"cleanerScheduler"`
 	// +kubebuilder:validation:Optional

@@ -820,7 +820,7 @@ spec:
               imageCache:
                 properties:
                   cleanerScheduler:
-                    default: 1 0 * * *
+                    default: '*/30 * * * *'
                     type: string
                   prunerScheduler:
                     default: 1 0 * * *

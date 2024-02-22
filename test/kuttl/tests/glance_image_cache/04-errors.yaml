@@ -1,0 +1,49 @@
+#
+# Check for:
+# - No Glance CR
+# - No GlanceAPI glance-single CR
+# - No GlanceAPI glance-api StatefulSet
+# - No glance-api Pod
+# - No glance-public service
+# - No glance internal and public endpoints
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-single
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-single
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-public
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: glance-cache-glance-default-single-0-cleaner
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: glance-cache-glance-default-single-0-pruner
