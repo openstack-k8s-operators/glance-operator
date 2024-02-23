@@ -17,8 +17,6 @@ spec:
       databaseInstance: openstack
       glanceAPIs:
         default:
-          debug:
-            service: false
           preserveJobs: false
           replicas: 1
           type: single

@@ -12,20 +12,14 @@ spec:
   keystoneEndpoint: central
   glanceAPIs:
     central:
-      debug:
-        service: false
       preserveJobs: false
       replicas: 1
       type: single
     edge1:
-      debug:
-        service: false
       preserveJobs: false
       replicas: 1
       type: single
     edge2:
-      debug:
-        service: false
       preserveJobs: false
       replicas: 1
       type: single

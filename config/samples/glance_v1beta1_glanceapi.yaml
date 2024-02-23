@@ -17,9 +17,6 @@ spec:
     here-foo1-config
   databaseUser: glance
   databaseHostname: glance
-  debug:
-    dbSync: false
-    service: false
   preserveJobs: false
   replicas: 1
   storageRequest: 10G
