@@ -75,7 +75,7 @@ spec:
           containers:
           - args:
             - -c
-            - /usr/bin/glance-cache-cleaner  --config-dir /etc/glance/glance.conf.d
+            - /usr/bin/glance-cache-cleaner --config-dir /etc/glance/glance.conf.d
             command:
             - /bin/bash
             name: glance-cache-glance-default-single-0-cleaner
@@ -125,7 +125,7 @@ spec:
           containers:
           - args:
             - -c
-            - /usr/bin/glance-cache-pruner  --config-dir /etc/glance/glance.conf.d
+            - /usr/bin/glance-cache-pruner --config-dir /etc/glance/glance.conf.d
             command:
             - /bin/bash
             name: glance-cache-glance-default-single-0-pruner

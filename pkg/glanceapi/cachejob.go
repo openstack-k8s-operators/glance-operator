@@ -37,9 +37,8 @@ func ImageCacheJob(
 	var cronCommand string
 
 	cronCommand = fmt.Sprintf(
-		"%s %s --config-dir /etc/glance/glance.conf.d",
+		"%s --config-dir /etc/glance/glance.conf.d",
 		cronSpec.Command,
-		cronSpec.Debug,
 	)
 
 	args := []string{"-c", cronCommand}

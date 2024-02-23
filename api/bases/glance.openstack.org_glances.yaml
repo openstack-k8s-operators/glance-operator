@@ -59,18 +59,6 @@ spec:
                     default: 1 0 * * *
                     type: string
                 type: object
-              debug:
-                properties:
-                  cleaner:
-                    default: false
-                    type: boolean
-                  dbPurge:
-                    default: false
-                    type: boolean
-                  pruner:
-                    default: false
-                    type: boolean
-                type: object
               extraMounts:
                 items:
                   properties:

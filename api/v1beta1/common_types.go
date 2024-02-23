@@ -43,7 +43,7 @@ const (
 	DBPurgeDefaultAge = 30
 	//DBPurgeDefaultSchedule is in crontab format, and the default runs the job once every day
 	DBPurgeDefaultSchedule = "1 0 * * *"
-	//CleanerDefaultSchedule is in crontab format, and the default runs the job once every day
+	//CleanerDefaultSchedule is in crontab format, and the default runs the job once every 30 minutes
 	CleanerDefaultSchedule = "*/30 * * * *"
 	//PrunerDefaultSchedule is in crontab format, and the default runs the job once every day
 	PrunerDefaultSchedule = "1 0 * * *"
@@ -112,7 +112,8 @@ type GlanceAPITemplate struct {
 	// TLS - Parameters related to the TLS
 	TLS tls.API `json:"tls,omitempty"`
 
-	// ImageCache -
+	// ImageCache - It represents the struct to expose the ImageCache related
+	// parameters (size of the PVC and cronJob schedule)
 	// +kubebuilder:validation:Optional
 	ImageCache ImageCache `json:"imageCache,omitempty"`
 }

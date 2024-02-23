@@ -72,11 +72,6 @@ type GlanceSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// Debug - enable debug for different deploy stages. If an init container is used, it runs and the
-	// actual action pod gets started with sleep infinity
-	Debug GlanceDebug `json:"debug,omitempty"`
-
-	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// PreserveJobs - do not delete jobs after they finished e.g. to check logs
 	PreserveJobs bool `json:"preserveJobs"`
@@ -157,21 +152,6 @@ type DBPurge struct {
 	Schedule string `json:"schedule"`
 }
 
-// GlanceDebug defines the observed state of GlanceAPIDebug
-type GlanceDebug struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// DBPurge increases log verbosity by executing the db_purge command with "--debug".
-	DBPurge bool `json:"dbPurge"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Cleaner increases log verbosity by executing the glance-manage command with "--debug".
-	Cleaner bool `json:"cleaner"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Pruner increases log verbosity by executing the glance-manage command with "--debug".
-	Pruner bool `json:"pruner"`
-}
 
 // GlanceStatus defines the observed state of Glance
 type GlanceStatus struct {

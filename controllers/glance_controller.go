@@ -947,18 +947,12 @@ func (r *GlanceReconciler) ensureDBPurgeJob(
 	serviceAnnotations map[string]string,
 ) (ctrl.Result, error) {
 
-	debugArg := ""
-	if instance.Spec.Debug.DBPurge {
-		debugArg = "--debug"
-	}
-
 	cronSpec := glance.CronJobSpec{
 		Name:        fmt.Sprintf("%s-dbpurge", glance.ServiceName),
 		PvcClaim:    nil,
 		Command:     glance.GlanceManage,
 		Schedule:    instance.Spec.DBPurge.Schedule,
 		CjType:      glance.DBPurge,
-		Debug:       debugArg,
 		Labels:      serviceLabels,
 		Annotations: serviceAnnotations,
 	}

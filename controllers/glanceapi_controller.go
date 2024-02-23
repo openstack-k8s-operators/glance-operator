@@ -1064,8 +1064,6 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 
 	command := glance.GlanceCacheCleaner
 	schedule := instance.Spec.ImageCache.CleanerScheduler
-	// TODO: Fix debug option depending on the API
-	debugArg := ""
 
 	if cjType == glance.CachePruner {
 		command = glance.GlanceCachePruner
@@ -1082,7 +1080,6 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 				Command:     command,
 				CjType:      cjType,
 				Schedule:    schedule,
-				Debug:       debugArg,
 				Labels:      serviceLabels,
 				Annotations: serviceAnnotations,
 			}

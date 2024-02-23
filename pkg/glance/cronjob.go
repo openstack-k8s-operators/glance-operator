@@ -32,7 +32,6 @@ type CronJobSpec struct {
 	Schedule    string
 	Command     string
 	CjType      CronJobType
-	Debug       string
 	Labels      map[string]string
 	Annotations map[string]string
 }
@@ -47,9 +46,8 @@ func DBPurgeJob(
 	var cronCommand string
 
 	cronCommand = fmt.Sprintf(
-		"%s %s --config-dir /etc/glance/glance.conf.d db purge %d",
+		"%s --config-dir /etc/glance/glance.conf.d db purge %d",
 		cronSpec.Command,
-		cronSpec.Debug,
 		instance.Spec.DBPurge.Age,
 	)
 
