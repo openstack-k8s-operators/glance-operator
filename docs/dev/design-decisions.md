@@ -125,7 +125,7 @@ spec:
   serviceUser: glance
   databaseInstance: openstack
   databaseUser: glance
-  glanceAPI:
+  glanceAPIs:
     ..
   secret: osp-secret
   storageClass: ""
@@ -160,7 +160,12 @@ The following diagram describes how k8s resources/object are connected.
 +------------+       +---------------------+ |---> | glance-default-internal |
 | glance CR  | |---> | glanceAPI-default CR|       +-------------------------+
 +------------+       +---------------------+ |---> | glance-default-external |
-                                                   +-------------------------+
+                                                   +-------------------------------+
+ (headless SVC to allow pod2pod communication)     | glance-default-internal-api   |
+ (it must match with the StatefulSet ServiceName)  +-------------------------------+
+                                                   | glance-default-external-api   |
+                                                   +-------------------------------+
+
 ```
 
 By default, if no option is specified, a `glanceAPI` deployment is `split`
@@ -198,7 +203,9 @@ and `external`.
 +------------+       +------------------+       +-------------------+      | glance-api-internal |
 | glance CR  | |---> | glance-default CR| |---> | glance-api-single | |--> | --------------------+
 +------------+       +------------------+       +-------------------+      | glance-api-public   |
-                                                                           +---------------------+
+                                                                           +-----------------------+
+                                                       (headless Svc) |--> | glance-api-single-api |
+                                                                           +-----------------------+
 
 ```
 
