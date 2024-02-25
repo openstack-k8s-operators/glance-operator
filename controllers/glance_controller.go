@@ -738,10 +738,13 @@ func (r *GlanceReconciler) apiDeployment(
 	apiIntEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointInternal))
 	// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
-		instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+		// Do not register a public endpoint for Edge instances
+		if current.Type != glancev1.APIEdge {
+			instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+		}
 		// if we don't split, both apiEndpoints (public and internal) should be
 		// reflected to the main Glance CR
-		if current.Type == glancev1.APISingle {
+		if current.Type == glancev1.APISingle || current.Type == glancev1.APIEdge {
 			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 	}

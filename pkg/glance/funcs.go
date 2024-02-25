@@ -43,6 +43,7 @@ func GetGlanceAPIName(name string) string {
 		glancev1.APIInternal,
 		glancev1.APIExternal,
 		glancev1.APISingle,
+		glancev1.APIEdge,
 	}
 	for _, suffix := range suffixes {
 		if strings.Contains(name, suffix) {
