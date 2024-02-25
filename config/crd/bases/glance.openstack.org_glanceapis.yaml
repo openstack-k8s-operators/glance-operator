@@ -831,6 +831,9 @@ spec:
                 required:
                 - size
                 type: object
+              memcachedInstance:
+                default: memcached
+                type: string
               networkAttachments:
                 items:
                   type: string
@@ -983,6 +986,7 @@ spec:
             required:
             - containerImage
             - databaseHostname
+            - memcachedInstance
             - secret
             - serviceAccount
             - storageRequest

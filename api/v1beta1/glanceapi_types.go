@@ -77,6 +77,11 @@ type GlanceAPISpec struct {
 	// QuotaEnforce if true, per-tenant quotas are enforced according to the
 	// registered keystone limits
 	Quota bool `json:"quota"`
+
+	// +kubebuilder:validation:Required
+	// +kubebuilder:default=memcached
+	// Memcached instance name.
+	MemcachedInstance string `json:"memcachedInstance"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI

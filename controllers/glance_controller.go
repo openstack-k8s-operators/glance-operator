@@ -41,6 +41,7 @@ import (
 	"github.com/go-logr/logr"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
@@ -81,6 +82,7 @@ type GlanceReconciler struct {
 // +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbdatabases,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbaccounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbaccounts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=memcached.openstack.org,resources=memcacheds,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneservices,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=k8s.cni.cncf.io,resources=network-attachment-definitions,verbs=get;list;watch
@@ -157,6 +159,7 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		cl := condition.CreateList(
 			condition.UnknownCondition(condition.DBReadyCondition, condition.InitReason, condition.DBReadyInitMessage),
 			condition.UnknownCondition(condition.DBSyncReadyCondition, condition.InitReason, condition.DBSyncReadyInitMessage),
+			condition.UnknownCondition(condition.MemcachedReadyCondition, condition.InitReason, condition.MemcachedReadyInitMessage),
 			condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 			condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
 			condition.UnknownCondition(glancev1.GlanceAPIReadyCondition, condition.InitReason, glancev1.GlanceAPIReadyInitMessage),
@@ -208,6 +211,35 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
+	memcachedFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+		result := []reconcile.Request{}
+
+		// get all Glance CRs
+		glances := &glancev1.GlanceList{}
+		listOpts := []client.ListOption{
+			client.InNamespace(o.GetNamespace()),
+		}
+		if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
+			r.Log.Error(err, "Unable to retrieve Glance CRs %w")
+			return nil
+		}
+
+		for _, cr := range glances.Items {
+			if o.GetName() == cr.Spec.MemcachedInstance {
+				name := client.ObjectKey{
+					Namespace: o.GetNamespace(),
+					Name:      cr.Name,
+				}
+				r.Log.Info(fmt.Sprintf("Memcached %s is used by Glance CR %s", o.GetName(), cr.Name))
+				result = append(result, reconcile.Request{NamespacedName: name})
+			}
+		}
+		if len(result) > 0 {
+			return result
+		}
+		return nil
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.Glance{}).
 		Owns(&glancev1.GlanceAPI{}).
@@ -226,6 +258,8 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
+		Watches(&memcachedv1.Memcached{},
+			handler.EnqueueRequestsFromMapFunc(memcachedFn)).
 		Complete(r)
 }
 
@@ -508,6 +542,42 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	}
 
 	//
+	// Check for required memcached used for caching
+	//
+	var memcached *memcachedv1.Memcached
+	memcached, err = getGlanceMemcached(ctx, helper, instance.Spec.MemcachedInstance, instance.Namespace)
+	if err != nil {
+		if k8s_errors.IsNotFound(err) {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.MemcachedReadyCondition,
+				condition.RequestedReason,
+				condition.SeverityInfo,
+				condition.MemcachedReadyWaitingMessage))
+			return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, fmt.Errorf("memcached %s not found", instance.Spec.MemcachedInstance)
+		}
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.MemcachedReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.MemcachedReadyErrorMessage,
+			err.Error()))
+		return ctrl.Result{}, err
+	}
+
+	if !memcached.IsReady() {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.MemcachedReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.MemcachedReadyWaitingMessage))
+		return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, fmt.Errorf("memcached %s is not ready", memcached.Name)
+	}
+	// Mark the Memcached Service as Ready if we get to this point with no errors
+	instance.Status.Conditions.MarkTrue(
+		condition.MemcachedReadyCondition, condition.MemcachedReadyMessage)
+	// run check memcached - end
+
+	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
 	//
 	ospSecret, hash, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
@@ -544,7 +614,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	//
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels, db)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels, db, memcached)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -598,7 +668,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	for name, glanceAPI := range instance.Spec.GlanceAPIs {
-		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels)
+		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels, memcached)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -640,6 +710,7 @@ func (r *GlanceReconciler) apiDeployment(
 	current glancev1.GlanceAPITemplate,
 	helper *helper.Helper,
 	serviceLabels map[string]string,
+	memcached *memcachedv1.Memcached,
 ) error {
 	// By default internal and external points to diff instances, but we might
 	// want to override "external" with "single" in case APIType == "single":
@@ -671,6 +742,7 @@ func (r *GlanceReconciler) apiDeployment(
 		instanceName,
 		helper,
 		serviceLabels,
+		memcached,
 	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -719,6 +791,7 @@ func (r *GlanceReconciler) apiDeployment(
 			instanceName,
 			helper,
 			serviceLabels,
+			memcached,
 		)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -766,6 +839,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	apiName string,
 	helper *helper.Helper,
 	serviceLabels map[string]string,
+	memcached *memcachedv1.Memcached,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 	apiAnnotations := map[string]string{}
 	apiSpec := glancev1.GlanceAPISpec{
@@ -793,6 +867,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	// Inherit the values required for PVC creation from the top-level CR
 	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
 	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
+	apiSpec.MemcachedInstance = memcached.Name
 
 	// We select which glanceAPI should register the keystoneEndpoint by using
 	// an API selector defined in the main glance CR; if it matches with the
@@ -854,6 +929,7 @@ func (r *GlanceReconciler) generateServiceConfig(
 	envVars *map[string]env.Setter,
 	serviceLabels map[string]string,
 	db *mariadbv1.Database,
+	memcached *memcachedv1.Memcached,
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
@@ -873,6 +949,7 @@ func (r *GlanceReconciler) generateServiceConfig(
 			glance.DatabaseName,
 		),
 	}
+
 	// We set in the main 00-config-default.conf the image-cache bits that will
 	// be used by CronJobs cleaner and pruner
 	if len(instance.Spec.ImageCache.Size) > 0 {

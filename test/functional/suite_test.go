@@ -46,12 +46,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/controllers"
 	rabbitmqv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
+	infra_test "github.com/openstack-k8s-operators/infra-operator/apis/test/helpers"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/test"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
@@ -81,6 +83,7 @@ var (
 	namespace  string
 	glanceName types.NamespacedName
 	glanceTest GlanceTestData
+	infra      *infra_test.TestHelper
 )
 
 func TestAPIs(t *testing.T) {
@@ -105,6 +108,9 @@ var _ = BeforeSuite(func() {
 	mariadbCRDs, err := test.GetCRDDirFromModule(
 		"github.com/openstack-k8s-operators/mariadb-operator/api", gomod, "bases")
 	Expect(err).ShouldNot(HaveOccurred())
+	infraCRDs, err := test.GetCRDDirFromModule(
+		"github.com/openstack-k8s-operators/infra-operator/apis", "../../go.mod", "bases")
+	Expect(err).ShouldNot(HaveOccurred())
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -112,6 +118,7 @@ var _ = BeforeSuite(func() {
 			filepath.Join("..", "..", "config", "crd", "bases"),
 			mariadbCRDs,
 			keystoneCRDs,
+			infraCRDs,
 		},
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
@@ -143,6 +150,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	err = networkv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
+	err = memcachedv1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
 
@@ -158,6 +167,8 @@ var _ = BeforeSuite(func() {
 	Expect(keystone).NotTo(BeNil())
 	mariadb = mariadb_test.NewTestHelper(ctx, k8sClient, timeout, interval, logger)
 	Expect(mariadb).NotTo(BeNil())
+	infra = infra_test.NewTestHelper(ctx, k8sClient, timeout, interval, logger)
+	Expect(infra).NotTo(BeNil())
 
 	// Start the controller-manager in a goroutine
 	webhookInstallOptions := &testEnv.WebhookInstallOptions

@@ -59,6 +59,11 @@ type GlanceSpec struct {
 	DatabaseUser string `json:"databaseUser"`
 
 	// +kubebuilder:validation:Required
+	// +kubebuilder:default=memcached
+	// Memcached instance name.
+	MemcachedInstance string `json:"memcachedInstance"`
+
+	// +kubebuilder:validation:Required
 	// Secret containing OpenStack password information for glance GlanceDatabasePassword
 	Secret string `json:"secret"`
 

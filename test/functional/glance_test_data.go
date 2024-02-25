@@ -40,6 +40,8 @@ const (
 	CABundleSecretName = "combined-ca-bundle"
 	//GlanceDummyBackend -
 	GlanceDummyBackend = "enabled_backends=backend1:type1 # CHANGE_ME"
+	// MemcachedInstance - name of the memcached instance
+	MemcachedInstance = "memcached"
 )
 
 // GlanceTestData is the data structure used to provide input data to envTest
@@ -76,6 +78,8 @@ type GlanceTestData struct {
 	CABundleSecret              types.NamespacedName
 	InternalCertSecret          types.NamespacedName
 	PublicCertSecret            types.NamespacedName
+	MemcachedInstance           string
+	GlanceMemcached             types.NamespacedName
 }
 
 // GetGlanceTestData is a function that initialize the GlanceTestData
@@ -193,5 +197,11 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      PublicCertSecretName,
 		},
+
+		GlanceMemcached: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      MemcachedInstance,
+		},
+		MemcachedInstance: MemcachedInstance,
 	}
 }

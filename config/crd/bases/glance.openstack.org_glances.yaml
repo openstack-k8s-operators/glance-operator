@@ -989,6 +989,9 @@ spec:
               keystoneEndpoint:
                 default: ""
                 type: string
+              memcachedInstance:
+                default: memcached
+                type: string
               nodeSelector:
                 additionalProperties:
                   type: string
@@ -1043,6 +1046,7 @@ spec:
             - glanceAPIs
             - imageCache
             - keystoneEndpoint
+            - memcachedInstance
             - secret
             - storageRequest
             type: object
