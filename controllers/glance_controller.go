@@ -1081,6 +1081,7 @@ func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glanc
 				endpointKey := fmt.Sprintf("%s-%s", apiName, ep)
 				delete(instance.Status.APIEndpoints, endpointKey)
 			}
+			delete(instance.Status.GlanceAPIReadyCounts, apiName)
 		}
 	}
 	return nil
