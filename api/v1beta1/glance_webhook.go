@@ -66,7 +66,11 @@ func (r *Glance) Default() {
 
 // Check if the KeystoneEndpoint matches with a deployed glanceAPI
 func (spec *GlanceSpec) isValidKeystoneEP() bool {
-	for name := range spec.GlanceAPIs {
+	for name, api := range spec.GlanceAPIs {
+		// If it's an Edge API is not a valid endpoint
+		if api.Type == APIEdge {
+			return false
+		}
 		if spec.KeystoneEndpoint == name {
 			return true
 		}
@@ -219,6 +223,12 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 		// glanceAPI instance
 		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
 			return nil, errors.New("Invalid backend configuration detected")
+		}
+		// At update time, if the CR has an invalid keystoneEndpoint set
+		// (e.g. an Edge GlanceAPI instance that can't be registered in keystone)
+		// return an error message
+		if !r.Spec.isValidKeystoneEP() {
+			return nil, errors.New("KeystoneEndpoint is assigned to an invalid glanceAPI instance")
 		}
 	}
 	return nil, nil

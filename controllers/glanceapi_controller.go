@@ -862,7 +862,9 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	// Configure the internal GlanceAPI to provide image location data, and the
 	// external version to *not* provide it; if we don't split, the resulting
 	// GlanceAPI instance will provide it.
-	if instance.Spec.APIType == glancev1.APIInternal || instance.Spec.APIType == glancev1.APISingle {
+	if instance.Spec.APIType == glancev1.APIInternal ||
+		instance.Spec.APIType == glancev1.APISingle ||
+		instance.Spec.APIType == glancev1.APIEdge {
 		templateParameters["ShowImageDirectUrl"] = true
 		templateParameters["ShowMultipleLocations"] = true
 	} else {

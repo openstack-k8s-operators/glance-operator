@@ -335,7 +335,7 @@ func (r *GlanceReconciler) removeAPIFinalizer(
 	var err error
 	// Remove finalizers from any existing GlanceAPIs instance
 	glanceAPI := &glancev1.GlanceAPI{}
-	for _, apiType := range []string{glancev1.APIInternal, glancev1.APIExternal, glancev1.APISingle} {
+	for _, apiType := range []string{glancev1.APIInternal, glancev1.APIExternal, glancev1.APISingle, glancev1.APIEdge} {
 		err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", glance.ServiceName, name, apiType), Namespace: instance.Namespace}, glanceAPI)
 		if err != nil && !k8s_errors.IsNotFound(err) {
 			return err
@@ -693,12 +693,20 @@ func (r *GlanceReconciler) apiDeployment(
 	var internal string = glancev1.APIInternal
 	var external string = glancev1.APIExternal
 
+	// We deploy:
+	// - an internal + external instances if layout is Split
+	// - an external instance only if layout is Single (File / NFS backends)
+	// - an internal instance only if layout is Edge
+
 	// If we're deploying a "single" instance, we skip GlanceAPI.Internal, and
 	// we only deploy the External instance passing "glancev1.APISingle" to the
 	// GlanceAPI controller, so we can properly handle this use case (nad and
 	// service creation).
 	if current.Type == glancev1.APISingle {
 		external = glancev1.APISingle
+	}
+	if current.Type == glancev1.APIEdge {
+		external = glancev1.APIEdge
 	}
 	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(
 		ctx,
@@ -730,10 +738,13 @@ func (r *GlanceReconciler) apiDeployment(
 	apiIntEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointInternal))
 	// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
 	if glanceAPI.Status.APIEndpoints != nil {
-		instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+		// Do not register a public endpoint for Edge instances
+		if current.Type != glancev1.APIEdge {
+			instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+		}
 		// if we don't split, both apiEndpoints (public and internal) should be
 		// reflected to the main Glance CR
-		if current.Type == glancev1.APISingle {
+		if current.Type == glancev1.APISingle || current.Type == glancev1.APIEdge {
 			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
 		}
 	}
@@ -764,7 +775,7 @@ func (r *GlanceReconciler) apiDeployment(
 			return err
 		}
 		if op != controllerutil.OperationResultNone {
-			r.Log.Info(fmt.Sprintf("Deployment %s successfully reconciled - operation: %s", instance.Name, string(op)))
+			r.Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 		}
 
 		// It is possible that an earlier call to update the status has also set

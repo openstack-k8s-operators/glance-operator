@@ -31,6 +31,8 @@ const (
 	APIExternal = "external"
 	// APISingle -
 	APISingle = "single"
+	// APIEdge -
+	APIEdge = "edge"
 )
 
 // GlanceSpec defines the desired state of Glance
@@ -124,6 +126,7 @@ type GlanceSpec struct {
 	// keystone catalog, and it acts as a selector for the underlying glanceAPI(s)
 	// that can be specified by name
 	KeystoneEndpoint string `json:"keystoneEndpoint"`
+
 	// +kubebuilder:validation:Optional
 	// DBPurge parameters -
 	DBPurge DBPurge `json:"dbPurge,omitempty"`

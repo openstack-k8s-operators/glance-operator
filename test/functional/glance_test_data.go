@@ -30,6 +30,8 @@ const (
 	GlanceAPITypeExternal APIType = "external"
 	//GlanceAPITypeSingle -
 	GlanceAPITypeSingle APIType = "single"
+	//GlanceAPITypeEdge -
+	GlanceAPITypeEdge APIType = "edge"
 	//PublicCertSecretName -
 	PublicCertSecretName = "public-tls-certs"
 	//InternalCertSecretName -
@@ -51,10 +53,12 @@ type GlanceTestData struct {
 	GlanceQuotas                map[string]interface{}
 	Instance                    types.NamespacedName
 	GlanceSingle                types.NamespacedName
+	GlanceEdge                  types.NamespacedName
 	GlanceInternal              types.NamespacedName
 	GlanceExternal              types.NamespacedName
 	GlanceInternalStatefulSet   types.NamespacedName
 	GlanceExternalStatefulSet   types.NamespacedName
+	GlanceEdgeStatefulSet       types.NamespacedName
 	GlanceRole                  types.NamespacedName
 	GlanceRoleBinding           types.NamespacedName
 	GlanceSA                    types.NamespacedName
@@ -90,6 +94,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-default-single", glanceName.Name),
 		},
+		GlanceEdge: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-default-edge", glanceName.Name),
+		},
 		GlanceInternal: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-default-internal", glanceName.Name),
@@ -105,6 +113,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		GlanceInternalStatefulSet: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-default-internal-api", glanceName.Name),
+		},
+		GlanceEdgeStatefulSet: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-default-edge-api", glanceName.Name),
 		},
 		// Also used to identify GlanceKeystoneService
 		GlanceInternalSvc: types.NamespacedName{

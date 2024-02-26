@@ -46,6 +46,7 @@ spec:
                 - internal
                 - external
                 - single
+                - edge
                 type: string
               containerImage:
                 type: string
