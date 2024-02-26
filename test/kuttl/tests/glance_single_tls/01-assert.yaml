@@ -106,6 +106,10 @@ spec:
         - mountPath: /var/lib/config-data/default
           name: config-data
           readOnly: true
+        - mountPath: /etc/my.cnf
+          name: config-data
+          readOnly: true
+          subPath: my.cnf
         - mountPath: /var/lib/glance
           name: glance
         - mountPath: /var/lib/kolla/config_files/config.json

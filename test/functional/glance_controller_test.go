@@ -146,6 +146,13 @@ var _ = Describe("Glance controller", func() {
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			Glance := GetGlance(glanceTest.Instance)
 			Expect(Glance.Status.DatabaseHostname).To(Equal(fmt.Sprintf("hostname-for-openstack.%s.svc", namespace)))
+
+			secretDataMap := th.GetSecret(glanceTest.GlanceConfigMapData)
+			Expect(secretDataMap).ShouldNot(BeNil())
+			myCnf := secretDataMap.Data["my.cnf"]
+			Expect(myCnf).To(
+				ContainSubstring("[client]\nssl=0"))
+
 			th.ExpectCondition(
 				glanceName,
 				ConditionGetterFunc(GlanceConditionGetter),

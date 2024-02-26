@@ -132,6 +132,12 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 			ReadOnly:  true,
 		},
 		{
+			Name:      "config-data",
+			MountPath: "/etc/my.cnf",
+			SubPath:   "my.cnf",
+			ReadOnly:  true,
+		},
+		{
 			Name:      ServiceName,
 			MountPath: "/var/lib/glance",
 			ReadOnly:  false,

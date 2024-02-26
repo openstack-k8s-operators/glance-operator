@@ -82,6 +82,12 @@ func DbSyncJob(
 		},
 		{
 			Name:      "config-data",
+			MountPath: "/etc/my.cnf",
+			SubPath:   "my.cnf",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
 			MountPath: "/var/lib/kolla/config_files/config.json",
 			SubPath:   "db-sync-config.json",
 			ReadOnly:  true,
