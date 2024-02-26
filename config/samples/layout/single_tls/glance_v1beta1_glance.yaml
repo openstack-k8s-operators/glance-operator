@@ -12,8 +12,6 @@ spec:
     debug = true
   glanceAPIs:
     default:
-      debug:
-        service: false
       preserveJobs: false
       replicas: 1
       tls:

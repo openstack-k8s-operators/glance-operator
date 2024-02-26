@@ -10,8 +10,6 @@ spec:
   keystoneEndpoint: default
   glanceAPIs:
     default:
-      debug:
-        service: false
       preserveJobs: false
       replicas: 1
       type: single

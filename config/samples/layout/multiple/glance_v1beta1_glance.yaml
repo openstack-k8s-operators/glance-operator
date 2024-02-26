@@ -12,14 +12,10 @@ spec:
   keystoneEndpoint: api1
   glanceAPIs:
     api1:
-      debug:
-        service: false
       preserveJobs: false
       replicas: 1
       type: single
     api2:
-      debug:
-        service: false
       preserveJobs: false
       replicas: 1
       type: single
