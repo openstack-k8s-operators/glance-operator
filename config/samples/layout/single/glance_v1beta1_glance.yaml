@@ -15,6 +15,8 @@ spec:
       type: single
       preserveJobs: false
       replicas: 1
+      imageCache:
+        size: 2G
   secret: osp-secret
   storageClass: local-storage
   storageRequest: 10G

@@ -72,11 +72,6 @@ type GlanceSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// Debug - enable debug for different deploy stages. If an init container is used, it runs and the
-	// actual action pod gets started with sleep infinity
-	Debug GlanceDebug `json:"debug,omitempty"`
-
-	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// PreserveJobs - do not delete jobs after they finished e.g. to check logs
 	PreserveJobs bool `json:"preserveJobs"`
@@ -115,10 +110,9 @@ type GlanceSpec struct {
 	// registered keystone limits
 	Quotas QuotaLimits `json:"quotas,omitempty"`
 
-	// ImageCacheSize, provides the size of the cache that will be reflected in the image_cache_max_size parameter
-	// Local storage request, in bytes. (500Gi = 500GiB = 500 * 1024 * 1024 * 1024)
-	// +kubebuilder:default=""
-	ImageCacheSize string `json:"imageCacheSize"`
+	// ImageCache -
+	// +kubebuilder:default={}
+	ImageCache ImageCache `json:"imageCache"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:default=""
@@ -158,13 +152,6 @@ type DBPurge struct {
 	Schedule string `json:"schedule"`
 }
 
-// GlanceDebug defines the observed state of GlanceAPIDebug
-type GlanceDebug struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// DBPurge increases log verbosity by executing the db_purge command with "--debug".
-	DBPurge bool `json:"dbPurge"`
-}
 
 // GlanceStatus defines the observed state of Glance
 type GlanceStatus struct {

@@ -607,9 +607,13 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	// create CronJobs: DBPurge (always), CacheCleaner and CachePruner if image-cache
-	// is enabled
-	ctrlResult, err = r.ensureCronJobs(ctx, helper, instance, serviceLabels, serviceAnnotations)
+
+	// create DBPurge CronJob
+
+	// DBPurge is not optional and always created to purge all soft deleted
+	// records. This command should be executed periodically to avoid glance
+	// database becomes bigger by getting filled by soft-deleted records
+	ctrlResult, err = r.ensureDBPurgeJob(ctx, helper, instance, serviceLabels, serviceAnnotations)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.CronJobReadyCondition,
@@ -620,6 +624,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return ctrlResult, err
 	}
 	instance.Status.Conditions.MarkTrue(condition.CronJobReadyCondition, condition.CronJobReadyMessage)
+
 	// create CronJob - end
 	return ctrl.Result{}, nil
 }
@@ -781,8 +786,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	}
 
 	// Inherit the ImageCacheSize from the top level if not specified
-	if apiSpec.GlanceAPITemplate.ImageCacheSize == "" {
-		apiSpec.GlanceAPITemplate.ImageCacheSize = instance.Spec.ImageCacheSize
+	if apiSpec.ImageCache.Size == "" {
+		apiSpec.ImageCache.Size = instance.Spec.ImageCache.Size
 	}
 
 	// Inherit the values required for PVC creation from the top-level CR
@@ -870,9 +875,9 @@ func (r *GlanceReconciler) generateServiceConfig(
 	}
 	// We set in the main 00-config-default.conf the image-cache bits that will
 	// be used by CronJobs cleaner and pruner
-	if len(instance.Spec.ImageCacheSize) > 0 {
-		// if ImageCacheSize is not a valid k8s Quantity, return an error
-		cacheSize, err := resource.ParseQuantity(instance.Spec.ImageCacheSize)
+	if len(instance.Spec.ImageCache.Size) > 0 {
+		// if ImageCache.Size is not a valid k8s Quantity, return an error
+		cacheSize, err := resource.ParseQuantity(instance.Spec.ImageCache.Size)
 		if err != nil {
 			return err
 		}
@@ -934,17 +939,29 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 
 // ensureCronJobs - Create the required CronJobs to clean DB entries and image-cache
 // if enabled
-func (r *GlanceReconciler) ensureCronJobs(
+func (r *GlanceReconciler) ensureDBPurgeJob(
 	ctx context.Context,
 	h *helper.Helper,
 	instance *glancev1.Glance,
 	serviceLabels map[string]string,
 	serviceAnnotations map[string]string,
 ) (ctrl.Result, error) {
-	// DBPurge cronjob is not optional and always created to purge all soft deleted records.
-	// This command should be executed periodically to avoid glance database becomes
-	// bigger by getting filled by soft-deleted records.
-	cronjobDef := glance.CronJob(instance, serviceLabels, serviceAnnotations, glance.DBPurge)
+
+	cronSpec := glance.CronJobSpec{
+		Name:        fmt.Sprintf("%s-dbpurge", glance.ServiceName),
+		PvcClaim:    nil,
+		Command:     glance.GlanceManage,
+		Schedule:    instance.Spec.DBPurge.Schedule,
+		CjType:      glance.DBPurge,
+		Labels:      serviceLabels,
+		Annotations: serviceAnnotations,
+	}
+
+	cronjobDef := glance.DBPurgeJob(
+		instance,
+		cronSpec,
+	)
+
 	dbPurgeCronJob := cronjob.NewCronJob(
 		cronjobDef,
 		5*time.Second,
@@ -954,23 +971,6 @@ func (r *GlanceReconciler) ensureCronJobs(
 		return ctrlResult, err
 	}
 
-	// If image-cache has been enabled, create two additional cronJobs:
-	// - CacheCleanerJob: clean stalled images or in an invalid state
-	// - CachePrunerJob: clean the image-cache folder to stay under ImageCacheSize
-	//   limit
-	if len(instance.Spec.ImageCacheSize) > 0 {
-		for _, item := range []glance.CronJobType{glance.CacheCleaner, glance.CachePruner} {
-			cronjobDef = glance.CronJob(instance, serviceLabels, serviceAnnotations, item)
-			cronjob := cronjob.NewCronJob(
-				cronjobDef,
-				5*time.Second,
-			)
-			ctrlResult, err = cronjob.CreateOrPatch(ctx, h)
-			if err != nil {
-				return ctrlResult, err
-			}
-		}
-	}
 	return ctrlResult, err
 }
 

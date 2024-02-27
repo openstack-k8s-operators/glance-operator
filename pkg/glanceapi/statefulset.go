@@ -135,7 +135,7 @@ func StatefulSet(
 
 	// If cache is provided, we expect the main glance_controller to request a
 	// PVC that should be used for that purpose (according to ImageCacheSize)
-	if len(instance.Spec.ImageCacheSize) > 0 {
+	if len(instance.Spec.ImageCache.Size) > 0 {
 		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
 	}
 
@@ -280,7 +280,7 @@ func StatefulSet(
 	}
 	statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
 
-	if len(instance.Spec.ImageCacheSize) > 0 {
+	if len(instance.Spec.ImageCache.Size) > 0 {
 		cachePvc, err := glance.GetPvc(instance, labels, glance.PvcCache)
 		if err != nil {
 			return statefulset, err

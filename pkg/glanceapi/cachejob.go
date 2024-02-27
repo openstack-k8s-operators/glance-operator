@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package glance
+package glanceapi
 
 import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 
 	"fmt"
 
@@ -25,30 +26,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// CronJobSpec -
-type CronJobSpec struct {
-	Name        string
-	PvcClaim    *string
-	Schedule    string
-	Command     string
-	CjType      CronJobType
-	Labels      map[string]string
-	Annotations map[string]string
-}
-
-// DBPurgeJob -
-func DBPurgeJob(
-	instance *glancev1.Glance,
-	cronSpec CronJobSpec,
+// ImageCacheJob -
+func ImageCacheJob(
+	instance *glancev1.GlanceAPI,
+	cronSpec glance.CronJobSpec,
 ) *batchv1.CronJob {
 	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
+
 	var cronCommand string
 
 	cronCommand = fmt.Sprintf(
-		"%s --config-dir /etc/glance/glance.conf.d db purge %d",
+		"%s --config-dir /etc/glance/glance.conf.d",
 		cronSpec.Command,
-		instance.Spec.DBPurge.Age,
 	)
 
 	args := []string{"-c", cronCommand}
@@ -58,52 +48,40 @@ func DBPurgeJob(
 
 	cronJobVolume := []corev1.Volume{
 		{
-			Name: "db-purge-config-data",
+			Name: "image-cache-config-data",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					DefaultMode: &config0644AccessMode,
 					SecretName:  instance.Name + "-config-data",
 					Items: []corev1.KeyToPath{
 						{
-							Key:  DefaultsConfigFileName,
-							Path: DefaultsConfigFileName,
+							Key:  glance.DefaultsConfigFileName,
+							Path: glance.DefaultsConfigFileName,
 						},
 					},
-				},
-			},
-		},
-		{
-			Name: "config-data",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
-					SecretName:  ServiceName + "-config-data",
 				},
 			},
 		},
 	}
 	cronJobVolumeMounts := []corev1.VolumeMount{
 		{
-			Name:      "db-purge-config-data",
+			Name:      "image-cache-config-data",
 			MountPath: "/etc/glance/glance.conf.d",
-			ReadOnly:  true,
-		},
-		{
-			Name:      "config-data",
-			MountPath: "/etc/my.cnf",
-			SubPath:   "my.cnf",
 			ReadOnly:  true,
 		},
 	}
 
 	// add CA cert if defined from the first api
-	for _, api := range instance.Spec.GlanceAPIs {
-		if api.TLS.CaBundleSecretName != "" {
-			cronJobVolume = append(cronJobVolume, api.TLS.CreateVolume())
-			cronJobVolumeMounts = append(cronJobVolumeMounts, api.TLS.CreateVolumeMounts(nil)...)
+	if instance.Spec.GlanceAPITemplate.TLS.CaBundleSecretName != "" {
+		cronJobVolume = append(cronJobVolume, instance.Spec.GlanceAPITemplate.TLS.CreateVolume())
+		cronJobVolumeMounts = append(cronJobVolumeMounts, instance.Spec.GlanceAPITemplate.TLS.CreateVolumeMounts(nil)...)
+	}
 
-			break
-		}
+	// The image-cache PVC should be available to the Cache CronJobs to properly
+	// clean the image-cache path
+	if cronSpec.CjType == glance.CachePruner || cronSpec.CjType == glance.CacheCleaner {
+		cronJobVolume = append(cronJobVolume, glance.GetCacheVolume(*cronSpec.PvcClaim)...)
+		cronJobVolumeMounts = append(cronJobVolumeMounts, glance.GetCacheVolumeMount()...)
 	}
 
 	cronjob := &batchv1.CronJob{
@@ -124,9 +102,10 @@ func DBPurgeJob(
 					Completions: &completions,
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
+							Affinity: GetGlanceAPIPodAffinity(instance),
 							Containers: []corev1.Container{
 								{
-									Name:  ServiceName + "-dbpurge",
+									Name:  cronSpec.Name,
 									Image: instance.Spec.ContainerImage,
 									Command: []string{
 										"/bin/bash",
@@ -140,7 +119,7 @@ func DBPurgeJob(
 							},
 							Volumes:            cronJobVolume,
 							RestartPolicy:      corev1.RestartPolicyNever,
-							ServiceAccountName: instance.RbacResourceName(),
+							ServiceAccountName: instance.Spec.ServiceAccount,
 						},
 					},
 				},
