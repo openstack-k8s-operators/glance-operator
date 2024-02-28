@@ -47,6 +47,7 @@ import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glanceapi"
+	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
@@ -63,7 +64,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,6 +89,7 @@ type GlanceAPIReconciler struct {
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneendpoints,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=k8s.cni.cncf.io,resources=network-attachment-definitions,verbs=get;list;watch
+// +kubebuilder:rbac:groups=memcached.openstack.org,resources=memcacheds,verbs=get;list;watch;
 
 // Reconcile reconcile Glance API requests
 func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
@@ -930,6 +931,12 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		templateParameters["CacheMaxSize"] = cacheSize.Value()
 		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
 	}
+	var memcached *memcachedv1.Memcached
+	memcached, err = getGlanceMemcached(ctx, h, instance.Spec.MemcachedInstance, instance.Namespace)
+	if err != nil {
+		return err
+	}
+	templateParameters["MemcachedServersWithInet"] = strings.Join(memcached.Status.ServerListWithInet, ",")
 
 	// 00-default.conf will be regenerated as we have a ln -s of the
 	// templates/glance/config directory

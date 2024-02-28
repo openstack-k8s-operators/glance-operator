@@ -65,10 +65,11 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 			"namespace": name.Namespace,
 		},
 		"spec": map[string]interface{}{
-			"keystoneEndpoint": "default",
-			"databaseInstance": "openstack",
-			"storageRequest":   glanceTest.GlancePVCSize,
-			"glanceAPIs":       GetAPIList(),
+			"memcachedInstance": "memcached",
+			"keystoneEndpoint":  "default",
+			"databaseInstance":  "openstack",
+			"storageRequest":    glanceTest.GlancePVCSize,
+			"glanceAPIs":        GetAPIList(),
 		},
 	}
 	return th.CreateUnstructured(raw)
@@ -108,6 +109,7 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 		"glanceAPIs":       GetAPIList(),
 		"storageRequest":   glanceTest.GlancePVCSize,
 		"quotas":           glanceTest.GlanceQuotas,
+		"memcached":        glanceTest.MemcachedInstance,
 	}
 }
 
