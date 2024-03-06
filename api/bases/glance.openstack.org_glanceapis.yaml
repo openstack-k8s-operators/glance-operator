@@ -56,10 +56,10 @@ spec:
                 items:
                   type: string
                 type: array
-              databaseHostname:
-                type: string
-              databaseUser:
+              databaseAccount:
                 default: glance
+                type: string
+              databaseHostname:
                 type: string
               extraMounts:
                 items:
@@ -895,12 +895,8 @@ spec:
                 type: object
               passwordSelectors:
                 default:
-                  database: GlanceDatabasePassword
                   service: GlancePassword
                 properties:
-                  database:
-                    default: GlanceDatabasePassword
-                    type: string
                   service:
                     default: GlancePassword
                     type: string

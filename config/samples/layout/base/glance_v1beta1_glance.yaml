@@ -9,7 +9,7 @@ spec:
     debug = true
     enabled_backends=foo:bar
   databaseInstance: openstack
-  databaseUser: glance
+  databaseAccount: glance
   secret: osp-secret
   storageClass: local-storage
   storageRequest: 10G

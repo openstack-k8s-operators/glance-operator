@@ -50,9 +50,8 @@ type GlanceSpecCore struct {
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=glance
-	// DatabaseUser - optional username used for glance DB, defaults to glance
-	// TODO: -> implement needs work in mariadb-operator, right now only glance
-	DatabaseUser string `json:"databaseUser"`
+	// DatabaseAccount - name of MariaDBAccount which will be used to connect.
+	DatabaseAccount string `json:"databaseAccount"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:default=memcached
@@ -60,11 +59,12 @@ type GlanceSpecCore struct {
 	MemcachedInstance string `json:"memcachedInstance"`
 
 	// +kubebuilder:validation:Required
-	// Secret containing OpenStack password information for glance GlanceDatabasePassword
+	// Secret containing OpenStack password information for glance's keystone
+	// password; no longer used for database password
 	Secret string `json:"secret"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default={database: GlanceDatabasePassword, service: GlancePassword}
+	// +kubebuilder:default={service: GlancePassword}
 	// PasswordSelectors - Selectors to identify the DB and ServiceUser password from the Secret
 	PasswordSelectors PasswordSelector `json:"passwordSelectors"`
 
@@ -140,11 +140,6 @@ type GlanceSpec struct {
 // PasswordSelector to identify the DB and AdminUser password from the Secret
 type PasswordSelector struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default="GlanceDatabasePassword"
-	// Database - Selector to get the glance database user password from the Secret
-	// TODO: not used, need change in mariadb-operator
-	Database string `json:"database"`
-	// +kubebuilder:validation:Optional
 	// +kubebuilder:default="GlancePassword"
 	// Service - Selector to get the glance service password from the Secret
 	Service string `json:"service"`
@@ -162,7 +157,6 @@ type DBPurge struct {
 	//Schedule defines the crontab format string to schedule the DBPurge cronJob
 	Schedule string `json:"schedule"`
 }
-
 
 // GlanceStatus defines the observed state of Glance
 type GlanceStatus struct {

@@ -17,6 +17,7 @@ package functional
 import (
 	"fmt"
 
+	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -42,12 +43,15 @@ const (
 	GlanceDummyBackend = "enabled_backends=backend1:type1 # CHANGE_ME"
 	// MemcachedInstance - name of the memcached instance
 	MemcachedInstance = "memcached"
+	// AccountName - name of the MariaDBAccount CR
+	AccountName = glance.DatabaseName
 )
 
 // GlanceTestData is the data structure used to provide input data to envTest
 type GlanceTestData struct {
 	ContainerImage              string
-	GlanceDatabaseUser          string
+	GlanceDatabaseName          types.NamespacedName
+	GlanceDatabaseAccount       types.NamespacedName
 	GlancePassword              string
 	GlanceServiceUser           string
 	GlancePVCSize               string
@@ -177,7 +181,14 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      "internalapi",
 		},
-		GlanceDatabaseUser: "glance",
+		GlanceDatabaseName: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      glance.DatabaseName,
+		},
+		GlanceDatabaseAccount: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      AccountName,
+		},
 		// Password used for both db and service
 		GlancePassword:    "12345678",
 		GlanceServiceUser: "glance",

@@ -24,7 +24,7 @@ spec:
     [image_conversion]
     output_format = raw
   databaseInstance: openstack
-  databaseUser: glance
+  databaseAccount: glance
   glanceAPI:
     preserveJobs: false
     replicas: 1

@@ -21,7 +21,7 @@ spec:
         store_description = "RBD backend"
         rbd_store_pool = images
         rbd_store_user = openstack
-      databaseUser: glance
+      databaseAccount: glance
       glanceAPIs:
         default:
           preserveJobs: false

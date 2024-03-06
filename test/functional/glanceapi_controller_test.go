@@ -37,6 +37,9 @@ var _ = Describe("Glanceapi controller", func() {
 		memcachedSpec = memcachedv1.MemcachedSpec{
 			Replicas: ptr.To(int32(3)),
 		}
+		acc, accSecret := mariadb.CreateMariaDBAccountAndSecret(glanceTest.GlanceDatabaseAccount, mariadbv1.MariaDBAccountSpec{})
+		DeferCleanup(k8sClient.Delete, ctx, accSecret)
+		DeferCleanup(k8sClient.Delete, ctx, acc)
 	})
 
 	When("GlanceAPI CR is created", func() {
@@ -97,10 +100,9 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			spec := GetDefaultGlanceAPISpec(GlanceAPITypeSingle)
 			spec["customServiceConfig"] = "foo=bar"
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, spec))
@@ -156,10 +158,10 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, CreateGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, CreateGlanceAPISpec(GlanceAPITypeExternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
@@ -239,10 +241,10 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceEdge, CreateGlanceAPISpec(GlanceAPITypeEdge)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
 			th.ExpectCondition(
@@ -293,10 +295,10 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, CreateGlanceAPISpec(GlanceAPITypeSingle)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
 			th.ExpectCondition(
@@ -340,10 +342,9 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, CreateGlanceAPISpec(GlanceAPITypeExternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceExternal.Namespace))
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
@@ -391,10 +392,10 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, CreateGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
@@ -442,10 +443,10 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, CreateGlanceAPISpec(GlanceAPITypeSingle)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceSingle.Namespace))
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
@@ -494,10 +495,10 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
 			serviceOverride := map[string]interface{}{}
 			serviceOverride["internal"] = map[string]interface{}{
@@ -575,10 +576,10 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			spec := CreateGlanceAPISpec(GlanceAPITypeExternal)
 			serviceOverride := map[string]interface{}{}
 			serviceOverride["public"] = map[string]interface{}{
@@ -623,10 +624,11 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBTLSDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+			mariadb.SimulateMariaDBTLSDatabaseCompleted(glanceTest.GlanceDatabaseName)
+
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCABundleSecret(glanceTest.CABundleSecret))
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.InternalCertSecret))
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
@@ -742,10 +744,11 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBTLSDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+			mariadb.SimulateMariaDBTLSDatabaseCompleted(glanceTest.GlanceDatabaseName)
+
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, GetTLSGlanceAPISpec(GlanceAPITypeSingle)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
@@ -917,10 +920,10 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-			mariadb.CreateMariaDBAccount(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBAccountSpec{})
-			mariadb.CreateMariaDBDatabase(glanceTest.Instance.Namespace, glanceTest.Instance.Name, mariadbv1.MariaDBDatabaseSpec{})
-			mariadb.SimulateMariaDBAccountCompleted(glanceTest.Instance)
-			mariadb.SimulateMariaDBTLSDatabaseCompleted(glanceTest.Instance)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCABundleSecret(glanceTest.CABundleSecret))
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.InternalCertSecret))
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))

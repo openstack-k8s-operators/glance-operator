@@ -15,7 +15,7 @@ metadata:
 spec:
   serviceUser: glance
   databaseInstance: openstack
-  databaseUser: glance
+  databaseAccount: glance
   glanceAPIs:
     default:
       replicas: 2

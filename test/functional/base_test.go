@@ -68,6 +68,7 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 			"memcachedInstance": "memcached",
 			"keystoneEndpoint":  "default",
 			"databaseInstance":  "openstack",
+			"databaseAccount":   glanceTest.GlanceDatabaseAccount.Name,
 			"storageRequest":    glanceTest.GlancePVCSize,
 			"glanceAPIs":        GetAPIList(),
 		},
@@ -91,7 +92,7 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 	return map[string]interface{}{
 		"keystoneEndpoint": "default",
 		"databaseInstance": "openstack",
-		"databaseUser":     glanceTest.GlanceDatabaseUser,
+		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
 		"glanceAPIs":       GetAPIList(),
@@ -103,7 +104,7 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 	return map[string]interface{}{
 		"keystoneEndpoint": "default",
 		"databaseInstance": "openstack",
-		"databaseUser":     glanceTest.GlanceDatabaseUser,
+		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
 		"glanceAPIs":       GetAPIList(),
@@ -123,8 +124,9 @@ func GetAPIList() map[string]interface{} {
 
 func GetGlanceAPIDefaultSpec(apiType APIType) map[string]interface{} {
 	return map[string]interface{}{
-		"replicas":       1,
-		"storageRequest": glanceTest.GlancePVCSize,
+		"replicas":        1,
+		"storageRequest":  glanceTest.GlancePVCSize,
+		"databaseAccount": glanceTest.GlanceDatabaseAccount.Name,
 	}
 }
 
@@ -162,8 +164,7 @@ func CreateGlanceSecret(namespace string, name string) *corev1.Secret {
 	return th.CreateSecret(
 		types.NamespacedName{Namespace: namespace, Name: name},
 		map[string][]byte{
-			"GlancePassword":         []byte(glanceTest.GlancePassword),
-			"GlanceDatabasePassword": []byte(glanceTest.GlancePassword),
+			"GlancePassword": []byte(glanceTest.GlancePassword),
 		},
 	)
 }
@@ -172,6 +173,7 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 	return map[string]interface{}{
 		"databaseInstance": "openstack",
 		"secret":           SecretName,
+		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
 		"glanceAPIs":       GetAPIList(),
 	}
 }
@@ -186,6 +188,7 @@ func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 		"name":             "default",
 		"databaseHostname": "openstack",
 		"secret":           SecretName,
+		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
 	}
 	return spec
 }
@@ -200,6 +203,7 @@ func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 		"name":             "default",
 		"databaseHostname": "openstack",
 		"secret":           SecretName,
+		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
 	}
 	return spec
 }
@@ -208,6 +212,7 @@ func GetTLSGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := CreateGlanceAPISpec(apiType)
 	maps.Copy(spec, map[string]interface{}{
 		"databaseHostname": "openstack",
+		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
 		"secret":           SecretName,
 		"tls": map[string]interface{}{
 			"api": map[string]interface{}{

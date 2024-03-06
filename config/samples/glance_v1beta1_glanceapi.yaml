@@ -15,7 +15,7 @@ spec:
     here-foo-config
     [foo1]
     here-foo1-config
-  databaseUser: glance
+  databaseAccount: glance
   databaseHostname: glance
   preserveJobs: false
   replicas: 1

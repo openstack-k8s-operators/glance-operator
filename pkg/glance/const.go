@@ -30,7 +30,10 @@ const (
 	ServiceName = "glance"
 	// ServiceType -
 	ServiceType = "image"
-	// DatabaseName -
+	// DatabaseName - this is both the CR name for the MariaDBDatabase
+	// as well as the name used in MariaDB CREATE DATABASE statement.
+	// hardcoded as glanceapi_controller needs this name which originates
+	// from glance_controller, and is not otherwise passed between them
 	DatabaseName = "glance"
 	// Component -
 	Component = "glance-api"

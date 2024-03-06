@@ -18,7 +18,7 @@ metadata:
 spec:
   serviceUser: glance
   databaseInstance: openstack
-  databaseUser: glance
+  databaseAccount: glance
   glanceAPIs:
     default:
       replicas: 1
@@ -33,10 +33,9 @@ metadata:
   name: glance-default-external
 spec:
   apiType: external
-  databaseUser: glance
+  databaseAccount: glance
   databaseHostname: openstack.glance-kuttl-tests.svc
   passwordSelectors:
-    database: GlanceDatabasePassword
     service: GlancePassword
   replicas: 1
 ---
@@ -46,10 +45,9 @@ metadata:
   name: glance-default-internal
 spec:
   apiType: internal
-  databaseUser: glance
+  databaseAccount: glance
   databaseHostname: openstack.glance-kuttl-tests.svc
   passwordSelectors:
-    database: GlanceDatabasePassword
     service: GlancePassword
   replicas: 1
 ---
