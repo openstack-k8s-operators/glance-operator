@@ -35,7 +35,9 @@ var _ = Describe("Glanceapi controller", func() {
 
 	BeforeEach(func() {
 		memcachedSpec = memcachedv1.MemcachedSpec{
-			Replicas: ptr.To(int32(3)),
+			MemcachedSpecCore: memcachedv1.MemcachedSpecCore{
+				Replicas: ptr.To[int32](3),
+			},
 		}
 		acc, accSecret := mariadb.CreateMariaDBAccountAndSecret(glanceTest.GlanceDatabaseAccount, mariadbv1.MariaDBAccountSpec{})
 		DeferCleanup(k8sClient.Delete, ctx, accSecret)

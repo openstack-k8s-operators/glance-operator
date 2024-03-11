@@ -935,11 +935,11 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
 	}
 	var memcached *memcachedv1.Memcached
-	memcached, err = getGlanceMemcached(ctx, h, instance.Spec.MemcachedInstance, instance.Namespace)
+	memcached, err = memcachedv1.GetMemcachedByName(ctx, h, instance.Spec.MemcachedInstance, instance.Namespace)
 	if err != nil {
 		return err
 	}
-	templateParameters["MemcachedServersWithInet"] = strings.Join(memcached.Status.ServerListWithInet, ",")
+	templateParameters["MemcachedServersWithInet"] = memcached.GetMemcachedServerListWithInetString()
 
 	// 00-default.conf will be regenerated as we have a ln -s of the
 	// templates/glance/config directory
