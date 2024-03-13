@@ -544,7 +544,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// Check for required memcached used for caching
 	//
 	var memcached *memcachedv1.Memcached
-	memcached, err = getGlanceMemcached(ctx, helper, instance.Spec.MemcachedInstance, instance.Namespace)
+	memcached, err = memcachedv1.GetMemcachedByName(ctx, helper, instance.Spec.MemcachedInstance, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
 			instance.Status.Conditions.Set(condition.FalseCondition(

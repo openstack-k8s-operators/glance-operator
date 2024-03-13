@@ -26,7 +26,6 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
-	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
@@ -38,7 +37,6 @@ import (
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -256,25 +254,4 @@ func GetServiceLabels(
 		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name), instance.Spec.APIType),
 		common.OwnerSelector:     instance.Name,
 	}
-}
-
-// getGlanceMemcached - gets the Memcached instance used for Glance cache backend
-func getGlanceMemcached(
-	ctx context.Context,
-	h *helper.Helper,
-	memcachedName string,
-	namespace string,
-) (*memcachedv1.Memcached, error) {
-	memcached := &memcachedv1.Memcached{}
-	err := h.GetClient().Get(
-		ctx,
-		types.NamespacedName{
-			Name:      memcachedName,
-			Namespace: namespace,
-		},
-		memcached)
-	if err != nil {
-		return nil, err
-	}
-	return memcached, err
 }
