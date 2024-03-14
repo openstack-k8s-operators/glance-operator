@@ -222,14 +222,14 @@ tenant        true          false             ["172.19.0.80-172.19.0.90"]
 
 ### Deploy Glance with a NFS backend
 
-Assuming you are using `install_yamls` and you already have a crc environment
-running you can deploy Glance with the NFS backend with the following commands:
+Assuming you are using `install_yamls` and you already have a `crc` environment
+running you can deploy `Glance` with the NFS backend with the following commands:
 
 ```
 $ cd install_yamls
 $ pushd devsetup; make crc_attach_default_interface; popd
 $ make crc_storage openstack
-$ crc_ssh
+$ ssh -i ~/.crc/machines/crc/id_ecdsa -o StrictHostKeyChecking=no core@`crc ip`
 $ curl -O https://raw.githubusercontent.com/openstack-k8s-operators/glance-operator/main/config/samples/backends/nfs/create_export.sh
 $ NFS_NET_INTERFACE=enp6s0.21 ./create_export.sh
 $ oc kustomize ../glance-operator/config/samples/backends/nfs > ~/openstack-deployment.yaml
@@ -298,7 +298,7 @@ sh-5.1$ openstack image list
 and, on the crc node, we can see the same `uuid` in the exported `/var/nfs`:
 
 ```
-$ crc_ssh
+$ ssh -i ~/.crc/machines/crc/id_ecdsa -o StrictHostKeyChecking=no core@`crc ip`
 $ ls /var/nfs/
 634482ca-4002-4a6d-b1d5-64502ad02630
 ```
