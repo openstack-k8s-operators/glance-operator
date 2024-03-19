@@ -48,6 +48,7 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
+	imageConv bool,
 ) (*appsv1.StatefulSet, error) {
 	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
@@ -137,6 +138,11 @@ func StatefulSet(
 	// PVC that should be used for that purpose (according to ImageCacheSize)
 	if len(instance.Spec.ImageCache.Size) > 0 {
 		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
+	}
+	// If Ceph has been set as a backend for this GlanceAPI, build and append
+	// an imageConv PVC
+	if imageConv && instance.Spec.APIType == glancev1.APIExternal {
+		apiVolumeMounts = append(apiVolumeMounts, glance.GetImageConvVolumeMount()...)
 	}
 
 	extraVolPropagation := append(glance.GlanceAPIPropagation,
@@ -288,6 +294,15 @@ func StatefulSet(
 		}
 		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, cachePvc)
 	}
+	// If Ceph is defined as a backend, each Pod should have its own imageConv RWO PVC
+	if imageConv && instance.Spec.APIType == glancev1.APIExternal {
+		imgConvPvc, err := glance.GetPvc(instance, labels, glance.PvcImageConv)
+		if err != nil {
+			return statefulset, err
+		}
+		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, imgConvPvc)
+	}
+
 	statefulset.Spec.Template.Spec.Volumes = append(glance.GetVolumes(
 		instance.Name,
 		glance.ServiceName,

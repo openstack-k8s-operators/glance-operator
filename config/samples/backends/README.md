@@ -53,6 +53,32 @@ $ make openstack_deploy
 If we already have a deployment working we can always use
 `oc kustomize ceph | oc apply -f -`. from this directory to make the changes.
 
+**Note:**
+
+When Ceph is adopted as a backend, Glance `image-conversion` is enabled by default.
+It's realized through a dedicated `PVC` (built by the `StatefulSet` via templates)
+that is mounted to the `/var/lib/glance/os_glance_staging_store` path.
+A `glance-conversion` PVC can be found with if the Glance **external** Pod is
+inspected via the `oc describe pod .. ` command:
+
+
+```bash
+...
+    Mounts:
+      /etc/ceph from ceph (ro)
+      /etc/my.cnf from config-data (ro,path="my.cnf")
+      /usr/local/bin/container-scripts from scripts (ro)
+      /var/lib/config-data/default from config-data (ro)
+      /var/lib/glance from glance (rw)
+      /var/lib/glance/os_glance_staging_store from glance-conversion (rw)
+      /var/lib/kolla/config_files/config.json from config-data (ro,path="glance-api-config.json")
+      /var/log/glance from logs (rw)
+...
+```
+The PVC is only created for the external instance: this space is only used to
+store staging data of the image that is going to be uploaded, and an internal
+`glanceAPI` will never use it.
+
 ## Ceph with Sparse Image Upload example
 
 Assuming you are using `install_yamls` and you already have `crc` running you

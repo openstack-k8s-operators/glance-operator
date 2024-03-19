@@ -43,6 +43,9 @@ const (
 	PvcLocal PvcType = "local"
 	// PvcCache is used to define a PVC mounted for image caching purposes
 	PvcCache PvcType = "cache"
+	// PvcImageConv is used to define a PVC mounted for image conversion purposes
+	// when Ceph is detected as a backend
+	PvcImageConv PvcType = "imageConv"
 
 	// GlancePublicPort -
 	GlancePublicPort int32 = 9292
