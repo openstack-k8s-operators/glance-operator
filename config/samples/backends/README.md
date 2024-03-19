@@ -58,8 +58,8 @@ If we already have a deployment working we can always use
 When Ceph is adopted as a backend, Glance `image-conversion` is enabled by default.
 It's realized through a dedicated `PVC` (built by the `StatefulSet` via templates)
 that is mounted to the `/var/lib/glance/os_glance_staging_store` path.
-A `glance-conversion` PVC can be found with if the Glance **external** Pod is
-inspected via the `oc describe pod .. ` command:
+A `glance-conversion` PVC can be found inspecting the Glance **external** Pod
+via the `oc describe pod .. ` command:
 
 
 ```bash
