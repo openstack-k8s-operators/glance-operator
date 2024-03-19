@@ -18,13 +18,21 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 	pvcName := ServiceName
 	pvcAnnotation := map[string]string{}
 
-	if pvcType == PvcCache {
+	switch {
+	case pvcType == PvcCache:
 		pvcAnnotation["image-cache"] = "true"
 		requestSize = api.Spec.GlanceAPITemplate.ImageCache.Size
 		// append -cache to avoid confusion when listing PVCs
 		pvcName = fmt.Sprintf("%s-cache", ServiceName)
+	case pvcType == PvcImageConv:
+		pvcAnnotation["image-conversion"] = "true"
+		requestSize = api.Spec.StorageRequest
+		// append -conversion to avoid confusion when listing PVCs
+		pvcName = fmt.Sprintf("%s-conversion", ServiceName)
+	default:
+		pvcName = ServiceName
+		requestSize = api.Spec.StorageRequest
 	}
-
 	// Build the basic pvc object
 	pvc := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -34,7 +42,6 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 			Annotations: pvcAnnotation,
 		},
 	}
-
 	// If the StorageRequest is a wrong string, we must return
 	// an error. MustParse can't be used in this context as it
 	// generates panic() and we can't recover the operator.

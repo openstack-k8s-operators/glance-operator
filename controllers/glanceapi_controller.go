@@ -540,6 +540,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 
 	configVars := make(map[string]env.Setter)
 	privileged := false
+	imageConv := false
 
 	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
@@ -566,7 +567,45 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars)
+	// Get Enabled backends from customServiceConfig and run pre backend conditions
+	availableBackends := glancev1.GetEnabledBackends(instance.Spec.CustomServiceConfig)
+	_, hashChanged, err := r.createHashOfBackendConfig(instance, availableBackends)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	// Update the current StateFulSet (by recreating it) only when a backend is
+	// added or removed from an already existing API
+	if hashChanged {
+		if err = r.glanceAPIRefresh(ctx, helper, instance); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	// iterate over availableBackends for backend specific cases
+	for i := 0; i < len(availableBackends); i++ {
+		backendToken := strings.SplitN(availableBackends[i], ":", 2)
+		switch {
+		case backendToken[1] == "cinder":
+			cinder := &cinderv1.Cinder{}
+			err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: glance.CinderName}, cinder)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					// Request object not found, can't run GlanceAPI with this config
+					r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
+					return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
+				}
+			}
+			// Cinder CR is found, we can unblock glance deployment because
+			// it represents a valid backend.
+			privileged = true
+		case backendToken[1] == "rbd":
+			// enable image conversion by default
+			r.Log.Info("Ceph config detected: enable image conversion by default")
+			imageConv = true
+		}
+	}
+
+	// Generate service config
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -650,28 +689,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// TODO check when/if Init, Update, or Upgrade should/could be skipped
 	//
 
-	// Get Enabled backends from customServiceConfig and run pre backend conditions
-	availableBackends := glancev1.GetEnabledBackends(instance.Spec.CustomServiceConfig)
-	// iterate over availableBackends for backend specific cases
-	for i := 0; i < len(availableBackends); i++ {
-		backendToken := strings.SplitN(availableBackends[i], ":", 2)
-		switch {
-		case backendToken[1] == "cinder":
-			cinder := &cinderv1.Cinder{}
-			err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: glance.CinderName}, cinder)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					// Request object not found, can't run GlanceAPI with this config
-					r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
-					return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
-				}
-			}
-			// Cinder CR is found, we can unblock glance deployment because
-			// it represents a valid backend.
-			privileged = true
-		}
-	}
-
 	var serviceAnnotations map[string]string
 	// networks to attach to
 	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
@@ -713,6 +730,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		GetServiceLabels(instance),
 		serviceAnnotations,
 		privileged,
+		imageConv,
 	)
 	if err != nil {
 		return ctrlResult, err
@@ -824,6 +842,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	h *helper.Helper,
 	instance *glancev1.GlanceAPI,
 	envVars *map[string]env.Setter,
+	imageConv bool,
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), GetServiceLabels(instance))
 
@@ -905,9 +924,10 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		// If Quota values are defined in the top level spec (they are global values),
 		// each GlanceAPI instance should build the config file according to
 		// https://docs.openstack.org/glance/latest/admin/quotas.html
-		"QuotaEnabled": instance.Spec.Quota,
-		"LogFile":      fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
-		"VHosts":       httpdVhostConfig,
+		"QuotaEnabled":    instance.Spec.Quota,
+		"ImageConversion": imageConv,
+		"LogFile":         fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
+		"VHosts":          httpdVhostConfig,
 	}
 
 	// Configure the internal GlanceAPI to provide image location data, and the
@@ -966,6 +986,28 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 	if hashMap, changed = util.SetHash(instance.Status.Hash, common.InputHashName, hash); changed {
 		instance.Status.Hash = hashMap
 		r.Log.Info(fmt.Sprintf("Input maps hash %s - %s", common.InputHashName, hash))
+	}
+	return hash, changed, nil
+}
+
+// createHashOfBackendConfig - It creates an Hash of the current "enabledBackend"
+// string, and it's set in the .Status.Hash of the current GlanceAPI.
+// If a backend is added or removed, we're able to attach a new PVC for an existing
+// API by recreating the StateFulSet through the glanceAPIRefresh function. This
+// function helps to figure out if the glanceAPIRefresh should be triggered or not
+func (r *GlanceAPIReconciler) createHashOfBackendConfig(
+	instance *glancev1.GlanceAPI,
+	backends []string,
+) (string, bool, error) {
+	var hashMap map[string]string
+	changed := false
+	hash, err := util.ObjectHash(backends)
+	if err != nil {
+		return hash, changed, err
+	}
+	if hashMap, changed = util.SetHash(instance.Status.Hash, "backendHash", hash); changed {
+		instance.Status.Hash = hashMap
+		r.Log.Info(fmt.Sprintf("Backend hash %s - %s", "backendHash", hash))
 	}
 	return hash, changed, nil
 }
@@ -1147,7 +1189,7 @@ func (r *GlanceAPIReconciler) deleteImageCacheJob(
 	return ctrlResult, err
 }
 
-// delete an imageCache cronJob no longer used
+// deleteJob - delete an imageCache cronJob no longer used
 func (r *GlanceAPIReconciler) deleteJob(
 	ctx context.Context,
 	instance *glancev1.GlanceAPI,
@@ -1177,4 +1219,29 @@ func (r *GlanceAPIReconciler) deleteJob(
 		}
 	}
 	return ctrlResult, err
+}
+
+// glanceAPIRefresh - delete a StateFulSet when a configuration for a Forbidden
+// parameter happens: it might be required if we add / remove a backend (including
+// ceph) where imageConversion is enabled and a dedicated PVC is created using
+// statefulsets volume templates
+func (r *GlanceAPIReconciler) glanceAPIRefresh(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.GlanceAPI,
+) error {
+	sts, err := statefulset.GetStatefulSetWithName(ctx, h, fmt.Sprintf("%s-api", instance.Name), instance.Namespace)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found
+			r.Log.Info(fmt.Sprintf("GlanceAPI %s-api: Statefulset not found.", instance.Name))
+			return nil
+		}
+	}
+	err = r.Client.Delete(ctx, sts)
+	if err != nil && !k8s_errors.IsNotFound(err) {
+		err = fmt.Errorf("Error deleting %s: %w", instance.Name, err)
+		return err
+	}
+	return nil
 }

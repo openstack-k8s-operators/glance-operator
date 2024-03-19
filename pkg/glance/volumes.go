@@ -291,6 +291,17 @@ func GetCacheVolumeMount() []corev1.VolumeMount {
 	}
 }
 
+// GetImageConvVolumeMount - Return the VolumeMount used for image conversion
+func GetImageConvVolumeMount() []corev1.VolumeMount {
+	return []corev1.VolumeMount{
+		{
+			Name:      "glance-conversion",
+			MountPath: "/var/lib/glance/os_glance_staging_store",
+			ReadOnly:  false,
+		},
+	}
+}
+
 // GetScriptVolume -
 func GetScriptVolume() []corev1.Volume {
 	var scriptsVolumeDefaultMode int32 = 0755
