@@ -924,10 +924,9 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		// If Quota values are defined in the top level spec (they are global values),
 		// each GlanceAPI instance should build the config file according to
 		// https://docs.openstack.org/glance/latest/admin/quotas.html
-		"QuotaEnabled":    instance.Spec.Quota,
-		"ImageConversion": imageConv,
-		"LogFile":         fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
-		"VHosts":          httpdVhostConfig,
+		"QuotaEnabled": instance.Spec.Quota,
+		"LogFile":      fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
+		"VHosts":       httpdVhostConfig,
 	}
 
 	// Configure the internal GlanceAPI to provide image location data, and the
@@ -941,6 +940,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	} else {
 		templateParameters["ShowImageDirectUrl"] = false
 		templateParameters["ShowMultipleLocations"] = false
+		templateParameters["ImageConversion"] = imageConv
 	}
 
 	// Configure the cache bits accordingly as global options (00-config.conf)
