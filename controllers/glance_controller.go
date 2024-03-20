@@ -149,11 +149,13 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return ctrl.Result{}, nil
 	}
 
-	//
-	// initialize status
-	//
-	//if instance.Status.Conditions == nil {
-	instance.Status.Conditions = condition.Conditions{}
+	// initialize status if Conditions is nil, but do not reset if it already
+	// exists
+	isNewInstance := instance.Status.Conditions == nil
+	if isNewInstance {
+		instance.Status.Conditions = condition.Conditions{}
+	}
+
 	// initialize conditions used later as Status=Unknown
 	cl := condition.CreateList(
 		condition.UnknownCondition(condition.DBReadyCondition, condition.InitReason, condition.DBReadyInitMessage),
@@ -162,7 +164,6 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 		condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
 		condition.UnknownCondition(glancev1.GlanceAPIReadyCondition, condition.InitReason, glancev1.GlanceAPIReadyInitMessage),
-		// right now we have no dedicated KeystoneServiceReadyInitMessage
 		condition.UnknownCondition(condition.KeystoneServiceReadyCondition, condition.InitReason, ""),
 		condition.UnknownCondition(condition.NetworkAttachmentsReadyCondition, condition.InitReason, condition.NetworkAttachmentsReadyInitMessage),
 		// service account, role, rolebinding conditions
@@ -171,8 +172,12 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		condition.UnknownCondition(condition.RoleBindingReadyCondition, condition.InitReason, condition.RoleBindingReadyInitMessage),
 		condition.UnknownCondition(condition.CronJobReadyCondition, condition.InitReason, condition.CronJobReadyInitMessage),
 	)
-
 	instance.Status.Conditions.Init(&cl)
+
+	if isNewInstance {
+		// Register overall status immediately to have an early feedback e.g. in the cli
+		return ctrl.Result{}, nil
+	}
 
 	if instance.Status.Hash == nil {
 		instance.Status.Hash = map[string]string{}
@@ -476,12 +481,7 @@ func (r *GlanceReconciler) reconcileInit(
 		r.Log.Info(fmt.Sprintf("Service '%s' - Job %s hash added - %s", instance.Name, jobDef.Name, instance.Status.Hash[glancev1.DbSyncHash]))
 	}
 	instance.Status.Conditions.MarkTrue(condition.DBSyncReadyCondition, condition.DBSyncReadyMessage)
-
-	// when job passed, mark NetworkAttachmentsReadyCondition ready
-	instance.Status.Conditions.MarkTrue(condition.NetworkAttachmentsReadyCondition, condition.NetworkAttachmentsReadyMessage)
-
 	// run Glance db sync - end
-
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
 	return ctrl.Result{}, nil
 }

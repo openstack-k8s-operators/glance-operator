@@ -23,6 +23,8 @@ import (
 const (
 	// GlanceAPIReadyCondition Status=True condition which indicates if the GlanceAPI is configured and operational
 	GlanceAPIReadyCondition condition.Type = "GlanceAPIReady"
+	// CinderCondition
+	CinderCondition= "CinderReady"
 )
 
 // Glance Reasons used by API objects.
@@ -35,7 +37,10 @@ const (
 	//
 	// GlanceAPIReadyInitMessage
 	GlanceAPIReadyInitMessage = "GlanceAPI not started"
-
 	// GlanceAPIReadyErrorMessage
 	GlanceAPIReadyErrorMessage = "GlanceAPI error occured %s"
+	// CinderInitMessage
+	CinderInitMessage = "Waiting for Cinder resources"
+	// CinderReadyMessage
+	CinderReadyMessage = "Cinder resources exist"
 )

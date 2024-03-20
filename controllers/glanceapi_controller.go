@@ -23,10 +23,8 @@ import (
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -152,6 +150,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	instance.Status.Conditions = condition.Conditions{}
 	// initialize conditions used later as Status=Unknown
 	cl := condition.CreateList(
+		condition.UnknownCondition(glancev1.CinderCondition, condition.InitReason, glancev1.CinderInitMessage),
 		condition.UnknownCondition(condition.ExposeServiceReadyCondition, condition.InitReason, condition.ExposeServiceReadyInitMessage),
 		condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 		condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
@@ -583,12 +582,16 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		case backendToken[1] == "cinder":
 			cinder := &cinderv1.Cinder{}
 			err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: glance.CinderName}, cinder)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					// Request object not found, can't run GlanceAPI with this config
-					r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
-					return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
-				}
+			if err != nil && !k8s_errors.IsNotFound(err) {
+				// Request object not found, GlanceAPI can't be executed with this config
+				r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
+				instance.Status.Conditions.Set(condition.FalseCondition(
+					glancev1.CinderCondition,
+					condition.RequestedReason,
+					condition.SeverityInfo,
+					glancev1.CinderInitMessage),
+				)
+				return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
 			}
 			// Cinder CR is found, we can unblock glance deployment because
 			// it represents a valid backend.
@@ -599,6 +602,10 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			imageConv = true
 		}
 	}
+	// If we reach this point, it means that either Cinder is not a backend for Glance
+	// or, in case Cinder is a backend for the current GlanceAPI, the associated resources
+	// are present in the control plane
+	instance.Status.Conditions.MarkTrue(glancev1.CinderCondition, glancev1.CinderReadyMessage)
 
 	// Generate service config
 	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv)
@@ -684,7 +691,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 	// TODO check when/if Init, Update, or Upgrade should/could be skipped
 	//
-
 	var serviceAnnotations map[string]string
 	// networks to attach to
 	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
@@ -1228,7 +1234,7 @@ func (r *GlanceAPIReconciler) glanceAPIRefresh(
 ) error {
 	sts, err := statefulset.GetStatefulSetWithName(ctx, h, fmt.Sprintf("%s-api", instance.Name), instance.Namespace)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8s_errors.IsNotFound(err) {
 			// Request object not found
 			r.Log.Info(fmt.Sprintf("GlanceAPI %s-api: Statefulset not found.", instance.Name))
 			return nil
