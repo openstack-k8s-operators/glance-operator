@@ -46,12 +46,14 @@ const (
 	// PvcImageConv is used to define a PVC mounted for image conversion purposes
 	// when Ceph is detected as a backend
 	PvcImageConv PvcType = "imageConv"
-
 	// GlancePublicPort -
 	GlancePublicPort int32 = 9292
 	// GlanceInternalPort -
 	GlanceInternalPort int32 = 9292
-
+	// GlanceUID - https://github.com/openstack/kolla/blob/master/kolla/common/users.py
+	GlanceUID int64 = 42415
+	// GlanceGid - https://github.com/openstack/kolla/blob/master/kolla/common/users.py
+	GlanceGID int64 = 42415
 	// DefaultsConfigFileName -
 	DefaultsConfigFileName = "00-config.conf"
 	// CustomConfigFileName -
@@ -90,6 +92,9 @@ const (
 	CachePruner CronJobType = "pruner"
 	//ImageCacheDir -
 	ImageCacheDir = "/var/lib/glance/image-cache"
+
+	// GlanceDBSyncCommand -
+	GlanceDBSyncCommand = "/usr/local/bin/kolla_start"
 	// GlanceManage base command (required for DBPurge)
 	GlanceManage = "/usr/bin/glance-manage"
 	// GlanceCacheCleaner -
