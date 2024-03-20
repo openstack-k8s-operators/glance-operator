@@ -17,16 +17,10 @@ package glance
 
 import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
-
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	// DBSyncCommand -
-	DBSyncCommand = "/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start"
 )
 
 // DbSyncJob func
@@ -35,7 +29,6 @@ func DbSyncJob(
 	labels map[string]string,
 	annotations map[string]string,
 ) *batchv1.Job {
-	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
 
 	// Unlike the individual glanceAPI services, the DbSyncJob doesn't need a
@@ -104,7 +97,7 @@ func DbSyncJob(
 		}
 	}
 
-	args := []string{"-c", DBSyncCommand}
+	args := []string{"-c", GlanceDBSyncCommand}
 	envVars := map[string]env.Setter{}
 	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["KOLLA_BOOTSTRAP"] = env.SetValue("true")
@@ -129,13 +122,11 @@ func DbSyncJob(
 							Command: []string{
 								"/bin/bash",
 							},
-							Args:  args,
-							Image: instance.Spec.ContainerImage,
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser: &runAsUser,
-							},
-							Env:          env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts: dbSyncMounts,
+							Args:            args,
+							Image:           instance.Spec.ContainerImage,
+							SecurityContext: glanceSecurityContext(),
+							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts:    dbSyncMounts,
 						},
 					},
 				},

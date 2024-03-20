@@ -2,6 +2,7 @@ package glance
 
 import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 )
@@ -52,4 +53,23 @@ func GetGlanceAPIName(name string) string {
 		}
 	}
 	return api
+}
+
+// glanceSecurityContext - currently used to make sure we don't run db-sync as
+// root user
+func glanceSecurityContext() *corev1.SecurityContext {
+	trueVal := true
+	runAsUser := int64(GlanceUID)
+	runAsGroup := int64(GlanceGID)
+
+	return &corev1.SecurityContext{
+		RunAsUser:    &runAsUser,
+		RunAsGroup:   &runAsGroup,
+		RunAsNonRoot: &trueVal,
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{
+				"MKNOD",
+			},
+		},
+	}
 }
