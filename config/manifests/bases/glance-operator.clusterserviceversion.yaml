@@ -18,11 +18,19 @@ spec:
       displayName: Glance API
       kind: GlanceAPI
       name: glanceapis.glance.openstack.org
+      specDescriptors:
+      - description: TLS - Parameters related to the TLS
+        displayName: TLS
+        path: tls
       version: v1beta1
     - description: Glance is the Schema for the glances API
       displayName: Glance
       kind: Glance
       name: glances.glance.openstack.org
+      specDescriptors:
+      - description: TLS - Parameters related to the TLS
+        displayName: TLS
+        path: glanceAPIs.tls
       version: v1beta1
   description: Glance Operator
   displayName: Glance Operator
