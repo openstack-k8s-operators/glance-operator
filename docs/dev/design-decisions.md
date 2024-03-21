@@ -416,3 +416,30 @@ instance that should be registered in Keystone.
 An update to the `keystoneEndpoint` parameter results in a reconciliation execution
 that switches the two affected instances (the one registered in keystone and the
 one proposed by the new update).
+
+## How Conditions are managed
+
+Conditions represent a critical aspect for reconciliation because they allow:
+
+1. to evaluate the status of a particular component validating a set of conditions
+2. give a feedback to the end user about the current state of the Deployment
+3. identify the status of the underlying GlanceAPIs and report their healhy to
+   the upper level CR
+
+The document [docs/conditions]() describes the meaning of the k8s-operators
+shared conditions.
+Conditions are re-evaluated when a new Reconciliation loop starts, and if one of
+them is different from what has been previously registered, an update is performed,
+and it allows to give immediate feedback to the user.
+Conditions are initially marked as `Unknown`, while the general `ReadyCondition`
+is marked as `False` because we assume that the Deployment is in progress but
+not `Ready` at the same time, until the entire set of conditions are evaluated.
+Conditions can be seen as a checklist or steps within the reconciliation loop,
+and while the loop proceed to the end, each of them is evaluated.
+If a particular component with an associated condition is not Ready, an `error`
+is returned from the operator, and its failing condition is marked as `False`
+with an appropriate error message.
+If the end of the loop is reached, it means we passed through all the steps and
+the Conditions are marked to `True`: it is possible, at this point, to mark the
+overall `ReadyCondition` to `Status=True` as well and `Mirror` the result to the
+top-level CR.

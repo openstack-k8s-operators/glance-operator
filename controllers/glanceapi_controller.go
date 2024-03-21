@@ -147,7 +147,12 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	//
 	// initialize status
 	//
-	instance.Status.Conditions = condition.Conditions{}
+	// initialize status if Conditions is nil, but do not reset if it
+	// already exists
+	isNewInstance := instance.Status.Conditions == nil
+	if isNewInstance {
+		instance.Status.Conditions = condition.Conditions{}
+	}
 	// initialize conditions used later as Status=Unknown
 	cl := condition.CreateList(
 		condition.UnknownCondition(glancev1.CinderCondition, condition.InitReason, glancev1.CinderInitMessage),
@@ -163,6 +168,10 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	)
 
 	instance.Status.Conditions.Init(&cl)
+	if isNewInstance {
+		// Register overall status immediately to have an early feedback e.g. in the cli
+		return ctrl.Result{}, nil
+	}
 
 	if instance.Status.Hash == nil {
 		instance.Status.Hash = map[string]string{}
@@ -471,6 +480,8 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			serviceLabels,
 		)
 		if err != nil {
+			// The ExposeServiceReadyCondition is already marked as False
+			// within the GetHeadlessService function: we can return
 			return ctrlResult, err
 		}
 
@@ -485,6 +496,12 @@ func (r *GlanceAPIReconciler) reconcileInit(
 		apiEndpoints[string(endpointType)], err = svc.GetAPIEndpoint(
 			svcOverride.EndpointURL, data.Protocol, data.Path)
 		if err != nil {
+			instance.Status.Conditions.MarkFalse(
+				condition.ExposeServiceReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.ExposeServiceReadyErrorMessage,
+				err.Error())
 			return ctrl.Result{}, err
 		}
 	}
@@ -503,9 +520,14 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	// Create/Patch the KeystoneEndpoints
 	ctrlResult, err := r.ensureKeystoneEndpoints(ctx, helper, instance, serviceLabels)
 	if err != nil {
+		instance.Status.Conditions.MarkFalse(
+			condition.KeystoneEndpointReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			"Creating KeyStoneEndpoint CR %s",
+			err.Error())
 		return ctrlResult, err
 	}
-
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
@@ -566,6 +588,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	availableBackends := glancev1.GetEnabledBackends(instance.Spec.CustomServiceConfig)
 	_, hashChanged, err := r.createHashOfBackendConfig(instance, availableBackends)
 	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.InputReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.InputReadyErrorMessage,
+			err.Error()))
 		return ctrl.Result{}, err
 	}
 	// Update the current StateFulSet (by recreating it) only when a backend is
@@ -642,9 +670,15 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 				err.Error()))
 			return ctrlResult, err
 		} else if (ctrlResult != ctrl.Result{}) {
+			// Marking the condition as Unknown because we are not returining
+			// an err, but comparing the ctrlResult: this represents an in
+			// progress operation rather than something that failed
+			instance.Status.Conditions.MarkUnknown(
+				condition.TLSInputReadyCondition,
+				condition.InitReason,
+				condition.InputReadyInitMessage)
 			return ctrlResult, nil
 		}
-
 		if hash != "" {
 			configVars[tls.CABundleKey] = env.SetValue(hash)
 		}
@@ -661,6 +695,13 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			err.Error()))
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
+		// Marking the condition as Unknown because we are not returining
+		// an err, but comparing the ctrlResult: this represents an in
+		// progress operation rather than something that failed
+		instance.Status.Conditions.MarkUnknown(
+			condition.TLSInputReadyCondition,
+			condition.InitReason,
+			condition.InputReadyInitMessage)
 		return ctrlResult, nil
 	}
 	configVars[tls.TLSHashName] = env.SetValue(certsHash)
@@ -680,10 +721,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			condition.ServiceConfigReadyErrorMessage,
 			err.Error()))
 		return ctrl.Result{}, err
-	} else if hashChanged {
-		// Hash changed and instance status should be updated (which will be done by main defer func),
-		// so we need to return and reconcile again
-		return ctrl.Result{}, nil
 	}
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
 	// Create Secrets - end
@@ -695,6 +732,13 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// networks to attach to
 	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
 	if err != nil {
+		instance.Status.Conditions.MarkFalse(
+			condition.NetworkAttachmentsReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.NetworkAttachmentsReadyErrorMessage,
+			err,
+		)
 		return ctrlResult, err
 	}
 
@@ -764,6 +808,13 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// verify if network attachment matches expectations
 	networkReady, networkAttachmentStatus, err := nad.VerifyNetworkStatusFromAnnotation(ctx, helper, instance.Spec.NetworkAttachments, GetServiceLabels(instance), instance.Status.ReadyCount)
 	if err != nil {
+		err = fmt.Errorf("verifying API NetworkAttachments (%s) %w", instance.Spec.NetworkAttachments, err)
+		instance.Status.Conditions.MarkFalse(
+			condition.NetworkAttachmentsReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.NetworkAttachmentsReadyErrorMessage,
+			err)
 		return ctrl.Result{}, err
 	}
 
@@ -830,8 +881,11 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		}
 	}
 
-	// Mark the CronJobReadyCondition as True because there's nothing to do here
-	instance.Status.Conditions.MarkTrue(condition.CronJobReadyCondition, condition.CronJobReadyMessage)
+	// If we reach this point, we can mark the CronJobReadyCondition as True
+	instance.Status.Conditions.MarkTrue(
+		condition.CronJobReadyCondition,
+		condition.CronJobReadyMessage,
+	)
 
 	// create ImageCache cronJobs - end
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
@@ -1044,13 +1098,11 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		}
 		return ctrlResult, nil
 	}
-
 	// Build the keystoneEndpoints Spec
 	ksEndpointSpec := keystonev1.KeystoneEndpointSpec{
 		ServiceName: glance.ServiceName,
 		Endpoints:   instance.Status.APIEndpoints,
 	}
-
 	ksSvc := keystonev1.NewKeystoneEndpoint(
 		instance.Name,
 		instance.Namespace,
@@ -1062,14 +1114,12 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 	if err != nil {
 		return ctrlResult, err
 	}
-
 	// mirror the Status, Reason, Severity and Message of the latest keystoneendpoint condition
 	// into a local condition with the type condition.KeystoneEndpointReadyCondition
 	c := ksSvc.GetConditions().Mirror(condition.KeystoneEndpointReadyCondition)
 	if c != nil {
 		instance.Status.Conditions.Set(c)
 	}
-
 	return ctrlResult, nil
 }
 

@@ -156,8 +156,11 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		instance.Status.Conditions = condition.Conditions{}
 	}
 
-	// initialize conditions used later as Status=Unknown
+	// initialize conditions used later as Status=Unknown, except the ReadyCondition
+	// that should be False when we start
 	cl := condition.CreateList(
+		// Mark ReadyCondition as False from the beginning
+		condition.FalseCondition(condition.ReadyCondition, condition.InitReason, condition.SeverityInfo, condition.ReadyInitMessage),
 		condition.UnknownCondition(condition.DBReadyCondition, condition.InitReason, condition.DBReadyInitMessage),
 		condition.UnknownCondition(condition.DBSyncReadyCondition, condition.InitReason, condition.DBSyncReadyInitMessage),
 		condition.UnknownCondition(condition.MemcachedReadyCondition, condition.InitReason, condition.MemcachedReadyInitMessage),
@@ -165,7 +168,6 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
 		condition.UnknownCondition(glancev1.GlanceAPIReadyCondition, condition.InitReason, glancev1.GlanceAPIReadyInitMessage),
 		condition.UnknownCondition(condition.KeystoneServiceReadyCondition, condition.InitReason, ""),
-		condition.UnknownCondition(condition.NetworkAttachmentsReadyCondition, condition.InitReason, condition.NetworkAttachmentsReadyInitMessage),
 		// service account, role, rolebinding conditions
 		condition.UnknownCondition(condition.ServiceAccountReadyCondition, condition.InitReason, condition.ServiceAccountReadyInitMessage),
 		condition.UnknownCondition(condition.RoleReadyCondition, condition.InitReason, condition.RoleReadyInitMessage),
