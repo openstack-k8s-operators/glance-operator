@@ -17,16 +17,11 @@ Currently available sample plugins are:
 Whenever Glance is configured to use Ceph as a backend, operators want to
 optimize the backend capabilities by ensuring that all images will be in raw
 format while not putting the burden of converting the images to their end users.
-
-Operator/Deployer can use the ‘customServiceConfig‘ section to enable
-[`image_conversion`](image_conversion/image_conversion.yaml) plugin and
-specify plugin configuration options which will be copied to glance
-configuration file.
-
-As we can't make the qemu based conversion happened in a path that lives
-within the POD space, we need to define a [PVC](image_conversion/image_conversion_pvc.yaml)
-that will be used to mount the Glance path used by image conversion plugin.
-
+When Ceph is detected as a backend for Glance, the glance-operator injects and
+enables the image-conversion plugin.
+No action is required by the human operator, and this feature is enabled by
+default. See [Ceph backend](https://github.com/openstack-k8s-operators/glance-operator/tree/main/config/samples/backends#ceph-example)
+for additional details.
 You can find more abut plugin configuration options
 in [upstream](https://docs.openstack.org/glance/latest/admin/interoperable-image-import.html#the-image-conversion)
 documentation.
