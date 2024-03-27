@@ -1,0 +1,134 @@
+# Requires multiple running Ceph clusters and their `/etc/ceph` files in
+# the secret `ceph-conf-files`.
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      databaseInstance: openstack
+      databaseAccount: glance
+      secret: osp-secret
+      storageClass: ""
+      storageRequest: 10G
+      keystoneEndpoint: default
+      glanceAPIs:
+        default:
+          override:
+            service:
+              internal:
+                metadata:
+                  annotations:
+                    metallb.universe.tf/address-pool: internalapi
+                    metallb.universe.tf/allow-shared-ip: internalapi
+                    metallb.universe.tf/loadBalancerIPs: 172.17.0.80
+                spec:
+                  type: LoadBalancer
+          networkAttachments:
+          - storage
+          type: split
+          replicas: 3
+          customServiceConfig: |
+            [DEFAULT]
+            enabled_import_methods = [web-download,copy-image,glance-direct]
+            enabled_backends = az0:rbd,az1:rbd,az2:rbd
+            [glance_store]
+            stores = http,rbd
+            default_backend = az0
+            [az0]
+            rbd_store_ceph_conf = /etc/ceph/ceph.conf
+            store_description = "az0 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = openstack
+            [az1]
+            rbd_store_ceph_conf = /etc/ceph/az1.conf
+            store_description = "az1 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = openstack
+            [az2]
+            rbd_store_ceph_conf = /etc/ceph/az2.conf
+            store_description = "az2 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = openstack
+        az1:
+          override:
+            service:
+              internal:
+                metadata:
+                  annotations:
+                    metallb.universe.tf/address-pool: internalapi
+                    metallb.universe.tf/allow-shared-ip: internalapi
+                    metallb.universe.tf/loadBalancerIPs: 172.17.0.81
+                spec:
+                  type: LoadBalancer
+          networkAttachments:
+          - storage
+          replicas: 3
+          type: edge
+          customServiceConfig: |
+            [DEFAULT]
+            enabled_import_methods = [web-download,copy-image,glance-direct]
+            enabled_backends = az0:rbd,az1:rbd
+            [glance_store]
+            stores = http,rbd
+            default_backend = az1
+            [az1]
+            rbd_store_ceph_conf = /etc/ceph/az1.conf
+            store_description = "az1 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = openstack
+            [az0]
+            rbd_store_ceph_conf = /etc/ceph/ceph.conf
+            store_description = "az0 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = openstack
+        az2:
+          override:
+            service:
+              internal:
+                metadata:
+                  annotations:
+                    metallb.universe.tf/address-pool: internalapi
+                    metallb.universe.tf/allow-shared-ip: internalapi
+                    metallb.universe.tf/loadBalancerIPs: 172.17.0.82
+                spec:
+                  type: LoadBalancer
+          networkAttachments:
+          - storage
+          replicas: 3
+          type: edge
+          customServiceConfig: |
+            [DEFAULT]
+            enabled_import_methods = [web-download,copy-image,glance-direct]
+            enabled_backends = az0:rbd,az2:rbd
+            [glance_store]
+            stores = http,rbd
+            default_backend = az2
+            [az2]
+            rbd_store_ceph_conf = /etc/ceph/az2.conf
+            store_description = "az2 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = openstack
+            [az0]
+            rbd_store_ceph_conf = /etc/ceph/az2.conf
+            store_description = "az0 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = openstack
+  extraMounts:
+    - name: v1
+      region: r1
+      extraVol:
+        - propagation:
+          - Glance
+          extraVolType: Ceph
+          volumes:
+          - name: ceph
+            projected:
+              sources:
+              - secret:
+                  name: ceph-client-conf
+          mounts:
+          - name: ceph
+            mountPath: "/etc/ceph"
+            readOnly: true
