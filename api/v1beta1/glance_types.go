@@ -206,7 +206,11 @@ func init() {
 	SchemeBuilder.Register(&Glance{}, &GlanceList{})
 }
 
-// IsReady - returns true if Glance is reconciled successfully
+// IsReady - returns true if the underlying GlanceAPI is reconciled successfully
+// and set the ReadyCondition to True: it is mirrored to the top-level CR, so
+// the purpose of this function is to let the openstack-operator to gather the
+// Status of the entire Glance Deployment (intended as a single entity) from a
+// single place
 func (instance Glance) IsReady() bool {
 	return instance.Status.Conditions.IsTrue(condition.ReadyCondition)
 }
