@@ -699,8 +699,14 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		return ctrlResult, err
 	}
 	instance.Status.Conditions.MarkTrue(condition.CronJobReadyCondition, condition.CronJobReadyMessage)
-
 	// create CronJob - end
+
+	// We reached the end of the Reconcile, update the Ready condition based on
+	// the sub conditions
+	if instance.Status.Conditions.AllSubConditionIsTrue() {
+		instance.Status.Conditions.MarkTrue(
+			condition.ReadyCondition, condition.ReadyMessage)
+	}
 	return ctrl.Result{}, nil
 }
 
@@ -873,6 +879,10 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
 	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
 	apiSpec.MemcachedInstance = memcached.Name
+	// Make sure to inject the ContainerImage passed by the OpenStackVersions
+	// resource to all the underlying instances and rollout a new StatefulSet
+	// if it has been changed
+	apiSpec.GlanceAPITemplate.ContainerImage = instance.Spec.ContainerImage
 
 	// We select which glanceAPI should register the keystoneEndpoint by using
 	// an API selector defined in the main glance CR; if it matches with the

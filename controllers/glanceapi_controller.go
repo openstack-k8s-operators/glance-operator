@@ -134,18 +134,8 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Always patch the instance status when exiting this function so we can persist any changes.
 	defer func() {
-		// update the Ready condition based on the sub conditions
-		if instance.Status.Conditions.AllSubConditionIsTrue() {
-			instance.Status.Conditions.MarkTrue(
-				condition.ReadyCondition, condition.ReadyMessage)
-		} else {
-			// something is not ready so reset the Ready condition
-			instance.Status.Conditions.MarkUnknown(
-				condition.ReadyCondition, condition.InitReason, condition.ReadyInitMessage)
-			// and recalculate it based on the state of the rest of the conditions
-			instance.Status.Conditions.Set(
-				instance.Status.Conditions.Mirror(condition.ReadyCondition))
-		}
+		// Always mirror the Condition from the sub level CRs
+		instance.Status.Conditions.Set(instance.Status.Conditions.Mirror(condition.ReadyCondition))
 		condition.RestoreLastTransitionTimes(&instance.Status.Conditions, savedConditions)
 		err := helper.PatchInstance(ctx, instance)
 		if err != nil {
@@ -835,8 +825,10 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 
 		return ctrl.Result{}, err
 	}
-
-	if instance.Status.ReadyCount > 0 || *instance.Spec.Replicas == 0 {
+	// Mark the Deployment as Ready only if the number of Replicas is equals
+	// to the Deployed instances (ReadyCount), but mark it as True is Replicas
+	// is zero
+	if instance.Status.ReadyCount == *instance.Spec.Replicas || *instance.Spec.Replicas == 0 {
 		instance.Status.Conditions.MarkTrue(condition.DeploymentReadyCondition, condition.DeploymentReadyMessage)
 	} else {
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -889,8 +881,14 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		condition.CronJobReadyCondition,
 		condition.CronJobReadyMessage,
 	)
-
 	// create ImageCache cronJobs - end
+
+	// We reached the end of the Reconcile, update the Ready condition based on
+	// the sub conditions
+	if instance.Status.Conditions.AllSubConditionIsTrue() {
+		instance.Status.Conditions.MarkTrue(
+			condition.ReadyCondition, condition.ReadyMessage)
+	}
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
