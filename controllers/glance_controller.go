@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -109,6 +108,7 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		r.Log.Error(err, fmt.Sprintf("could not fetch Glance instance %s", instance.Name))
 		return ctrl.Result{}, err
 	}
 
@@ -120,6 +120,7 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		r.Log,
 	)
 	if err != nil {
+		r.Log.Error(err, fmt.Sprintf("could not instantiate helper for instance %s", instance.Name))
 		return ctrl.Result{}, err
 	}
 
@@ -408,7 +409,7 @@ func (r *GlanceReconciler) reconcileInit(
 	_, _, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
-			return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
+			return glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
 		}
 		return ctrl.Result{}, err
 	}
@@ -423,7 +424,7 @@ func (r *GlanceReconciler) reconcileInit(
 		PasswordSelector:   instance.Spec.PasswordSelectors.Service,
 	}
 
-	ksSvc := keystonev1.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, time.Duration(10)*time.Second)
+	ksSvc := keystonev1.NewKeystoneService(ksSvcSpec, instance.Namespace, serviceLabels, glance.NormalDuration)
 	ctrlResult, err := ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		return ctrlResult, err
@@ -455,7 +456,7 @@ func (r *GlanceReconciler) reconcileInit(
 		jobDef,
 		glancev1.DbSyncHash,
 		instance.Spec.PreserveJobs,
-		time.Duration(5)*time.Second,
+		glance.ShortDuration,
 		dbSyncHash,
 	)
 	ctrlResult, err = dbSyncjob.DoJob(
@@ -486,26 +487,6 @@ func (r *GlanceReconciler) reconcileInit(
 	instance.Status.Conditions.MarkTrue(condition.DBSyncReadyCondition, condition.DBSyncReadyMessage)
 	// run Glance db sync - end
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
-	return ctrl.Result{}, nil
-}
-
-func (r *GlanceReconciler) reconcileUpdate(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' update", instance.Name))
-
-	// TODO: should have minor update tasks if required
-	// - delete dbsync hash from status to rerun it?
-
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' update successfully", instance.Name))
-	return ctrl.Result{}, nil
-}
-
-func (r *GlanceReconciler) reconcileUpgrade(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' upgrade", instance.Name))
-
-	// TODO: should have major version upgrade tasks
-	// -delete dbsync hash from status to rerun it?
-
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' upgrade successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
 
@@ -552,7 +533,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 				condition.RequestedReason,
 				condition.SeverityInfo,
 				condition.MemcachedReadyWaitingMessage))
-			return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, fmt.Errorf("memcached %s not found", instance.Spec.MemcachedInstance)
+			return glance.ResultRequeue, fmt.Errorf("memcached %s not found", instance.Spec.MemcachedInstance)
 		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.MemcachedReadyCondition,
@@ -569,7 +550,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 			condition.RequestedReason,
 			condition.SeverityInfo,
 			condition.MemcachedReadyWaitingMessage))
-		return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, fmt.Errorf("memcached %s is not ready", memcached.Name)
+		return glance.ResultRequeue, fmt.Errorf("memcached %s is not ready", memcached.Name)
 	}
 	// Mark the Memcached Service as Ready if we get to this point with no errors
 	instance.Status.Conditions.MarkTrue(
@@ -587,7 +568,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 				condition.RequestedReason,
 				condition.SeverityInfo,
 				condition.InputReadyWaitingMessage))
-			return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
+			return glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
 		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.InputReadyCondition,
@@ -640,22 +621,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	}
 	// Handle service init
 	ctrlResult, err = r.reconcileInit(ctx, instance, helper, serviceLabels, serviceAnnotations)
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-
-	// Handle service update
-	ctrlResult, err = r.reconcileUpdate(ctx, instance, helper)
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-
-	// Handle service upgrade
-	ctrlResult, err = r.reconcileUpgrade(ctx, instance, helper)
 	if err != nil {
 		return ctrlResult, err
 	} else if (ctrlResult != ctrl.Result{}) {
@@ -1054,7 +1019,7 @@ func (r *GlanceReconciler) ensureDBPurgeJob(
 
 	dbPurgeCronJob := cronjob.NewCronJob(
 		cronjobDef,
-		5*time.Second,
+		glance.ShortDuration,
 	)
 	ctrlResult, err := dbPurgeCronJob.CreateOrPatch(ctx, h)
 	if err != nil {
