@@ -1085,6 +1085,9 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              observedGeneration:
+                format: int64
+                type: integer
               serviceID:
                 type: string
             type: object

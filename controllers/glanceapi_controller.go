@@ -593,6 +593,13 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// added or removed from an already existing API
 	if hashChanged {
 		if err = r.glanceAPIRefresh(ctx, helper, instance); err != nil {
+			instance.Status.Conditions.MarkFalse(
+				condition.DeploymentReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.DeploymentReadyErrorMessage,
+				err.Error(),
+			)
 			return ctrl.Result{}, err
 		}
 	}

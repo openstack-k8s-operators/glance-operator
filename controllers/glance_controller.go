@@ -485,6 +485,10 @@ func (r *GlanceReconciler) reconcileInit(
 	}
 	instance.Status.Conditions.MarkTrue(condition.DBSyncReadyCondition, condition.DBSyncReadyMessage)
 	// run Glance db sync - end
+
+	// when job passed, mark NetworkAttachmentsReadyCondition ready, because we
+	// pass NADs as serviceAnnotation to glance-dbsync job
+	instance.Status.Conditions.MarkTrue(condition.NetworkAttachmentsReadyCondition, condition.NetworkAttachmentsReadyMessage)
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
@@ -703,6 +707,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	// We reached the end of the Reconcile, update the Ready condition based on
 	// the sub conditions
+	instance.Status.ObservedGeneration = instance.Generation
 	if instance.Status.Conditions.AllSubConditionIsTrue() {
 		instance.Status.Conditions.MarkTrue(
 			condition.ReadyCondition, condition.ReadyMessage)
