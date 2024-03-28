@@ -17,6 +17,8 @@ package glance
 
 import (
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"time"
 )
 
 // CronJobType -
@@ -101,6 +103,10 @@ const (
 	GlanceCacheCleaner = "/usr/bin/glance-cache-cleaner"
 	// GlanceCachePruner -
 	GlanceCachePruner = "/usr/bin/glance-cache-pruner"
+	// ShortDuration -
+	ShortDuration = time.Duration(5) * time.Second
+	// NormalDuration -
+	NormalDuration = time.Duration(10) * time.Second
 )
 
 // DbsyncPropagation keeps track of the DBSync Service Propagation Type
@@ -110,3 +116,6 @@ var DbsyncPropagation = []storage.PropagationType{storage.DBSync}
 // It allows the GlanceAPI pod to mount volumes destined to Glance related
 // ServiceTypes
 var GlanceAPIPropagation = []storage.PropagationType{Glance, GlanceAPI}
+
+// ResultRequeue - Used to requeue a request
+var ResultRequeue = ctrl.Result{RequeueAfter: NormalDuration}

@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -104,6 +103,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		r.Log.Error(err, fmt.Sprintf("could not fetch GlanceAPI instance %s", instance.Name))
 		return ctrl.Result{}, err
 	}
 
@@ -115,6 +115,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		r.Log,
 	)
 	if err != nil {
+		r.Log.Error(err, fmt.Sprintf("could not instantiate helper for instance %s", instance.Name))
 		return ctrl.Result{}, err
 	}
 
@@ -525,26 +526,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceAPIReconciler) reconcileUpdate(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' update", instance.Name))
-
-	// TODO: should have minor update tasks if required
-	// - delete dbsync hash from status to rerun it?
-
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' update successfully", instance.Name))
-	return ctrl.Result{}, nil
-}
-
-func (r *GlanceAPIReconciler) reconcileUpgrade(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' upgrade", instance.Name))
-
-	// TODO: should have major version upgrade tasks
-	// -delete dbsync hash from status to rerun it?
-
-	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' upgrade successfully", instance.Name))
-	return ctrl.Result{}, nil
-}
-
 func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
@@ -563,7 +544,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 				condition.RequestedReason,
 				condition.SeverityInfo,
 				condition.InputReadyWaitingMessage))
-			return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
+			return glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
 		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.InputReadyCondition,
@@ -619,7 +600,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 					condition.SeverityInfo,
 					glancev1.CinderInitMessage),
 				)
-				return ctrl.Result{RequeueAfter: time.Duration(10) * time.Second}, nil
+				return glance.ResultRequeue, nil
 			}
 			// Cinder CR is found, we can unblock glance deployment because
 			// it represents a valid backend.
@@ -750,22 +731,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrlResult, nil
 	}
 
-	// Handle service update
-	ctrlResult, err = r.reconcileUpdate(ctx, instance, helper)
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-
-	// Handle service upgrade
-	ctrlResult, err = r.reconcileUpgrade(ctx, instance, helper)
-	if err != nil {
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
-	}
-
 	//
 	// normal reconcile tasks
 	//
@@ -783,7 +748,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 	depl := statefulset.NewStatefulSet(
 		deplDef,
-		time.Duration(5)*time.Second,
+		glance.ShortDuration,
 	)
 
 	ctrlResult, err = depl.CreateOrPatch(ctx, helper)
@@ -1116,7 +1081,7 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		instance.Namespace,
 		ksEndpointSpec,
 		serviceLabels,
-		time.Duration(10)*time.Second,
+		glance.NormalDuration,
 	)
 	ctrlResult, err = ksSvc.CreateOrPatch(ctx, helper)
 	if err != nil {
@@ -1201,7 +1166,7 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 			)
 			imageCacheCronJob := cronjob.NewCronJob(
 				cronjobDef,
-				5*time.Second,
+				glance.ShortDuration,
 			)
 			ctrlResult, err := imageCacheCronJob.CreateOrPatch(ctx, h)
 			if err != nil {
