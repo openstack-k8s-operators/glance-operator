@@ -1,0 +1,82 @@
+# Requires multiple running Ceph clusters and their `/etc/ceph` files in
+# the secret `ceph-conf-files`.
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      databaseInstance: openstack
+      databaseAccount: glance
+      secret: osp-secret
+      storageClass: ""
+      storageRequest: 10G
+      keystoneEndpoint: default
+      glanceAPIs:
+        default:
+          type: split
+          replicas: 3
+          customServiceConfig: |
+            [DEFAULT]
+            enabled_backends = default_backend:rbd,ceph_az1:rbd,ceph_az2:rbd
+            [glance_store]
+            default_backend = default_backend
+            [default_backend]
+            rbd_store_ceph_conf = /etc/ceph/ceph.conf
+            store_description = "az0 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = openstack
+            [ceph_az1]
+            rbd_store_ceph_conf = /etc/ceph/az1.conf
+            store_description = "az1 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = az1.openstack
+            [ceph_az2]
+            rbd_store_ceph_conf = /etc/ceph/az2.conf
+            store_description = "az2 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = az2.openstack
+        az1:
+          replicas: 3
+          type: edge
+          customServiceConfig: |
+            [DEFAULT]
+            enabled_backends = default_backend:rbd
+            [glance_store]
+            default_backend = default_backend
+            [default_backend]
+            rbd_store_ceph_conf = /etc/ceph/az1.conf
+            store_description = "az1 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = az1.openstack
+        az2:
+          replicas: 3
+          type: edge
+          customServiceConfig: |
+            [DEFAULT]
+            enabled_backends = default_backend:rbd
+            [glance_store]
+            default_backend = default_backend
+            [default_backend]
+            rbd_store_ceph_conf = /etc/ceph/az2.conf
+            store_description = "az2 RBD backend"
+            rbd_store_pool = images
+            rbd_store_user = az2.openstack
+  extraMounts:
+    - name: v1
+      region: r1
+      extraVol:
+        - propagation:
+          - Glance
+          extraVolType: Ceph
+          volumes:
+          - name: ceph
+            projected:
+              sources:
+              - secret:
+                  name: ceph-client-conf
+          mounts:
+          - name: ceph
+            mountPath: "/etc/ceph"
+            readOnly: true
