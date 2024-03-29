@@ -72,11 +72,9 @@ func (r *Glance) Default() {
 // Check if the KeystoneEndpoint matches with a deployed glanceAPI
 func (spec *GlanceSpec) isValidKeystoneEP() bool {
 	for name, api := range spec.GlanceAPIs {
-		// If it's an Edge API is not a valid endpoint
-		if api.Type == APIEdge {
-			return false
-		}
-		if spec.KeystoneEndpoint == name {
+		// A valid keystoneEndpoint can either be applied to
+		// a single API or split type, but not to an EdgeAPI
+		if api.Type != APIEdge && spec.KeystoneEndpoint == name {
 			return true
 		}
 	}
@@ -184,11 +182,6 @@ var _ webhook.Validator = &Glance{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	glancelog.Info("validate create", "name", r.Name)
-	// At creation time, if the CR has an invalid keystoneEndpoint value (that
-	// doesn't match with any defined backend), return an error.
-	if !r.Spec.isValidKeystoneEP() {
-		return nil, errors.New("KeystoneEndpoint is assigned to an invalid glanceAPI instance")
-	}
 	// Check if the top-level CR has a "customServiceConfig" with an explicit
 	// "backend:file || empty string" and save the result into topLevel var.
 	// If it's empty it should be ignored and having a file backend depends
@@ -204,6 +197,11 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
 			return nil, errors.New("Invalid backend configuration detected")
 		}
+	}
+	// At creation time, if the CR has an invalid keystoneEndpoint value (that
+	// doesn't match with any defined backend), return an error.
+	if !r.Spec.isValidKeystoneEP() {
+		return nil, errors.New("KeystoneEndpoint is assigned to an invalid glanceAPI instance")
 	}
 	return nil, nil
 }
@@ -234,12 +232,13 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
 			return nil, errors.New("Invalid backend configuration detected")
 		}
-		// At update time, if the CR has an invalid keystoneEndpoint set
-		// (e.g. an Edge GlanceAPI instance that can't be registered in keystone)
-		// return an error message
-		if !r.Spec.isValidKeystoneEP() {
-			return nil, errors.New("KeystoneEndpoint is assigned to an invalid glanceAPI instance")
-		}
+	}
+	// At update time, if the CR has an invalid keystoneEndpoint set
+	// (e.g. an Edge GlanceAPI instance that can't be registered in keystone)
+	// return an error message
+	if !r.Spec.isValidKeystoneEP() {
+		return nil, errors.New(
+			"KeystoneEndpoint is assigned to an invalid glanceAPI instance")
 	}
 	return nil, nil
 }
