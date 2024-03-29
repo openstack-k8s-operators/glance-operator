@@ -137,11 +137,12 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	// Always patch the instance status when exiting this function so we can
 	// persist any changes.
 	defer func() {
-		// Always mirror the condition status (useful in case of failures)
-		instance.Status.Conditions.Set(
-			instance.Status.Conditions.Mirror(condition.ReadyCondition))
 		condition.RestoreLastTransitionTimes(
 			&instance.Status.Conditions, savedConditions)
+		if instance.Status.Conditions.IsUnknown(condition.ReadyCondition) {
+			instance.Status.Conditions.Set(
+				instance.Status.Conditions.Mirror(condition.ReadyCondition))
+		}
 		err := helper.PatchInstance(ctx, instance)
 		if err != nil {
 			_err = err
@@ -152,8 +153,11 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	// initialize conditions used later as Status=Unknown, except the ReadyCondition
 	// that should be False when we start
 	cl := condition.CreateList(
-		// Mark ReadyCondition as False from the beginning
-		condition.FalseCondition(condition.ReadyCondition, condition.InitReason, condition.SeverityInfo, condition.ReadyInitMessage),
+		// Mark ReadyCondition as Unknown from the beginning, because the
+		// Reconcile function is in progress. If this condition is not marked
+		// as True and is still in the "Unknown" state, we `Mirror(` the actual
+		// failure
+		condition.UnknownCondition(condition.ReadyCondition, condition.InitReason, condition.ReadyInitMessage),
 		condition.UnknownCondition(condition.DBReadyCondition, condition.InitReason, condition.DBReadyInitMessage),
 		condition.UnknownCondition(condition.DBSyncReadyCondition, condition.InitReason, condition.DBSyncReadyInitMessage),
 		condition.UnknownCondition(condition.MemcachedReadyCondition, condition.InitReason, condition.MemcachedReadyInitMessage),

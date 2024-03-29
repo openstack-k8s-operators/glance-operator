@@ -134,9 +134,12 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Always patch the instance status when exiting this function so we can persist any changes.
 	defer func() {
-		// Always mirror the Condition from the sub level CRs
-		instance.Status.Conditions.Set(instance.Status.Conditions.Mirror(condition.ReadyCondition))
-		condition.RestoreLastTransitionTimes(&instance.Status.Conditions, savedConditions)
+		condition.RestoreLastTransitionTimes(
+			&instance.Status.Conditions, savedConditions)
+		if instance.Status.Conditions.IsUnknown(condition.ReadyCondition) {
+			instance.Status.Conditions.Set(
+				instance.Status.Conditions.Mirror(condition.ReadyCondition))
+		}
 		err := helper.PatchInstance(ctx, instance)
 		if err != nil {
 			_err = err
@@ -146,6 +149,11 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// initialize conditions used later as Status=Unknown
 	cl := condition.CreateList(
+		// Mark ReadyCondition as Unknown from the beginning, because the
+		// Reconcile function is in progress. If this condition is not marked
+		// as True and is still in the "Unknown" state, we `Mirror(` the actual
+		// failure
+		condition.UnknownCondition(condition.ReadyCondition, condition.InitReason, condition.ReadyInitMessage),
 		condition.UnknownCondition(glancev1.CinderCondition, condition.InitReason, glancev1.CinderInitMessage),
 		condition.UnknownCondition(condition.ExposeServiceReadyCondition, condition.InitReason, condition.ExposeServiceReadyInitMessage),
 		condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
