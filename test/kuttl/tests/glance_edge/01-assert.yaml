@@ -1,0 +1,374 @@
+#
+# Check for:
+# - Glance CR
+# - GlanceAPI glance-default-external CR
+# - GlanceAPI glance-default-internal CR
+# - GlanceAPI glance-az1-edge CR
+# - GlanceAPI glance-az2-edge CR
+# - GlanceAPI glance-default-external-api StatefulSet
+# - GlanceAPI glance-default-internal-api StatefulSet
+# - GlanceAPI glance-az1-edge-api StatefulSet
+# - GlanceAPI glance-az2-edge-api StatefulSet
+# - glance-default-internal service
+# - glance-default-public service
+# - glance-default-headless service
+# - glance-az1-internal service
+# - glance-az1-headless service
+# - glance-az2-internal service
+# - glance-az2-headless service
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  serviceUser: glance
+  databaseInstance: openstack
+  databaseAccount: glance
+  glanceAPIs:
+    default:
+      replicas: 1
+    az1:
+      replicas: 1
+    az2:
+      replicas: 1
+  secret: osp-secret
+  storageRequest: 10G
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-external
+spec:
+  apiType: external
+  databaseAccount: glance
+  passwordSelectors:
+    service: GlancePassword
+  replicas: 1
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-internal
+spec:
+  apiType: internal
+  databaseAccount: glance
+  passwordSelectors:
+    service: GlancePassword
+  replicas: 1
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-az1-edge
+spec:
+  apiType: edge
+  databaseAccount: glance
+  passwordSelectors:
+    service: GlancePassword
+  replicas: 1
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-az2-edge
+spec:
+  apiType: edge
+  databaseAccount: glance
+  passwordSelectors:
+    service: GlancePassword
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-external-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: glance
+  template:
+    metadata:
+      labels:
+        service: glance
+    spec:
+      containers:
+      - args:
+        - --single-child
+        - --
+        - /usr/bin/tail
+        - -n+1
+        - -F
+        - /var/log/glance/glance-default-external.log
+        command:
+        - /usr/bin/dumb-init
+        name: glance-log
+      - args:
+        - -c
+        - /usr/sbin/httpd -DFOREGROUND
+        command:
+        - /bin/bash
+        name: glance-httpd
+      - args:
+        - -c
+        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        command:
+        - /bin/bash
+        name: glance-api
+      serviceAccount: glance-glance
+      serviceAccountName: glance-glance
+status:
+  availableReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-internal-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: glance
+  template:
+    metadata:
+      labels:
+        service: glance
+    spec:
+      containers:
+      - args:
+        - --single-child
+        - --
+        - /usr/bin/tail
+        - -n+1
+        - -F
+        - /var/log/glance/glance-default-internal.log
+        command:
+        - /usr/bin/dumb-init
+        name: glance-log
+      - args:
+        - -c
+        - /usr/sbin/httpd -DFOREGROUND
+        command:
+        - /bin/bash
+        name: glance-httpd
+      - args:
+        - -c
+        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        command:
+        - /bin/bash
+        name: glance-api
+      serviceAccount: glance-glance
+      serviceAccountName: glance-glance
+status:
+  availableReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-az1-edge-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: glance
+  template:
+    metadata:
+      labels:
+        service: glance
+    spec:
+      containers:
+      - args:
+        - --single-child
+        - --
+        - /usr/bin/tail
+        - -n+1
+        - -F
+        - /var/log/glance/glance-az1-edge.log
+        command:
+        - /usr/bin/dumb-init
+        name: glance-log
+      - args:
+        - -c
+        - /usr/sbin/httpd -DFOREGROUND
+        command:
+        - /bin/bash
+        name: glance-httpd
+      - args:
+        - -c
+        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        command:
+        - /bin/bash
+        name: glance-api
+      serviceAccount: glance-glance
+      serviceAccountName: glance-glance
+status:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-az2-edge-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: glance
+  template:
+    metadata:
+      labels:
+        service: glance
+    spec:
+      containers:
+      - args:
+        - --single-child
+        - --
+        - /usr/bin/tail
+        - -n+1
+        - -F
+        - /var/log/glance/glance-az2-edge.log
+        command:
+        - /usr/bin/dumb-init
+        name: glance-log
+      - args:
+        - -c
+        - /usr/sbin/httpd -DFOREGROUND
+        command:
+        - /bin/bash
+        name: glance-httpd
+      - args:
+        - -c
+        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        command:
+        - /bin/bash
+        name: glance-api
+      serviceAccount: glance-glance
+      serviceAccountName: glance-glance
+status:
+  replicas: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal
+  labels:
+    endpoint: internal
+    service: glance
+spec:
+  ports:
+  - name: glance-default-internal
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-public
+  labels:
+    endpoint: public
+    service: glance
+spec:
+  ports:
+  - name: glance-default-public
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-external-api
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-default-external-api
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal-api
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-default-internal-api
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az1-internal
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-az1-internal
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+# headless service for az1
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az1-edge-api
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-az1-edge-api
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az2-internal
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-az2-internal
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+# headless service for az2
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az2-edge-api
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-az2-edge-api
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance

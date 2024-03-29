@@ -4,25 +4,28 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
-  customServiceConfig: |
-    [DEFAULT]
-    debug = true
   databaseInstance: openstack
   databaseAccount: glance
-  keystoneEndpoint: central
+  keystoneEndpoint: default
   glanceAPIs:
-    edge1:
-      preserveJobs: false
+    default:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends=default_backend:rbd,az1:rbd,az2:rbd
+      replicas: 1
+      type: split
+    az1:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends=az1:rbd
       replicas: 1
       type: edge
-    edge2:
-      preserveJobs: false
+    az2:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends=az2:rbd
       replicas: 1
       type: edge
-    central:
-      preserveJobs: false
-      replicas: 1
-      type: single
   secret: osp-secret
   storageClass: local-storage
   storageRequest: 10G
