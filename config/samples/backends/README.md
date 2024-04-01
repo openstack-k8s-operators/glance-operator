@@ -199,18 +199,18 @@ spec:
 ...
 ...
   extraMounts:
-    - extraVol:
-      - propagation:
-        - GlanceAPI
-      - extraVolType: NFS
-        mounts:
-          - mountPath: /var/lib/glance/images
-            name: nfs
-        volumes:
-          - name: nfs
-            nfs:
-              path: {{ NFS_EXPORT_PATH }}
-              server: {{ NFS_IP_ADDRESS }}
+  - extraVol:
+    - extraVolType: Nfs
+    mounts:
+    - mountPath: /var/lib/glance/images
+      name: nfs
+    propagation:
+    - Glance
+    volumes:
+    - name: nfs
+      nfs:
+        path: {{ NFS_EXPORT_PATH }}
+        server: {{ NFS_IP_ADDRESS }}
 ```
 
 #### Note
