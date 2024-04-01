@@ -664,8 +664,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			// progress operation rather than something that failed
 			instance.Status.Conditions.MarkUnknown(
 				condition.TLSInputReadyCondition,
-				condition.InitReason,
-				condition.InputReadyInitMessage)
+				condition.RequestedReason,
+				condition.InputReadyWaitingMessage)
 			return ctrlResult, nil
 		}
 		if hash != "" {
@@ -689,8 +689,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		// progress operation rather than something that failed
 		instance.Status.Conditions.MarkUnknown(
 			condition.TLSInputReadyCondition,
-			condition.InitReason,
-			condition.InputReadyInitMessage)
+			condition.RequestedReason,
+			condition.InputReadyWaitingMessage)
 		return ctrlResult, nil
 	}
 	configVars[tls.TLSHashName] = env.SetValue(certsHash)
