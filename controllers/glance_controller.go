@@ -173,6 +173,7 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		condition.UnknownCondition(condition.CronJobReadyCondition, condition.InitReason, condition.CronJobReadyInitMessage),
 	)
 	instance.Status.Conditions.Init(&cl)
+	instance.Status.ObservedGeneration = instance.Generation
 
 	// If we're not deleting this and the service object doesn't have our finalizer, add it.
 	if instance.DeletionTimestamp.IsZero() && controllerutil.AddFinalizer(instance, helper.GetFinalizer()) || isNewInstance {
@@ -493,7 +494,6 @@ func (r *GlanceReconciler) reconcileInit(
 
 func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glancev1.Glance, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
-
 	// Service account, role, binding
 	rbacRules := []rbacv1.PolicyRule{
 		{
@@ -585,8 +585,18 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	db, ctrlResult, err := r.ensureDB(ctx, helper, instance)
 	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DBReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DBReadyErrorMessage,
+			err.Error()))
 		return ctrl.Result{}, err
 	} else if (ctrlResult != ctrl.Result{}) {
+		instance.Status.Conditions.Set(condition.UnknownCondition(
+			condition.DBReadyCondition,
+			condition.RequestedReason,
+			condition.DBReadyRunningMessage))
 		return ctrlResult, nil
 	}
 
@@ -607,10 +617,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	}
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
 	// Create Secrets - end
-
-	//
-	// TODO check when/if Init, Update, or Upgrade should/could be skipped
-	//
 
 	var serviceAnnotations map[string]string
 	// networks to attach to
@@ -669,8 +675,11 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	// We reached the end of the Reconcile, update the Ready condition based on
 	// the sub conditions
-	instance.Status.ObservedGeneration = instance.Generation
-	if instance.Status.Conditions.AllSubConditionIsTrue() {
+	subGen, err := r.checkGlanceAPIsGeneration(ctx, instance)
+	if err != nil {
+		return ctrlResult, err
+	}
+	if instance.Status.Conditions.AllSubConditionIsTrue() && subGen {
 		instance.Status.Conditions.MarkTrue(
 			condition.ReadyCondition, condition.ReadyMessage)
 	}
@@ -1191,4 +1200,26 @@ func (r *GlanceReconciler) ensureDB(
 	instance.Status.DatabaseHostname = db.GetDatabaseHostname()
 	instance.Status.Conditions.MarkTrue(condition.DBReadyCondition, condition.DBReadyMessage)
 	return db, ctrlResult, nil
+}
+
+// checkGlanceAPIsGeneration -
+func (r *GlanceReconciler) checkGlanceAPIsGeneration(
+	ctx context.Context,
+	instance *glancev1.Glance,
+) (bool, error) {
+	// get all GlanceAPI CRs
+	glances := &glancev1.GlanceAPIList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(instance.Namespace),
+	}
+	if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
+		r.Log.Error(err, "Unable to retrieve Glance CRs %w")
+		return false, err
+	}
+	for _, item := range glances.Items {
+		if item.Generation != item.Status.ObservedGeneration {
+			return false, nil
+		}
+	}
+	return true, nil
 }
