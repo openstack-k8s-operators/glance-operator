@@ -234,15 +234,11 @@ var _ = Describe("Glance controller", func() {
 				condition.DBReadyCondition,
 				corev1.ConditionTrue,
 			)
-			th.ExpectCondition(
-				glanceTest.Instance,
+			th.ExpectCondition(glanceTest.Instance,
 				ConditionGetterFunc(GlanceConditionGetter),
 				condition.DBSyncReadyCondition,
 				corev1.ConditionTrue,
 			)
-		})
-		It("GlanceAPI CR is created", func() {
-			GlanceAPIExists(glanceTest.GlanceSingle)
 		})
 	})
 	When("Glance CR is created without container images defined", func() {

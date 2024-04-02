@@ -11,15 +11,15 @@ spec:
   databaseAccount: glance
   keystoneEndpoint: central
   glanceAPIs:
-    central:
-      preserveJobs: false
-      replicas: 1
-      type: single
     edge1:
       preserveJobs: false
       replicas: 1
-      type: single
+      type: edge
     edge2:
+      preserveJobs: false
+      replicas: 1
+      type: edge
+    central:
       preserveJobs: false
       replicas: 1
       type: single

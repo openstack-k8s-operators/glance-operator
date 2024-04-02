@@ -17,6 +17,7 @@ limitations under the License.
 package functional
 
 import (
+	"fmt"
 	"golang.org/x/exp/maps"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -169,6 +170,7 @@ func CreateGlanceSecret(namespace string, name string) *corev1.Secret {
 	)
 }
 
+// GetDefaultGlanceSpec - It returns a default API built for testing purposes
 func GetDefaultGlanceSpec() map[string]interface{} {
 	return map[string]interface{}{
 		"databaseInstance": "openstack",
@@ -178,6 +180,7 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 	}
 }
 
+// CreateGlanceAPISpec -
 func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := map[string]interface{}{
 		"replicas":         1,
@@ -193,6 +196,7 @@ func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 	return spec
 }
 
+// GetDefaultGlanceAPISpec -
 func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := map[string]interface{}{
 		"replicas":         1,
@@ -208,6 +212,7 @@ func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 	return spec
 }
 
+// GetTLSGlanceAPISpec -
 func GetTLSGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := CreateGlanceAPISpec(apiType)
 	maps.Copy(spec, map[string]interface{}{
@@ -229,6 +234,7 @@ func GetTLSGlanceAPISpec(apiType APIType) map[string]interface{} {
 	return spec
 }
 
+// GlanceAPINotExists - Asserts the GlanceAPI does not exist
 func GlanceAPINotExists(name types.NamespacedName) {
 	Consistently(func(g Gomega) {
 		instance := &glancev1.GlanceAPI{}
@@ -237,6 +243,7 @@ func GlanceAPINotExists(name types.NamespacedName) {
 	}, timeout, interval).Should(Succeed())
 }
 
+// GlanceAPIExists - Asserts the GlanceAPI exist
 func GlanceAPIExists(name types.NamespacedName) {
 	Consistently(func(g Gomega) {
 		instance := &glancev1.GlanceAPI{}
@@ -245,7 +252,8 @@ func GlanceAPIExists(name types.NamespacedName) {
 	}, timeout, interval).Should(Succeed())
 }
 
-// AssertPVCDoesNotExist ensures the local PVC resource does not exist in a k8s cluster.
+// AssertPVCDoesNotExist ensures the local PVC resource does not exist in a k8s
+// cluster.
 func AssertPVCDoesNotExist(name types.NamespacedName) {
 	instance := &corev1.PersistentVolumeClaim{}
 	Eventually(func(g Gomega) {
@@ -263,11 +271,20 @@ func AssertPVCExist(name types.NamespacedName) {
 	}, th.Timeout, th.Interval).Should(Succeed())
 }
 
-// AssertCronJobDoesNotExist ensures the CronJob resource does not exist in a k8s cluster.
+// AssertCronJobDoesNotExist ensures the CronJob resource does not exist in a
+// k8s cluster.
 func AssertCronJobDoesNotExist(name types.NamespacedName) {
 	instance := &batchv1.CronJob{}
 	Eventually(func(g Gomega) {
 		err := th.K8sClient.Get(th.Ctx, name, instance)
 		g.Expect(k8s_errors.IsNotFound(err)).To(BeTrue())
 	}, th.Timeout, th.Interval).Should(Succeed())
+}
+
+// GetDummyBackend - Utility function that simulates a customServiceConfig
+// where a Ceph backend has been set
+func GetDummyBackend() string {
+	section := "[DEFAULT]"
+	dummyBackend := "enabled_backends=backend1:rbd"
+	return fmt.Sprintf("%s\n%s", section, dummyBackend)
 }
