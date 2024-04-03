@@ -1,8 +1,8 @@
 #
 # Check for:
-# - Glance CR with 2 replicas for each GlanceAPI
-# - GlanceAPI glance-external-api StatefulSet with 2 replicas
-# - GlanceAPI glance-internal-api StatefulSet with 2 replicas
+# - Glance CR with 3 replicas for each GlanceAPI
+# - GlanceAPI glance-external-api StatefulSet with 3 replicas
+# - GlanceAPI glance-internal-api StatefulSet with 3 replicas
 
 
 apiVersion: glance.openstack.org/v1beta1
@@ -12,14 +12,14 @@ metadata:
 spec:
   glanceAPIs:
     default:
-      replicas: 2
+      replicas: 3
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: glance-default-single
 spec:
-  replicas: 2
+  replicas: 3
 status:
-  availableReplicas: 2
-  replicas: 2
+  availableReplicas: 3
+  replicas: 3
