@@ -18,7 +18,7 @@ spec:
   databaseAccount: glance
   glanceAPIs:
     default:
-      replicas: 2
+      replicas: 3
       type: "single"
       imageCache:
         cleanerScheduler: '*/30 * * * *'
@@ -33,7 +33,7 @@ metadata:
   name: glance-default-single
 spec:
   apiType: single
-  replicas: 2
+  replicas: 3
   imageCache:
     cleanerScheduler: '*/30 * * * *'
     prunerScheduler: 1 0 * * *
