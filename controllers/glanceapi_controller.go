@@ -808,9 +808,14 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 	// Mark the Deployment as Ready only if the number of Replicas is equals
 	// to the Deployed instances (ReadyCount), but mark it as True is Replicas
-	// is zero
-	if instance.Status.ReadyCount == *instance.Spec.Replicas || *instance.Spec.Replicas == 0 {
-		instance.Status.Conditions.MarkTrue(condition.DeploymentReadyCondition, condition.DeploymentReadyMessage)
+	// is zero. In addition, make sure the controller sees the last Generation
+	// by comparing it with the ObservedGeneration set in the StateFulSet.
+	if (instance.Status.ReadyCount == *instance.Spec.Replicas || *instance.Spec.Replicas == 0) &&
+		(depl.GetStatefulSet().Generation == depl.GetStatefulSet().Status.ObservedGeneration) {
+		instance.Status.Conditions.MarkTrue(
+			condition.DeploymentReadyCondition,
+			condition.DeploymentReadyMessage,
+		)
 	} else {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.DeploymentReadyCondition,
