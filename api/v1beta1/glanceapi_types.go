@@ -85,8 +85,10 @@ type GlanceAPISpec struct {
 
 // GlanceAPIStatus defines the observed state of GlanceAPI
 type GlanceAPIStatus struct {
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:default=0
 	// ReadyCount of glance API instances
-	ReadyCount int32 `json:"readyCount,omitempty"`
+	ReadyCount int32 `json:"readyCount"`
 
 	// Map of hashes to track e.g. job status
 	Hash map[string]string `json:"hash,omitempty"`

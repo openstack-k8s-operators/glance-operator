@@ -175,7 +175,6 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// Register overall status immediately to have an early feedback e.g. in the cli
 		return ctrl.Result{}, nil
 	}
-
 	if instance.Status.Hash == nil {
 		instance.Status.Hash = map[string]string{}
 	}
@@ -810,7 +809,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// to the Deployed instances (ReadyCount), but mark it as True is Replicas
 	// is zero. In addition, make sure the controller sees the last Generation
 	// by comparing it with the ObservedGeneration set in the StateFulSet.
-	if (instance.Status.ReadyCount == *instance.Spec.Replicas || *instance.Spec.Replicas == 0) &&
+	if (instance.Status.ReadyCount == *instance.Spec.Replicas) &&
 		(depl.GetStatefulSet().Generation == depl.GetStatefulSet().Status.ObservedGeneration) {
 		instance.Status.Conditions.MarkTrue(
 			condition.DeploymentReadyCondition,
