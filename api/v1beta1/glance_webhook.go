@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,7 +36,7 @@ type GlanceDefaults struct {
 	DBPurgeAge        int
 	DBPurgeSchedule   string
 	CleanerSchedule   string
-	PrunerSchedule   string
+	PrunerSchedule    string
 }
 
 var glanceDefaults GlanceDefaults
@@ -210,10 +212,16 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	glancelog.Info("validate update", "name", r.Name)
 
+	o, ok := old.(*Glance)
+	if !ok || o == nil {
+		return nil, apierrors.NewInternalError(fmt.Errorf("unable to convert existing object"))
+	}
+
+	glancelog.Info("validate update", "diff", cmp.Diff(o, r))
+
 	// Type can either be "split" or "single": we do not support changing layout
 	// because there's no logic in the operator to scale down the existing statefulset
 	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
-	o := old.(*Glance)
 	topLevelFileBackend := isFileBackend(r.Spec.CustomServiceConfig, true)
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
 		// When a new entry (new glanceAPI instance) is added in the main CR, it's

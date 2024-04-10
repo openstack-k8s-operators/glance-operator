@@ -17,6 +17,10 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
+	"github.com/google/go-cmp/cmp"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -37,7 +41,7 @@ var glanceapilog = logf.Log.WithName("glanceapi-resource")
 // SetupGlanceAPIDefaults - initialize GlanceAPI spec defaults for use with either internal or external webhooks
 func SetupGlanceAPIDefaults(defaults GlanceAPIDefaults) {
 	glanceAPIDefaults = defaults
-	glancelog.Info("Glance defaults initialized", "defaults", defaults)
+	glanceapilog.Info("Glance defaults initialized", "defaults", defaults)
 }
 
 // SetupWebhookWithManager sets up the webhook with the Manager
@@ -53,7 +57,7 @@ var _ webhook.Defaulter = &GlanceAPI{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *GlanceAPI) Default() {
-	glancelog.Info("default", "name", r.Name)
+	glanceapilog.Info("default", "name", r.Name)
 
 	r.Spec.Default()
 }
@@ -71,7 +75,7 @@ var _ webhook.Validator = &GlanceAPI{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *GlanceAPI) ValidateCreate() (admission.Warnings, error) {
-	glancelog.Info("validate create", "name", r.Name)
+	glanceapilog.Info("validate create", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object creation.
 	return nil, nil
@@ -79,7 +83,14 @@ func (r *GlanceAPI) ValidateCreate() (admission.Warnings, error) {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *GlanceAPI) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	glancelog.Info("validate update", "name", r.Name)
+	glanceapilog.Info("validate update", "name", r.Name)
+
+	o, ok := old.(*GlanceAPI)
+	if !ok || o == nil {
+		return nil, apierrors.NewInternalError(fmt.Errorf("unable to convert existing object"))
+	}
+
+	glanceapilog.Info("validate update", "diff", cmp.Diff(o, r))
 
 	// TODO(user): fill in your validation logic upon object update.
 	return nil, nil
@@ -87,7 +98,7 @@ func (r *GlanceAPI) ValidateUpdate(old runtime.Object) (admission.Warnings, erro
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *GlanceAPI) ValidateDelete() (admission.Warnings, error) {
-	glancelog.Info("validate delete", "name", r.Name)
+	glanceapilog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil
