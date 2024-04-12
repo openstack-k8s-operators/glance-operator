@@ -446,7 +446,8 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			svc.AddAnnotation(map[string]string{
 				service.AnnotationIngressCreateKey: "false",
 			})
-			if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer {
+			if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer ||
+				instance.Spec.APIType == glancev1.APIEdge {
 				svc.AddAnnotation(map[string]string{
 					service.AnnotationHostnameKey: svc.GetServiceHostname(), // add annotation to register service name in dnsmasq
 				})
