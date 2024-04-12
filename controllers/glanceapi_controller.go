@@ -633,7 +633,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			condition.SeverityWarning,
 			condition.ServiceConfigReadyErrorMessage,
 			err.Error()))
-		return ctrl.Result{}, err
+		r.Log.Info("Glance config is not Ready, requeueing...")
+		return glance.ResultRequeue, nil
 	}
 
 	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
@@ -779,20 +780,32 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.ReadyCount = depl.GetStatefulSet().Status.ReadyReplicas
 
 	// verify if network attachment matches expectations
-	networkReady, networkAttachmentStatus, err := nad.VerifyNetworkStatusFromAnnotation(ctx, helper, instance.Spec.NetworkAttachments, GetServiceLabels(instance), instance.Status.ReadyCount)
-	if err != nil {
-		err = fmt.Errorf("verifying API NetworkAttachments (%s) %w", instance.Spec.NetworkAttachments, err)
-		instance.Status.Conditions.MarkFalse(
-			condition.NetworkAttachmentsReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.NetworkAttachmentsReadyErrorMessage,
-			err)
-		return ctrl.Result{}, err
+	networkReady := false
+	networkAttachmentStatus := map[string][]string{}
+	if *instance.Spec.Replicas > 0 {
+		networkReady, networkAttachmentStatus, err = nad.VerifyNetworkStatusFromAnnotation(
+			ctx,
+			helper,
+			instance.Spec.NetworkAttachments,
+			GetServiceLabels(instance),
+			instance.Status.ReadyCount,
+		)
+		if err != nil {
+			err = fmt.Errorf("verifying API NetworkAttachments (%s) %w", instance.Spec.NetworkAttachments, err)
+			instance.Status.Conditions.MarkFalse(
+				condition.NetworkAttachmentsReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.NetworkAttachmentsReadyErrorMessage,
+				err)
+			return ctrl.Result{}, err
+		}
+	} else {
+		networkReady = true
 	}
 
 	instance.Status.NetworkAttachments = networkAttachmentStatus
-	if networkReady || *instance.Spec.Replicas == 0 {
+	if networkReady {
 		instance.Status.Conditions.MarkTrue(condition.NetworkAttachmentsReadyCondition, condition.NetworkAttachmentsReadyMessage)
 	} else {
 		err := fmt.Errorf("not all pods have interfaces with ips as configured in NetworkAttachments: %s", instance.Spec.NetworkAttachments)
@@ -802,7 +815,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			condition.SeverityWarning,
 			condition.NetworkAttachmentsReadyErrorMessage,
 			err.Error()))
-
 		return ctrl.Result{}, err
 	}
 	// Mark the Deployment as Ready only if the number of Replicas is equals
@@ -1079,8 +1091,7 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		// the registered endpoints with the new URL.
 		err = keystonev1.DeleteKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
 		if err != nil {
-			r.Log.Info(fmt.Sprintf("Endpoint %s not found", instance.Name))
-			return ctrlResult, nil
+			return glance.ResultRequeue, fmt.Errorf("Endpoint %s not found", instance.Name)
 		}
 		return ctrlResult, nil
 	}
