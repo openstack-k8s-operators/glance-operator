@@ -777,62 +777,62 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			condition.DeploymentReadyRunningMessage))
 		return ctrlResult, nil
 	}
-	instance.Status.ReadyCount = depl.GetStatefulSet().Status.ReadyReplicas
 
-	// verify if network attachment matches expectations
-	networkReady := false
-	networkAttachmentStatus := map[string][]string{}
-	if *instance.Spec.Replicas > 0 {
-		networkReady, networkAttachmentStatus, err = nad.VerifyNetworkStatusFromAnnotation(
-			ctx,
-			helper,
-			instance.Spec.NetworkAttachments,
-			GetServiceLabels(instance),
-			instance.Status.ReadyCount,
-		)
-		if err != nil {
-			err = fmt.Errorf("verifying API NetworkAttachments (%s) %w", instance.Spec.NetworkAttachments, err)
-			instance.Status.Conditions.MarkFalse(
+	if depl.GetStatefulSet().Generation <= depl.GetStatefulSet().Status.ObservedGeneration {
+		instance.Status.ReadyCount = depl.GetStatefulSet().Status.ReadyReplicas
+		// verify if network attachment matches expectations
+		networkReady := false
+		networkAttachmentStatus := map[string][]string{}
+		if *instance.Spec.Replicas > 0 {
+			networkReady, networkAttachmentStatus, err = nad.VerifyNetworkStatusFromAnnotation(
+				ctx,
+				helper,
+				instance.Spec.NetworkAttachments,
+				GetServiceLabels(instance),
+				instance.Status.ReadyCount,
+			)
+			if err != nil {
+				err = fmt.Errorf("verifying API NetworkAttachments (%s) %w", instance.Spec.NetworkAttachments, err)
+				instance.Status.Conditions.MarkFalse(
+					condition.NetworkAttachmentsReadyCondition,
+					condition.ErrorReason,
+					condition.SeverityWarning,
+					condition.NetworkAttachmentsReadyErrorMessage,
+					err)
+				return ctrl.Result{}, err
+			}
+		} else {
+			networkReady = true
+		}
+		instance.Status.NetworkAttachments = networkAttachmentStatus
+		if networkReady {
+			instance.Status.Conditions.MarkTrue(condition.NetworkAttachmentsReadyCondition, condition.NetworkAttachmentsReadyMessage)
+		} else {
+			err := fmt.Errorf("not all pods have interfaces with ips as configured in NetworkAttachments: %s", instance.Spec.NetworkAttachments)
+			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.NetworkAttachmentsReadyCondition,
 				condition.ErrorReason,
 				condition.SeverityWarning,
 				condition.NetworkAttachmentsReadyErrorMessage,
-				err)
+				err.Error()))
 			return ctrl.Result{}, err
 		}
-	} else {
-		networkReady = true
-	}
-
-	instance.Status.NetworkAttachments = networkAttachmentStatus
-	if networkReady {
-		instance.Status.Conditions.MarkTrue(condition.NetworkAttachmentsReadyCondition, condition.NetworkAttachmentsReadyMessage)
-	} else {
-		err := fmt.Errorf("not all pods have interfaces with ips as configured in NetworkAttachments: %s", instance.Spec.NetworkAttachments)
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.NetworkAttachmentsReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.NetworkAttachmentsReadyErrorMessage,
-			err.Error()))
-		return ctrl.Result{}, err
-	}
-	// Mark the Deployment as Ready only if the number of Replicas is equals
-	// to the Deployed instances (ReadyCount), but mark it as True is Replicas
-	// is zero. In addition, make sure the controller sees the last Generation
-	// by comparing it with the ObservedGeneration set in the StateFulSet.
-	if (instance.Status.ReadyCount == *instance.Spec.Replicas) &&
-		(depl.GetStatefulSet().Generation == depl.GetStatefulSet().Status.ObservedGeneration) {
-		instance.Status.Conditions.MarkTrue(
-			condition.DeploymentReadyCondition,
-			condition.DeploymentReadyMessage,
-		)
-	} else {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.DeploymentReadyCondition,
-			condition.RequestedReason,
-			condition.SeverityInfo,
-			condition.DeploymentReadyRunningMessage))
+		// Mark the Deployment as Ready only if the number of Replicas is equals
+		// to the Deployed instances (ReadyCount), but mark it as True is Replicas
+		// is zero. In addition, make sure the controller sees the last Generation
+		// by comparing it with the ObservedGeneration set in the StateFulSet.
+		if instance.Status.ReadyCount == *instance.Spec.Replicas {
+			instance.Status.Conditions.MarkTrue(
+				condition.DeploymentReadyCondition,
+				condition.DeploymentReadyMessage,
+			)
+		} else {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.DeploymentReadyCondition,
+				condition.RequestedReason,
+				condition.SeverityInfo,
+				condition.DeploymentReadyRunningMessage))
+		}
 	}
 	// create StatefulSet - end
 
