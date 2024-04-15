@@ -77,16 +77,22 @@ spec:
         - /usr/bin/dumb-init
         name: glance-log
       - args:
+        - --single-child
+        - --
+        - /bin/bash
         - -c
         - /usr/sbin/httpd -DFOREGROUND
         command:
-        - /bin/bash
+        - /usr/bin/dumb-init
         name: glance-httpd
       - args:
+        - --single-child
+        - --
+        - /bin/bash
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         command:
-        - /bin/bash
+        - /usr/bin/dumb-init
         name: glance-api
       serviceAccount: glance-glance
       serviceAccountName: glance-glance
@@ -120,16 +126,22 @@ spec:
         - /usr/bin/dumb-init
         name: glance-log
       - args:
+        - --single-child
+        - --
+        - /bin/bash
         - -c
         - /usr/sbin/httpd -DFOREGROUND
         command:
-        - /bin/bash
+        - /usr/bin/dumb-init
         name: glance-httpd
       - args:
+        - --single-child
+        - --
+        - /bin/bash
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         command:
-        - /bin/bash
+        - /usr/bin/dumb-init
         name: glance-api
       serviceAccount: glance-glance
       serviceAccountName: glance-glance

@@ -63,6 +63,9 @@ spec:
           name: logs
         name: glance-log
       - args:
+        - --single-child
+        - --
+        - /bin/bash
         - -c
         - /usr/sbin/httpd -DFOREGROUND
         volumeMounts:
@@ -100,6 +103,9 @@ spec:
           subPath: tls.key
         name: glance-httpd
       - args:
+        - --single-child
+        - --
+        - /bin/bash
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         volumeMounts:
