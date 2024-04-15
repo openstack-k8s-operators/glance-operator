@@ -27,11 +27,13 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 
+	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
+	"sort"
 )
 
 const (
@@ -147,6 +149,7 @@ func StatefulSet(
 
 	extraVolPropagation := append(glance.GlanceAPIPropagation,
 		storage.PropagationType(glance.GetGlanceAPIName(instance.Name)))
+
 	httpdVolumeMount := glance.GetHttpdVolumeMount()
 
 	// Add the CA bundle to the apiVolumes and httpdVolumeMount
@@ -156,7 +159,15 @@ func StatefulSet(
 		httpdVolumeMount = append(httpdVolumeMount, instance.Spec.TLS.CreateVolumeMounts(nil)...)
 	}
 
-	for endpt := range GetGlanceEndpoints(instance.Spec.APIType) {
+	// TLS-e: we need to predict the order of both Volumes and VolumeMounts to
+	// prevent any unwanted Pod restart and StatefulSet rollout due to an
+	// update on its revision, so we sort the endpoints to make sure we preserve
+	// the append order.
+	endpts := maps.Keys(GetGlanceEndpoints(instance.Spec.APIType))
+	sort.Slice(endpts, func(i, j int) bool {
+		return string(endpts[i]) < string(endpts[j])
+	})
+	for _, endpt := range endpts {
 		if instance.Spec.TLS.API.Enabled(endpt) {
 			var tlsEndptCfg tls.GenericService
 			switch endpt {
@@ -305,7 +316,6 @@ func StatefulSet(
 
 	statefulset.Spec.Template.Spec.Volumes = append(glance.GetVolumes(
 		instance.Name,
-		glance.ServiceName,
 		privileged,
 		instance.Spec.CustomServiceConfigSecrets,
 		instance.Spec.ExtraMounts,
