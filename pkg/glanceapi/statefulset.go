@@ -67,7 +67,6 @@ func StatefulSet(
 		InitialDelaySeconds: 5,
 	}
 
-	args := []string{"-c", GlanceAPIServiceCommand}
 	//
 	// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 	//
@@ -238,9 +237,15 @@ func StatefulSet(
 						{
 							Name: glance.ServiceName + "-httpd",
 							Command: []string{
-								"/bin/bash",
+								"/usr/bin/dumb-init",
 							},
-							Args:  []string{"-c", GlanceAPIHttpdCommand},
+							Args: []string{
+								"--single-child",
+								"--",
+								"/bin/bash",
+								"-c",
+								string(GlanceAPIHttpdCommand),
+							},
 							Image: instance.Spec.ContainerImage,
 							SecurityContext: &corev1.SecurityContext{
 								RunAsUser: &runAsUser,
@@ -255,9 +260,15 @@ func StatefulSet(
 						{
 							Name: glance.ServiceName + "-api",
 							Command: []string{
-								"/bin/bash",
+								"/usr/bin/dumb-init",
 							},
-							Args:  args,
+							Args: []string{
+								"--single-child",
+								"--",
+								"/bin/bash",
+								"-c",
+								string(GlanceAPIServiceCommand),
+							},
 							Image: instance.Spec.ContainerImage,
 							SecurityContext: &corev1.SecurityContext{
 								RunAsUser:  &runAsUser,
