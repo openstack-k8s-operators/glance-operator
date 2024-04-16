@@ -69,38 +69,38 @@ spec:
         - -c
         - /usr/sbin/httpd -DFOREGROUND
         volumeMounts:
-        - mountPath: /etc/httpd/conf/httpd.conf
-          name: config-data
-          readOnly: true
-          subPath: httpd.conf
-        - mountPath: /etc/httpd/conf.d/10-glance.conf
-          name: config-data
-          readOnly: true
-          subPath: 10-glance-httpd.conf
-        - mountPath: /etc/httpd/conf.d/ssl.conf
-          name: config-data
-          readOnly: true
-          subPath: ssl.conf
-        - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
-          name: combined-ca-bundle
-          readOnly: true
-          subPath: tls-ca-bundle.pem
-        - mountPath: /etc/pki/tls/certs/public.crt
-          name: public-tls-certs
-          readOnly: true
-          subPath: tls.crt
-        - mountPath: /etc/pki/tls/private/public.key
-          name: public-tls-certs
-          readOnly: true
-          subPath: tls.key
-        - mountPath: /etc/pki/tls/certs/internal.crt
-          name: internal-tls-certs
-          readOnly: true
-          subPath: tls.crt
-        - mountPath: /etc/pki/tls/private/internal.key
-          name: internal-tls-certs
-          readOnly: true
-          subPath: tls.key
+         - mountPath: /etc/httpd/conf/httpd.conf
+           name: config-data
+           readOnly: true
+           subPath: httpd.conf
+         - mountPath: /etc/httpd/conf.d/10-glance.conf
+           name: config-data
+           readOnly: true
+           subPath: 10-glance-httpd.conf
+         - mountPath: /etc/httpd/conf.d/ssl.conf
+           name: config-data
+           readOnly: true
+           subPath: ssl.conf
+         - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+           name: combined-ca-bundle
+           readOnly: true
+           subPath: tls-ca-bundle.pem
+         - mountPath: /etc/pki/tls/certs/internal.crt
+           name: internal-tls-certs
+           readOnly: true
+           subPath: tls.crt
+         - mountPath: /etc/pki/tls/private/internal.key
+           name: internal-tls-certs
+           readOnly: true
+           subPath: tls.key
+         - mountPath: /etc/pki/tls/certs/public.crt
+           name: public-tls-certs
+           readOnly: true
+           subPath: tls.crt
+         - mountPath: /etc/pki/tls/private/public.key
+           name: public-tls-certs
+           readOnly: true
+           subPath: tls.key
         name: glance-httpd
       - args:
         - --single-child
@@ -109,28 +109,28 @@ spec:
         - -c
         - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
         volumeMounts:
-        - mountPath: /var/lib/config-data/default
-          name: config-data
-          readOnly: true
-        - mountPath: /etc/my.cnf
-          name: config-data
-          readOnly: true
-          subPath: my.cnf
-        - mountPath: /var/lib/glance
-          name: glance
-        - mountPath: /var/lib/kolla/config_files/config.json
-          name: config-data
-          readOnly: true
-          subPath: glance-api-config.json
-        - mountPath: /var/log/glance
-          name: logs
-        - mountPath: /usr/local/bin/container-scripts
-          name: scripts
-          readOnly: true
-        - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
-          name: combined-ca-bundle
-          readOnly: true
-          subPath: tls-ca-bundle.pem
+         - mountPath: /var/lib/config-data/default
+           name: config-data
+           readOnly: true
+         - mountPath: /etc/my.cnf
+           name: config-data
+           readOnly: true
+           subPath: my.cnf
+         - mountPath: /var/lib/glance
+           name: glance
+         - mountPath: /var/lib/kolla/config_files/config.json
+           name: config-data
+           readOnly: true
+           subPath: glance-api-config.json
+         - mountPath: /var/log/glance
+           name: logs
+         - mountPath: /usr/local/bin/container-scripts
+           name: scripts
+           readOnly: true
+         - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+           name: combined-ca-bundle
+           readOnly: true
+           subPath: tls-ca-bundle.pem
         name: glance-api
       volumes:
       - name: config-data
@@ -151,14 +151,14 @@ spec:
         secret:
           defaultMode: 292
           secretName: combined-ca-bundle
-      - name: public-tls-certs
-        secret:
-          defaultMode: 256
-          secretName: cert-glance-default-public-svc
       - name: internal-tls-certs
         secret:
           defaultMode: 256
           secretName: cert-glance-default-internal-svc
+      - name: public-tls-certs
+        secret:
+          defaultMode: 256
+          secretName: cert-glance-default-public-svc
 ---
 # the actual addresses of the apiEndpoints are platform specific, so we can't rely on
 # kuttl asserts to check them. This short script gathers the addresses and checks that

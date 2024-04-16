@@ -1,5 +1,4 @@
 /*
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -24,7 +23,14 @@ import (
 )
 
 // GetVolumes - service volumes
-func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []string, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.Volume {
+func GetVolumes(
+	name string,
+	hasCinder bool,
+	secretNames []string,
+	extraVol []glancev1.GlanceExtraVolMounts,
+	svc []storage.PropagationType,
+) []corev1.Volume {
+
 	var config0644AccessMode int32 = 0644
 
 	vm := []corev1.Volume{
@@ -123,7 +129,12 @@ func GetVolumes(name string, pvcName string, hasCinder bool, secretNames []strin
 }
 
 // GetVolumeMounts - general VolumeMounts
-func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.GlanceExtraVolMounts, svc []storage.PropagationType) []corev1.VolumeMount {
+func GetVolumeMounts(
+	secretNames []string,
+	hasCinder bool,
+	extraVol []glancev1.GlanceExtraVolMounts,
+	svc []storage.PropagationType,
+) []corev1.VolumeMount {
 
 	vm := []corev1.VolumeMount{
 		{
@@ -190,8 +201,11 @@ func GetVolumeMounts(secretNames []string, hasCinder bool, extraVol []glancev1.G
 	return vm
 }
 
-// GetConfigSecretVolumes - Returns a list of volumes associated with a list of Secret names
-func GetConfigSecretVolumes(secretNames []string) ([]corev1.Volume, []corev1.VolumeMount) {
+// GetConfigSecretVolumes - Returns a list of volumes associated with a list of
+// Secret names
+func GetConfigSecretVolumes(
+	secretNames []string,
+) ([]corev1.Volume, []corev1.VolumeMount) {
 	var config0640AccessMode int32 = 0640
 	secretVolumes := []corev1.Volume{}
 	secretMounts := []corev1.VolumeMount{}
