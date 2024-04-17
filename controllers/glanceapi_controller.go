@@ -829,7 +829,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrlResult, nil
 	}
 
-	if depl.GetStatefulSet().Generation <= depl.GetStatefulSet().Status.ObservedGeneration {
+	if depl.GetStatefulSet().Generation == depl.GetStatefulSet().Status.ObservedGeneration {
 		instance.Status.ReadyCount = depl.GetStatefulSet().Status.ReadyReplicas
 		// verify if network attachment matches expectations
 		networkReady := false
