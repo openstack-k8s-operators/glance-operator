@@ -184,12 +184,10 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if instance.Status.NetworkAttachments == nil {
 		instance.Status.NetworkAttachments = map[string][]string{}
 	}
-
 	// Handle service delete
 	if !instance.DeletionTimestamp.IsZero() {
 		return r.reconcileDelete(ctx, instance, helper)
 	}
-
 	// Handle non-deleted clusters
 	return r.reconcileNormal(ctx, instance, helper, req)
 }
@@ -306,6 +304,35 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return nil
 	}
 
+	memcachedFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+		result := []reconcile.Request{}
+
+		// get all GlanceAPIs CRs
+		glanceAPIs := &glancev1.GlanceAPIList{}
+		listOpts := []client.ListOption{
+			client.InNamespace(o.GetNamespace()),
+		}
+		if err := r.Client.List(context.Background(), glanceAPIs, listOpts...); err != nil {
+			r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
+			return nil
+		}
+
+		for _, cr := range glanceAPIs.Items {
+			if o.GetName() == cr.Spec.MemcachedInstance {
+				name := client.ObjectKey{
+					Namespace: o.GetNamespace(),
+					Name:      cr.Name,
+				}
+				r.Log.Info(fmt.Sprintf("Memcached %s is used by GlanceAPI CR %s", o.GetName(), cr.Name))
+				result = append(result, reconcile.Request{NamespacedName: name})
+			}
+		}
+		if len(result) > 0 {
+			return result
+		}
+		return nil
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.GlanceAPI{}).
 		Owns(&keystonev1.KeystoneEndpoint{}).
@@ -321,6 +348,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
+		Watches(&memcachedv1.Memcached{},
+			handler.EnqueueRequestsFromMapFunc(memcachedFn)).
 		Complete(r)
 }
 
@@ -566,6 +595,28 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
+	//
+	// Check for required memcached used for caching
+	//
+	memcached, err := memcachedv1.GetMemcachedByName(ctx, helper, instance.Spec.MemcachedInstance, instance.Namespace)
+	if err != nil {
+		if k8s_errors.IsNotFound(err) {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.MemcachedReadyCondition,
+				condition.RequestedReason,
+				condition.SeverityInfo,
+				condition.MemcachedReadyWaitingMessage))
+			return glance.ResultRequeue, fmt.Errorf("memcached %s not found", instance.Spec.MemcachedInstance)
+		}
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.MemcachedReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.MemcachedReadyErrorMessage,
+			err.Error()))
+		return ctrl.Result{}, err
+	}
+
 	// Get Enabled backends from customServiceConfig and run pre backend conditions
 	availableBackends := glancev1.GetEnabledBackends(instance.Spec.CustomServiceConfig)
 	_, hashChanged, err := r.createHashOfBackendConfig(instance, availableBackends)
@@ -625,7 +676,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	instance.Status.Conditions.MarkTrue(glancev1.CinderCondition, glancev1.CinderReadyMessage)
 
 	// Generate service config
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv, memcached)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -897,6 +948,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	instance *glancev1.GlanceAPI,
 	envVars *map[string]env.Setter,
 	imageConv bool,
+	memcached *memcachedv1.Memcached,
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), GetServiceLabels(instance))
 
@@ -1007,11 +1059,6 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		templateParameters["CacheEnabled"] = true
 		templateParameters["CacheMaxSize"] = cacheSize.Value()
 		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
-	}
-	var memcached *memcachedv1.Memcached
-	memcached, err = memcachedv1.GetMemcachedByName(ctx, h, instance.Spec.MemcachedInstance, instance.Namespace)
-	if err != nil {
-		return err
 	}
 	templateParameters["MemcachedServersWithInet"] = memcached.GetMemcachedServerListWithInetString()
 

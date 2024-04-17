@@ -534,7 +534,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 				condition.RequestedReason,
 				condition.SeverityInfo,
 				condition.MemcachedReadyWaitingMessage))
-			return glance.ResultRequeue, fmt.Errorf("memcached %s not found", instance.Spec.MemcachedInstance)
+			r.Log.Info(fmt.Sprintf("%s...requeueing", condition.MemcachedReadyWaitingMessage))
+			return glance.ResultRequeue, nil
 		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.MemcachedReadyCondition,
@@ -551,7 +552,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 			condition.RequestedReason,
 			condition.SeverityInfo,
 			condition.MemcachedReadyWaitingMessage))
-		return glance.ResultRequeue, fmt.Errorf("memcached %s is not ready", memcached.Name)
+		r.Log.Info(fmt.Sprintf("%s...requeueing", condition.MemcachedReadyWaitingMessage))
+		return glance.ResultRequeue, nil
 	}
 	// Mark the Memcached Service as Ready if we get to this point with no errors
 	instance.Status.Conditions.MarkTrue(
