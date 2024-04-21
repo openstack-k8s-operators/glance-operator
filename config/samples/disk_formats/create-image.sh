@@ -12,6 +12,7 @@ set -evx
 TIME=5
 IMAGE_NAME="myimage-disk_format-test"
 EXIT_CODE=$?
+DEBUG=0
 
 
 function create_image() {
@@ -41,7 +42,9 @@ function create_image() {
     fi
 
     # Stage 2 - Check the image is active
-    openstack image list
+    if [ "$DEBUG" -eq 1 ]; then
+      openstack image list
+
     status=$(openstack image show "$ID" | awk '/status/{print $4}')
     if [ "$status" == 'active' ]
     then
