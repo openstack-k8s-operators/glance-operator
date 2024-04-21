@@ -1,0 +1,9 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+    - command: |
+        oc -n $NAMESPACE cp create-image.sh openstackclient:/home/cloud-admin
+    - command: |
+        oc exec -it openstackclient -n $NAMESPACE -- /bin/bash -c "bash /home/cloud-admin/create-image.sh raw bare"
+    - command: |
+        oc exec -it openstackclient -n $NAMESPACE -- /bin/bash -c "bash /home/cloud-admin/create-image.sh iso bare"
