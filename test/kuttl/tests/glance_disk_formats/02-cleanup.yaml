@@ -2,4 +2,4 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
   - script: |
-      oc kustomize ../../../../config/samples/layout/disk_format | oc delete -n $NAMESPACE -f -
+      oc kustomize ../../../../config/samples/layout/disk_formats | oc delete -n $NAMESPACE -f -

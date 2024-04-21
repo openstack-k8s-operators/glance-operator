@@ -1,4 +1,4 @@
-# How to test 
+# How to test
 
 The goal of this test is to verify if user can set disk format for image that should be created
 
