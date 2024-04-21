@@ -1,0 +1,9 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+    - command: |
+        # oc exec -it openstackclient -n $NAMESPACE -- /bin/bash -c "bash /home/cloud-admin/create-image.sh raw"
+        oc -n $NAMESPACE exec -it openstackclient --stdin=false -- /bin/sh -c "DOMAIN=glance-default-single.$NAMESPACE.svc ./scripts/create-image.sh raw"
+    - command: |
+        # oc exec -it openstackclient -n $NAMESPACE -- /bin/bash -c "bash /home/cloud-admin/create-image.sh iso"
+        oc -n $NAMESPACE exec -it openstackclient --stdin=false -- /bin/sh -c "DOMAIN=glance-default-single.$NAMESPACE.svc ./scripts/create-image.sh iso"

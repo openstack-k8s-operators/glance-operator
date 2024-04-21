@@ -1,0 +1,46 @@
+# Check for:
+# - Glance CR with 1 replicas for a single GlanceAPI
+# - GlanceAPI glance-default-single StatefulSet with 1 replicas
+# - OpenStackClient Pod available
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  glanceAPIs:
+    default:
+      replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-single
+spec:
+  replicas: 1
+status:
+  availableReplicas: 1
+  replicas: 1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openstackclient
+  labels:
+    service: openstackclient
+---
+# Verify if disk formats is configured
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+namespaced: true
+commands:
+  - script: |
+      template='{{.spec.customServiceConfig}}'
+      regex="disk_formats"
+      disk_formats=$(oc get -n $NAMESPACE Glance glance -o go-template="$template")
+      matches=$(echo $disk_formats | sed 's/.*disk_formats=\([^ ]*\).*/\1/')
+      if [ -z "$matches" ]; then
+        exit 1
+      else
+        exit 0
+      fi
