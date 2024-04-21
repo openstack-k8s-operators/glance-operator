@@ -5,8 +5,8 @@ set -evx
 # The scripts assumes:
 #
 # 1. an available openstack cli
-# 2. control plane configured with disk formats
-# 2. a single layout (file / NFS) backend and disk format is deployed
+# 2. glanceAPI configured with disk formats
+# 3. a single layout (file / NFS) backend and disk format is deployed
 #
 #
 TIME=5
@@ -20,10 +20,15 @@ function create_image() {
 
     echo This is a dodgy image > "${IMAGE_NAME}"
 
+    # Stage 0 - Delete any pre-existing image
+    openstack image list -c ID -f value | xargs -n 1 openstack image delete
+    sleep "${TIME}"
+
+    # Stage 1 - Create image
     openstack image create \
         --disk-format "$1" \
         --container-format bare \
-        "${IMAGE_NAME}" 
+        "${IMAGE_NAME}"
 
     ID=$(openstack image list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
     echo "Image ID: $ID"
@@ -31,24 +36,22 @@ function create_image() {
 
     if [ -z "$ID" ]
     then
-      echo "Could not create image  " >&2
-      openstack image delete "$ID"
-      status=$(openstack image delete "$ID" | awk '/status/{print $4}')
-      printf "Image Status: %s\n" "$status"
+      openstack image list -c ID -f value | xargs -n 1 openstack image delete
       exit 1
-    else
-      echo "Continue"
     fi
 
     # Stage 2 - Check the image is active
     openstack image list
     status=$(openstack image show "$ID" | awk '/status/{print $4}')
-    printf "Image Status: %s\n" "$status"
+    if [ "$status" == 'active' ]
+    then
+      printf "Image Status: %s\n" "$status"
+      exit 0
+    else
+      printf "Image Status: %s\n" "$status"
+      exit 1
+    fi
 
-    # Stage 3 - Delete the image 
-    openstack image delete "$ID"
-    status=$(openstack image delete "$ID" | awk '/status/{print $4}')
-    printf "Image Status: %s\n" "$status"
 }
 
 create_image "$1"
