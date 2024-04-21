@@ -10,10 +10,10 @@ We assume one GlanceAPIs exist, disk format is enabled with disk formats
 ### Step 1:  Create image
 In this step we create images with disk formats  'raw,iso'
 ```bash
-    $glance --verbose image-create \
+    $openstack image create \
         --disk-format "$1" \
         --container-format bare \
-        --name "${IMAGE_NAME}"
+        "${IMAGE_NAME}"
 ```
 
 ## Conclusion

@@ -68,10 +68,10 @@ We assume one GlanceAPIs exist, disk format is enabled with disk formats
 ### Step 1:  Create image
 In this step we create images with 'raw' and 'iso' disk formats
 ```bash
-    $glance --verbose image-create \
+    openstack image create \
         --disk-format "$1" \
         --container-format bare \
-        --name "${IMAGE_NAME}"
+        "${IMAGE_NAME}"
 ```
 
 ## EXAMPLE
@@ -79,7 +79,7 @@ In this step we create images with 'raw' and 'iso' disk formats
 The example assumes a glanceAPI is deployed using [single layout](https://github.com/openstack-k8s-operators/glance-operator/tree/main/config/samples/layout/single).
 
 Copy the [`create-image.sh`](create-image.sh) script to the target container
-where the `glance` cli is available.
+where the `openstack` cli is available.
 For example:
 
 ```bash
@@ -90,8 +90,7 @@ Create image with 'raw' disk format
 
 ```bash
 sh-5.1# bash create-image.sh raw
-glance --os-auth-url https://keystone-public-openstack.apps-crc.testing --os-project-name admin --os-username admin --os-password 12345678 --os-user-domain-
-name default --os-project-domain-name default --verbose image-create --disk-format raw --container-format bare --name myimage-disk_format-test
+openstack image create --disk-format raw --container-format bare myimage-disk_format-test
 +------------------+--------------------------------------+
 | Property         | Value                                |
 +------------------+--------------------------------------+
@@ -117,7 +116,7 @@ name default --os-project-domain-name default --verbose image-create --disk-form
 | visibility       | shared                               |
 +------------------+--------------------------------------+
 
-glance --os-auth-url https://keystone-public-openstack.apps-crc.testing --os-project-name admin --os-username admin --os-password 12345678 --os-user-domain-name default --os-project-domain-name default image-list
++ openstack image list 
 +--------------------------------------+--------------------------+
 | ID                                   | Name                     |
 +--------------------------------------+--------------------------+
