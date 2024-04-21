@@ -3,5 +3,3 @@ kind: TestStep
 commands:
   - script: |
       oc kustomize ../../../../config/samples/layout/disk_format | oc apply -n $NAMESPACE -f -
-  - script: |
-      oc kustomize ../../../../config/samples/disk_formats | oc apply -n $NAMESPACE -f -

@@ -1,5 +1,5 @@
 resources:
-- ../backends/base/openstack
+- ../base
 
 patches:
 - path: disk_format.yaml

@@ -18,6 +18,7 @@ DEBUG=0
 function create_image() {
     # This method is create, list and delete image
     # $1 - disk format
+    # $2 - container format
 
     echo This is a dodgy image > "${IMAGE_NAME}"
 
@@ -37,22 +38,22 @@ function create_image() {
 
     if [ -z "$ID" ]
     then
-      openstack image list -c ID -f value | xargs -n 1 openstack image delete
-      exit 1
+        openstack image list -c ID -f value | xargs -n 1 openstack image delete
+        exit 1
     fi
 
     # Stage 2 - Check the image is active
     if [ "$DEBUG" -eq 1 ]; then
-      openstack image list
+        openstack image list
 
     status=$(openstack image show "$ID" | awk '/status/{print $4}')
     if [ "$status" == 'active' ]
     then
-      printf "Image Status: %s\n" "$status"
-      exit 0
+        printf "Image Status: %s\n" "$status"
+        exit 0
     else
-      printf "Image Status: %s\n" "$status"
-      exit 1
+        printf "Image Status: %s\n" "$status"
+        exit 1
     fi
 
 }
@@ -60,10 +61,10 @@ function create_image() {
 create_image "$1"
 if [ -z $? ]
 then
-  echo "Could not create image  "; exit 1
+    echo "Could not create image  "; exit 1
 elif [ $EXIT_CODE == 0 ]
 then
-  echo "Successfully created image"
+    echo "Successfully created image"
 else
-  echo "Could not create image  " >&2; exit 1 
+    echo "Could not create image  " >&2; exit 1
 fi

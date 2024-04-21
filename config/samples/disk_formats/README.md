@@ -49,7 +49,7 @@ can use the provided `disk_formats` example with:
 ```
 $ cd install_yamls
 $ make crc_storage openstack
-$ oc kustomize ../glance-operator/config/samples/disk_formats > ~/openstack-deployment.yaml
+$ oc kustomize ../glance-operator/config/samples/layout/disk_formats > ~/openstack-deployment.yaml
 $ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
 $ make openstack_deploy
 ```
@@ -60,8 +60,8 @@ from this directory to make the changes.
 You can find more about disk-formats configuration options in the
 [upstream](https://docs.openstack.org/glance/latest/configuration/configuring.html#configuring-supported-disk-formats) documentation.
 
-## How to test 
-The steps and overview about a feature described in [disk-format](../../../../config/samples/disk_formats/) document  
+## How to test
+The steps and overview about a feature described in [disk-format](../../../../config/samples/layout/disk_formats/) document
 We assume one GlanceAPIs exist, disk format is enabled with disk formats
 'raw, iso' and image is created with same disk format.
 
@@ -70,7 +70,7 @@ In this step we create images with 'raw' and 'iso' disk formats
 ```bash
     openstack image create \
         --disk-format "$1" \
-        --container-format bare \
+        --container-format $2 \
         "${IMAGE_NAME}"
 ```
 
@@ -89,7 +89,7 @@ $oc cp create-image.sh openstackclient:/scripts
 Create image with 'raw' disk format
 
 ```bash
-sh-5.1# bash create-image.sh raw
+sh-5.1# bash create-image.sh raw bare
 openstack image create --disk-format raw --container-format bare myimage-disk_format-test
 +------------------+--------------------------------------+
 | Property         | Value                                |
@@ -116,7 +116,7 @@ openstack image create --disk-format raw --container-format bare myimage-disk_fo
 | visibility       | shared                               |
 +------------------+--------------------------------------+
 
-+ openstack image list 
++ openstack image list
 +--------------------------------------+--------------------------+--------+
 | ID                                   | Name                     | Status |
 +--------------------------------------+--------------------------+--------+
