@@ -824,6 +824,13 @@ var _ = Describe("Glanceapi controller", func() {
 				corev1.ConditionTrue,
 			)
 
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.TLSInputReadyCondition,
+				corev1.ConditionTrue,
+			)
+
 			ss := th.GetStatefulSet(glanceTest.GlanceSingle)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
@@ -870,6 +877,13 @@ var _ = Describe("Glanceapi controller", func() {
 				corev1.ConditionTrue,
 			)
 
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.TLSInputReadyCondition,
+				corev1.ConditionTrue,
+			)
+
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceSingle)
 			endpoints := keystoneEndpoint.Spec.Endpoints
 			Expect(endpoints).To(HaveKeyWithValue("public", "https://glance-default-public."+glanceTest.Instance.Namespace+".svc:9292"))
@@ -888,6 +902,13 @@ var _ = Describe("Glanceapi controller", func() {
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
+
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.TLSInputReadyCondition,
+				corev1.ConditionTrue,
+			)
 
 			// Grab the current config hash
 			apiOriginalHash := GetEnvVarValue(
@@ -950,6 +971,12 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(endpoints).To(HaveKeyWithValue("public", "https://glance-openstack.apps-crc.testing"))
 			Expect(endpoints).To(HaveKeyWithValue("internal", "https://glance-default-internal."+glanceTest.Instance.Namespace+".svc:9292"))
 
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.TLSInputReadyCondition,
+				corev1.ConditionTrue,
+			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
