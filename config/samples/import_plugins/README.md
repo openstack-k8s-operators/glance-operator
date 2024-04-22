@@ -68,11 +68,3 @@ that will be used to mount the Glance path used by image decompression plugin.
 You can find more abut plugin configuration options
 in [upstream](https://docs.openstack.org/glance/latest/admin/interoperable-image-import.html#the-image-decompression)
 documentation.
-
-## Distributed image import
-
-The glance-direct import method allows users to upload image data directly to
-Glance. It requires a staging directory to be configured. A staging directory
-is essentially a temporary scratch location where the image can be staged.
-This import method is enabled by default, and described in the associated
-[section](distributed_image_import/README.md)
