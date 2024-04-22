@@ -1,0 +1,5 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+    - script: |
+        oc -n $NAMESPACE exec -it openstackclient --stdin=false -- /bin/sh -c "DOMAIN=glance-default-single.$NAMESPACE.svc ./scripts/dist-image-import.sh"
