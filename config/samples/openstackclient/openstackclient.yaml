@@ -1,0 +1,58 @@
+# This pod assumes at least mariadb && keystone are running in the ctlplane
+# and the associated openstack secrets (osp-secret and openstack-config) have
+# been created, as well as the configmap where clouds.yaml is stored.
+# It gets a cli that can be used to interact with the deployed components.
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    openshift.io/scc: anyuid
+  labels:
+    app: openstackclient
+  name: openstackclient
+spec:
+  containers:
+  - args:
+    - --single-child
+    - --
+    - /bin/bash
+    - -c
+    - /bin/sleep infinity
+    command:
+    - /bin/dumb-init
+    env:
+    - name: OS_CLOUD
+      value: default
+    imagePullPolicy: IfNotPresent
+    name: openstackclient
+    resources: {}
+    securityContext:
+       capabilities:
+         drop:
+         - ALL
+       runAsGroup: 42401
+       runAsNonRoot: true
+       runAsUser: 42401
+       allowPrivilegeEscalation: false
+       seccompProfile:
+         type: RuntimeDefault
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /etc/openstack/clouds.yaml
+      name: openstack-config
+      subPath: clouds.yaml
+    - mountPath: /etc/openstack/secure.yaml
+      name: openstack-config-secret
+      subPath: secure.yaml
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  volumes:
+  - configMap:
+      defaultMode: 420
+      name: openstack-config
+    name: openstack-config
+  - name: openstack-config-secret
+    secret:
+      defaultMode: 420
+      secretName: openstack-config-secret
