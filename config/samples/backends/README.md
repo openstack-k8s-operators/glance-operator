@@ -423,6 +423,24 @@ $ glance --os-auth-url $keystone --os-project-name admin --os-username admin \
          --import-method web-download --name cirros
 ```
 
+## EDGE
+
+Assuming you are using `install_yamls` and you already have `crc` running you
+can apply the Edge example with:
+
+```
+$ oc kustomize ../glance-operator/config/samples/backends/edge > ~/openstack-deployment-edge.yaml
+$ oc apply -f ~/openstack-deployment-edge.yaml
+```
+
+The example assumes there is already a deployment topology with three Availability
+Zones (az0, az1, az2), and each of them has a local Ceph cluster.
+
+In addition, it assumes that:
+- extraMounts is used to propagate the same secret to all the GlanceAPI
+  instances
+- the Ceph secret is updated and contains all the ceph configuration files
+  (az0.conf az1.conf and az2.conf) and the related keyrings
 
 ## Adding new samples
 
