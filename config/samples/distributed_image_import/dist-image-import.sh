@@ -22,19 +22,19 @@
 #    export PASSWORD=12345678
 
 TIME=3
-DOMAIN=${DOMAIN:-"glance-default-single.openstack.svc:9292"}
+DOMAIN=${DOMAIN:-"glance-default-single.openstack.svc"}
 REPLICA="glance-default-single-"
 IMAGE_NAME="myimage"
-
-keystone=$(awk '/auth_url/ {print $2}' "/etc/openstack/clouds.yaml")
-admin_pwd=${1:-12345678}
-admin_user=${USER:-"admin"}
+KEYSTONE=$(awk '/auth_url/ {print $2}' "/etc/openstack/clouds.yaml")
+ADMIN_PWD=${1:-12345678}
+ADMIN_USER=${ADMIN_USER:-"admin"}
+DEBUG=0
 
 # this method uses distributed image import and relies on the glance cli
-glance="glance --os-auth-url ${keystone} \
-    --os-project-name ${admin_user} \
-    --os-username ${admin_user} \
-    --os-password ${admin_pwd} \
+glance="glance --os-auth-url ${KEYSTONE} \
+    --os-project-name ${ADMIN_USER} \
+    --os-username ${ADMIN_USER} \
+    --os-password ${ADMIN_PWD} \
     --os-user-domain-name default \
     --os-project-domain-name default "
 # disable stdin
@@ -60,14 +60,18 @@ echo "Image Status => $STATE"
 sleep "$TIME"
 
 # Stage 2 - Stage the image
-echo "$glance image-stage --progress --file myimage $ID"
-$glance --os-image-url "http://${REPLICA}""0.$DOMAIN" image-stage --progress --file "${IMAGE_NAME}" "$ID"
+[[ "$DEBUG" -gt 0 ]] && echo "$glance image-stage --progress --file myimage $ID"
+$glance --os-image-url "http://${REPLICA}""0.$DOMAIN:9292" image-stage --progress --file "${IMAGE_NAME}" "$ID"
 
 # Stage 3 - Import the image from a different replica
-echo "$glance image-import --progress --file ${IMAGE_NAME} $ID"
-$glance --os-image-url "http://${REPLICA}""1.$DOMAIN" image-import --import-method glance-direct "$ID"
+[[ "$DEBUG" -gt 0 ]] && echo "$glance image-import --progress --file ${IMAGE_NAME} $ID"
+$glance --os-image-url "http://${REPLICA}""1.$DOMAIN:9292" image-import --import-method glance-direct "$ID"
 
 # Stage 4 - Check the image is active
 $glance image-list
 status=$($glance image-show "$ID" | awk '/status/{print $4}')
 printf "Image Status: %s\n" "$status"
+if [[ $status == "active" ]]; then
+    exit 0
+fi
+exit 1

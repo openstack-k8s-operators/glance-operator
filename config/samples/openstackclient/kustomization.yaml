@@ -4,18 +4,11 @@ kind: Kustomization
 resources:
 - ./openstackclient.yaml
 
-namespace: openstack
 patches:
 - patch: |-
     - op: replace
       path: /spec/containers/0/image
       value: quay.io/podified-antelope-centos9/openstack-openstackclient:current-podified
-    - op: add
-      path: /metadata/namespace
-      value: openstack
-    - op: replace
-      path: /metadata/namespace
-      value: openstack
     - op: add
       path: /spec/volumes/0
       value:
@@ -38,6 +31,6 @@ patches:
 #
 configMapGenerator:
 - files:
-  - ../import_plugins/distributed_image_import/dist-image-import.sh
+  - ../distributed_image_import/dist-image-import.sh
   - ../image_signature/sign_glance_image.sh
   name: openstack-scripts
