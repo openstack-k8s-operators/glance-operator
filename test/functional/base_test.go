@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega" //revive:disable:dot-imports
 	corev1 "k8s.io/api/core/v1"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
@@ -123,7 +123,7 @@ func GetAPIList() map[string]interface{} {
 	return apiList
 }
 
-func GetGlanceAPIDefaultSpec(apiType APIType) map[string]interface{} {
+func GetGlanceAPIDefaultSpec() map[string]interface{} {
 	return map[string]interface{}{
 		"replicas":        1,
 		"storageRequest":  glanceTest.GlancePVCSize,
