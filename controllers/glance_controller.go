@@ -269,7 +269,7 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *GlanceReconciler) findObjectsForSrc(ctx context.Context, src client.Object) []reconcile.Request {
 	requests := []reconcile.Request{}
 
-	l := log.FromContext(context.Background()).WithName("Controllers").WithName("Glance")
+	l := log.FromContext(ctx).WithName("Controllers").WithName("Glance")
 
 	for _, field := range glanceWatchFields {
 		crList := &glancev1.GlanceList{}
@@ -277,7 +277,7 @@ func (r *GlanceReconciler) findObjectsForSrc(ctx context.Context, src client.Obj
 			FieldSelector: fields.OneTermEqualSelector(field, src.GetName()),
 			Namespace:     src.GetNamespace(),
 		}
-		err := r.List(context.TODO(), crList, listOps)
+		err := r.List(ctx, crList, listOps)
 		if err != nil {
 			return []reconcile.Request{}
 		}
@@ -348,7 +348,7 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	_, err = keystonev1.GetKeystoneAPI(ctx, helper, instance.Namespace, map[string]string{})
 
 	if err == nil && instance.IsQuotaEnabled() {
-		err = r.registeredLimitsDelete(ctx, helper, instance, instance.GetQuotaLimits())
+		err = r.registeredLimitsDelete(ctx, helper, instance)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -607,7 +607,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	//
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels, db, memcached)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels, db)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -922,7 +922,6 @@ func (r *GlanceReconciler) generateServiceConfig(
 	envVars *map[string]env.Setter,
 	serviceLabels map[string]string,
 	db *mariadbv1.Database,
-	memcached *memcachedv1.Memcached,
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
@@ -1047,7 +1046,6 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 	ctx context.Context,
 	h *helper.Helper,
 	instance *glancev1.Glance,
-	quota map[string]int,
 ) error {
 	// get admin
 	var err error
@@ -1214,7 +1212,7 @@ func (r *GlanceReconciler) checkGlanceAPIsGeneration(
 	listOpts := []client.ListOption{
 		client.InNamespace(instance.Namespace),
 	}
-	if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
+	if err := r.Client.List(ctx, glances, listOpts...); err != nil {
 		r.Log.Error(err, "Unable to retrieve Glance CRs %w")
 		return false, err
 	}

@@ -189,7 +189,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return r.reconcileDelete(ctx, instance, helper)
 	}
 	// Handle non-deleted clusters
-	return r.reconcileNormal(ctx, instance, helper, req)
+	return r.reconcileNormal(ctx, instance, helper)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -356,7 +356,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *GlanceAPIReconciler) findObjectsForSrc(ctx context.Context, src client.Object) []reconcile.Request {
 	requests := []reconcile.Request{}
 
-	l := log.FromContext(context.Background()).WithName("Controllers").WithName("GlanceAPI")
+	l := log.FromContext(ctx).WithName("Controllers").WithName("GlanceAPI")
 
 	for _, field := range glanceAPIWatchFields {
 		crList := &glancev1.GlanceAPIList{}
@@ -364,7 +364,7 @@ func (r *GlanceAPIReconciler) findObjectsForSrc(ctx context.Context, src client.
 			FieldSelector: fields.OneTermEqualSelector(field, src.GetName()),
 			Namespace:     src.GetNamespace(),
 		}
-		err := r.List(context.TODO(), crList, listOps)
+		err := r.List(ctx, crList, listOps)
 		if err != nil {
 			return []reconcile.Request{}
 		}
@@ -563,7 +563,11 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper, req ctrl.Request) (ctrl.Result, error) {
+func (r *GlanceAPIReconciler) reconcileNormal(
+	ctx context.Context,
+	instance *glancev1.GlanceAPI,
+	helper *helper.Helper,
+) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
 	configVars := make(map[string]env.Setter)
@@ -753,7 +757,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// create hash over all the different input resources to identify if any those changed
 	// and a restart/recreate is required.
 	//
-	inputHash, hashChanged, err := r.createHashOfInputHashes(ctx, instance, configVars)
+	inputHash, _, err := r.createHashOfInputHashes(instance, configVars)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -1073,7 +1077,6 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 //
 // returns the hash, whether the hash changed (as a bool) and any error
 func (r *GlanceAPIReconciler) createHashOfInputHashes(
-	ctx context.Context,
 	instance *glancev1.GlanceAPI,
 	envVars map[string]env.Setter,
 ) (string, bool, error) {

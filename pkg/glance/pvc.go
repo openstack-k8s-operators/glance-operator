@@ -14,8 +14,8 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 	// that will be customized in case the pvc is requested
 	// for cache purposes
 	var err error
-	requestSize := api.Spec.StorageRequest
-	pvcName := ServiceName
+	var requestSize string
+	var pvcName string
 	pvcAnnotation := map[string]string{}
 
 	switch {
