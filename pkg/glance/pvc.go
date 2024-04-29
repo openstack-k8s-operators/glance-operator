@@ -26,7 +26,7 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 		pvcName = fmt.Sprintf("%s-cache", ServiceName)
 	default:
 		pvcName = ServiceName
-		requestSize = api.Spec.StorageDetails.StorageRequest
+		requestSize = api.Spec.StorageRequest
 	}
 	// Build the basic pvc object
 	pvc := corev1.PersistentVolumeClaim{
@@ -54,7 +54,7 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 				corev1.ResourceStorage: storageSize,
 			},
 		},
-		StorageClassName: &api.Spec.StorageDetails.StorageClass,
+		StorageClassName: &api.Spec.StorageClass,
 	}
 
 	return pvc, err

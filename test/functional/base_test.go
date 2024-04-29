@@ -70,10 +70,8 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 			"keystoneEndpoint":  "default",
 			"databaseInstance":  "openstack",
 			"databaseAccount":   glanceTest.GlanceDatabaseAccount.Name,
-			"storageDetails": map[string]interface{}{
-				"storageRequest": glanceTest.GlancePVCSize,
-			},
-			"glanceAPIs": GetAPIList(),
+			"storageRequest":    glanceTest.GlancePVCSize,
+			"glanceAPIs":        GetAPIList(),
 		},
 	}
 	return th.CreateUnstructured(raw)
@@ -86,10 +84,8 @@ func GetGlanceEmptySpec() map[string]interface{} {
 		"keystoneEndpoint": "default",
 		"secret":           SecretName,
 		"databaseInstance": "openstack",
-		"storageDetails": map[string]interface{}{
-			"storageRequest": glanceTest.GlancePVCSize,
-		},
-		"glanceAPIs": map[string]interface{}{},
+		"storageRequest":   glanceTest.GlancePVCSize,
+		"glanceAPIs":       map[string]interface{}{},
 	}
 }
 
@@ -101,9 +97,7 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
 		"glanceAPIs":       GetAPIList(),
-		"storageDetails": map[string]interface{}{
-			"storageRequest": glanceTest.GlancePVCSize,
-		},
+		"storageRequest":   glanceTest.GlancePVCSize,
 	}
 }
 
@@ -115,11 +109,9 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
 		"glanceAPIs":       GetAPIList(),
-		"storageDetails": map[string]interface{}{
-			"storageRequest": glanceTest.GlancePVCSize,
-		},
-		"quotas":    glanceTest.GlanceQuotas,
-		"memcached": glanceTest.MemcachedInstance,
+		"storageRequest":   glanceTest.GlancePVCSize,
+		"quotas":           glanceTest.GlanceQuotas,
+		"memcached":        glanceTest.MemcachedInstance,
 	}
 }
 
@@ -133,10 +125,8 @@ func GetAPIList() map[string]interface{} {
 
 func GetGlanceAPIDefaultSpec() map[string]interface{} {
 	return map[string]interface{}{
-		"replicas": 1,
-		"storageDetails": map[string]interface{}{
-			"storageRequest": glanceTest.GlancePVCSize,
-		},
+		"replicas":        1,
+		"storageRequest":  glanceTest.GlancePVCSize,
 		"databaseAccount": glanceTest.GlanceDatabaseAccount.Name,
 	}
 }
@@ -193,12 +183,10 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 // CreateGlanceAPISpec -
 func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := map[string]interface{}{
-		"replicas":       1,
-		"serviceAccount": glanceTest.GlanceSA.Name,
-		"containerImage": glanceTest.ContainerImage,
-		"storageDetails": map[string]interface{}{
-			"storageRequest": glanceTest.GlancePVCSize,
-		},
+		"replicas":         1,
+		"serviceAccount":   glanceTest.GlanceSA.Name,
+		"containerImage":   glanceTest.ContainerImage,
+		"storageRequest":   glanceTest.GlancePVCSize,
 		"apiType":          apiType,
 		"name":             "default",
 		"databaseHostname": "openstack",
@@ -211,12 +199,10 @@ func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 // GetDefaultGlanceAPISpec -
 func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := map[string]interface{}{
-		"replicas":       1,
-		"containerImage": glanceTest.ContainerImage,
-		"serviceAccount": glanceTest.GlanceSA.Name,
-		"storageDetails": map[string]interface{}{
-			"storageRequest": glanceTest.GlancePVCSize,
-		},
+		"replicas":         1,
+		"containerImage":   glanceTest.ContainerImage,
+		"serviceAccount":   glanceTest.GlanceSA.Name,
+		"storageRequest":   glanceTest.GlancePVCSize,
 		"type":             apiType,
 		"name":             "default",
 		"databaseHostname": "openstack",
