@@ -24,11 +24,6 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 		requestSize = api.Spec.GlanceAPITemplate.ImageCache.Size
 		// append -cache to avoid confusion when listing PVCs
 		pvcName = fmt.Sprintf("%s-cache", ServiceName)
-	case pvcType == PvcImageConv:
-		pvcAnnotation["image-conversion"] = "true"
-		requestSize = api.Spec.StorageRequest
-		// append -conversion to avoid confusion when listing PVCs
-		pvcName = fmt.Sprintf("%s-conversion", ServiceName)
 	default:
 		pvcName = ServiceName
 		requestSize = api.Spec.StorageRequest

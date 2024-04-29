@@ -813,7 +813,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		GetServiceLabels(instance),
 		serviceAnnotations,
 		privileged,
-		imageConv,
 	)
 	if err != nil {
 		return ctrlResult, err
