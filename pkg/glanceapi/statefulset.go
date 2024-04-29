@@ -78,7 +78,8 @@ func StatefulSet(
 	port := int32(glance.GlancePublicPort)
 	tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
 
-	if instance.Spec.APIType == glancev1.APIInternal {
+	if instance.Spec.APIType == glancev1.APIInternal ||
+		instance.Spec.APIType == glancev1.APIEdge {
 		port = int32(glance.GlanceInternalPort)
 		tlsEnabled = instance.Spec.TLS.API.Enabled(service.EndpointInternal)
 	}
