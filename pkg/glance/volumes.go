@@ -132,6 +132,7 @@ func GetVolumes(
 func GetVolumeMounts(
 	secretNames []string,
 	hasCinder bool,
+	ephemeral bool,
 	extraVol []glancev1.GlanceExtraVolMounts,
 	svc []storage.PropagationType,
 ) []corev1.VolumeMount {
@@ -148,13 +149,19 @@ func GetVolumeMounts(
 			SubPath:   "my.cnf",
 			ReadOnly:  true,
 		},
+	}
+
+	localPVC := []corev1.VolumeMount{
 		{
 			Name:      ServiceName,
 			MountPath: "/var/lib/glance",
 			ReadOnly:  false,
 		},
 	}
-
+	// a PVC is mounted only if ephemeral is not set
+	if !ephemeral {
+		vm = append(vm, localPVC...)
+	}
 	for _, exv := range extraVol {
 		for _, vol := range exv.Propagate(svc) {
 			vm = append(vm, vol.Mounts...)

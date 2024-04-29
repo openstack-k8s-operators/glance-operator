@@ -89,11 +89,16 @@ type GlanceAPITemplate struct {
 	Override APIOverrideSpec `json:"override,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// StorageClass
+	// StorageClass -
 	StorageClass string `json:"storageClass,omitempty"`
 
-	// StorageRequest
-	StorageRequest string `json:"storageRequest"`
+	// StorageRequest -
+	StorageRequest string `json:"storageRequest,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// Ephemeral -
+	Ephemeral bool `json:"ephemeral"`
 
 	// +kubebuilder:validation:Enum=split;single;edge
 	// +kubebuilder:default:=split

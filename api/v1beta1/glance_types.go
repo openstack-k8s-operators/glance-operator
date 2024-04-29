@@ -93,9 +93,14 @@ type GlanceSpecCore struct {
 	// StorageClass
 	StorageClass string `json:"storageClass,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	// StorageRequest
-	StorageRequest string `json:"storageRequest"`
+	StorageRequest string `json:"storageRequest,omitempty"`
+
+	// Ephemeral -
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	Ephemeral bool `json:"ephemeral"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:default={}

@@ -64,6 +64,9 @@ spec:
                 type: string
               databaseHostname:
                 type: string
+              ephemeral:
+                default: false
+                type: boolean
               extraMounts:
                 items:
                   properties:
@@ -988,7 +991,6 @@ spec:
             - memcachedInstance
             - secret
             - serviceAccount
-            - storageRequest
             type: object
           status:
             properties:

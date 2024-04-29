@@ -289,6 +289,7 @@ func StatefulSet(
 							VolumeMounts: append(glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
 								privileged,
+								instance.Spec.Ephemeral,
 								instance.Spec.ExtraMounts,
 								extraVolPropagation),
 								apiVolumeMounts...,
@@ -303,12 +304,15 @@ func StatefulSet(
 			},
 		},
 	}
-	localPvc, err := glance.GetPvc(instance, labels, glance.PvcLocal)
-	if err != nil {
-		return statefulset, err
-	}
-	statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
+	var err error
+	if !instance.Spec.Ephemeral {
+		localPvc, err := glance.GetPvc(instance, labels, glance.PvcLocal)
+		if err != nil {
+			return statefulset, err
+		}
+		statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
 
+	}
 	if len(instance.Spec.ImageCache.Size) > 0 {
 		cachePvc, err := glance.GetPvc(instance, labels, glance.PvcCache)
 		if err != nil {

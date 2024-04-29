@@ -63,6 +63,9 @@ spec:
                     default: 1 0 * * *
                     type: string
                 type: object
+              ephemeral:
+                default: false
+                type: boolean
               extraMounts:
                 items:
                   properties:
@@ -833,6 +836,9 @@ spec:
                       items:
                         type: string
                       type: array
+                    ephemeral:
+                      default: false
+                      type: boolean
                     imageCache:
                       properties:
                         cleanerScheduler:
@@ -976,7 +982,6 @@ spec:
                       type: string
                   required:
                   - containerImage
-                  - storageRequest
                   type: object
                 type: object
               imageCache:
@@ -1051,7 +1056,6 @@ spec:
             - keystoneEndpoint
             - memcachedInstance
             - secret
-            - storageRequest
             type: object
           status:
             properties:
