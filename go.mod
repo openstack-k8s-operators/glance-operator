@@ -8,21 +8,21 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.33.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.3.1-0.20240401190259-4d30fdbf5531
+	github.com/openstack-k8s-operators/cinder-operator/api v0.3.1-0.20240425145843-86b883b8bb8f
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/infra-operator/apis v0.3.1-0.20240419144952-326611519a8c
-	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20240418100331-17ccc8433fdf
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20240420115137-a02d94f5aa66
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20240420115137-a02d94f5aa66
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20240420115137-a02d94f5aa66
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20240420115137-a02d94f5aa66
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.3.1-0.20240418060416-9de2d1f1915e
+	github.com/openstack-k8s-operators/infra-operator/apis v0.3.1-0.20240427071432-31803b8857ac
+	github.com/openstack-k8s-operators/keystone-operator/api v0.3.1-0.20240425052635-07c657049337
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.3.1-0.20240425065931-fcb08823a660
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.3.1-0.20240425065931-fcb08823a660
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.3.1-0.20240425065931-fcb08823a660
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.3.1-0.20240425065931-fcb08823a660
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.3.1-0.20240423084440-ce9687c332d9
 	golang.org/x/exp v0.0.0-20240409090435-93d18d7e34b8
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.28.9
 	k8s.io/apimachinery v0.28.9
 	k8s.io/client-go v0.28.9
-	k8s.io/utils v0.0.0-20240310230437-4693a0247e57
+	k8s.io/utils v0.0.0-20240423183400-0849a56e8f22
 	sigs.k8s.io/controller-runtime v0.16.5
 )
 
