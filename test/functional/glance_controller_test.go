@@ -351,7 +351,9 @@ var _ = Describe("Glance controller", func() {
 				},
 			}
 			rawSpec := map[string]interface{}{
-				"storageRequest":      glanceTest.GlancePVCSize,
+				"storageDetails": map[string]interface{}{
+					"storageRequest": glanceTest.GlancePVCSize,
+				},
 				"secret":              SecretName,
 				"databaseInstance":    "openstack",
 				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,

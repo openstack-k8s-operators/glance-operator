@@ -90,12 +90,8 @@ type GlanceSpecCore struct {
 	CustomServiceConfigSecrets []string `json:"customServiceConfigSecrets,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// StorageClass
-	StorageClass string `json:"storageClass,omitempty"`
-
-	// +kubebuilder:validation:Required
-	// StorageRequest
-	StorageRequest string `json:"storageRequest"`
+	// StorageDetails
+	StorageDetails Storage `json:"storageDetails,omitempty"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:default={}

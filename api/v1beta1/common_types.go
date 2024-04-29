@@ -89,11 +89,14 @@ type GlanceAPITemplate struct {
 	Override APIOverrideSpec `json:"override,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// StorageClass
-	StorageClass string `json:"storageClass,omitempty"`
+	// StorageDetails
+	StorageDetails Storage `json:"storageDetails,omitempty"`
 
+	// +kubebuilder:validation:Optional
+	// StorageClass
+	//StorageClass string `json:"storageClass,omitempty"`
 	// StorageRequest
-	StorageRequest string `json:"storageRequest"`
+	//StorageRequest string `json:"storageRequest"`
 
 	// +kubebuilder:validation:Enum=split;single;edge
 	// +kubebuilder:default:=split
@@ -114,6 +117,19 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Minimum=1
 	// APITimeout for HAProxy and Apache defaults to GlanceSpecCore APITimeout
 	APITimeout int `json:"apiTimeout,omitempty"`
+}
+
+// Storage -
+type Storage struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	Ephemeral bool `json:"ephemeral,omitempty"`
+	// +kubebuilder:validation:Optional
+	// StorageClass
+	StorageClass string `json:"storageClass,omitempty"`
+	// +kubebuilder:validation:Required
+	// StorageRequest
+	StorageRequest string `json:"storageRequest"`
 }
 
 // ImageCache - struct where the exposed imageCache params are defined

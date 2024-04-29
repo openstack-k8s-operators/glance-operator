@@ -953,10 +953,18 @@ spec:
               serviceUser:
                 default: glance
                 type: string
-              storageClass:
-                type: string
-              storageRequest:
-                type: string
+              storageDetails:
+                properties:
+                  ephemeral:
+                    default: false
+                    type: boolean
+                  storageClass:
+                    type: string
+                  storageRequest:
+                    type: string
+                required:
+                - storageRequest
+                type: object
               tls:
                 properties:
                   api:
@@ -988,7 +996,6 @@ spec:
             - memcachedInstance
             - secret
             - serviceAccount
-            - storageRequest
             type: object
           status:
             properties:

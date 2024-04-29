@@ -945,10 +945,18 @@ spec:
                             x-kubernetes-int-or-string: true
                           type: object
                       type: object
-                    storageClass:
-                      type: string
-                    storageRequest:
-                      type: string
+                    storageDetails:
+                      properties:
+                        ephemeral:
+                          default: false
+                          type: boolean
+                        storageClass:
+                          type: string
+                        storageRequest:
+                          type: string
+                      required:
+                      - storageRequest
+                      type: object
                     tls:
                       properties:
                         api:
@@ -976,7 +984,6 @@ spec:
                       type: string
                   required:
                   - containerImage
-                  - storageRequest
                   type: object
                 type: object
               imageCache:
@@ -1039,10 +1046,18 @@ spec:
               serviceUser:
                 default: glance
                 type: string
-              storageClass:
-                type: string
-              storageRequest:
-                type: string
+              storageDetails:
+                properties:
+                  ephemeral:
+                    default: false
+                    type: boolean
+                  storageClass:
+                    type: string
+                  storageRequest:
+                    type: string
+                required:
+                - storageRequest
+                type: object
             required:
             - containerImage
             - databaseInstance
@@ -1051,7 +1066,6 @@ spec:
             - keystoneEndpoint
             - memcachedInstance
             - secret
-            - storageRequest
             type: object
           status:
             properties:
