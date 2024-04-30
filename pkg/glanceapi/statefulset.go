@@ -289,7 +289,7 @@ func StatefulSet(
 							VolumeMounts: append(glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
 								privileged,
-								instance.Spec.Ephemeral,
+								instance.Spec.Storage.Ephemeral,
 								instance.Spec.ExtraMounts,
 								extraVolPropagation),
 								apiVolumeMounts...,
@@ -305,7 +305,7 @@ func StatefulSet(
 		},
 	}
 	var err error
-	if !instance.Spec.Ephemeral {
+	if !instance.Spec.Storage.Ephemeral {
 		localPvc, err := glance.GetPvc(instance, labels, glance.PvcLocal)
 		if err != nil {
 			return statefulset, err

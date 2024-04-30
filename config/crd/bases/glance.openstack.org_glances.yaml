@@ -63,9 +63,6 @@ spec:
                     default: 1 0 * * *
                     type: string
                 type: object
-              ephemeral:
-                default: false
-                type: boolean
               extraMounts:
                 items:
                   properties:
@@ -836,9 +833,6 @@ spec:
                       items:
                         type: string
                       type: array
-                    ephemeral:
-                      default: false
-                      type: boolean
                     imageCache:
                       properties:
                         cleanerScheduler:
@@ -912,8 +906,6 @@ spec:
                             type: object
                           type: object
                       type: object
-                    pvc:
-                      type: string
                     replicas:
                       default: 1
                       format: int32
@@ -951,10 +943,15 @@ spec:
                             x-kubernetes-int-or-string: true
                           type: object
                       type: object
-                    storageClass:
-                      type: string
-                    storageRequest:
-                      type: string
+                    storage:
+                      properties:
+                        ephemeral:
+                          type: boolean
+                        storageClass:
+                          type: string
+                        storageRequest:
+                          type: string
+                      type: object
                     tls:
                       properties:
                         api:
@@ -1044,10 +1041,15 @@ spec:
               serviceUser:
                 default: glance
                 type: string
-              storageClass:
-                type: string
-              storageRequest:
-                type: string
+              storage:
+                properties:
+                  ephemeral:
+                    type: boolean
+                  storageClass:
+                    type: string
+                  storageRequest:
+                    type: string
+                type: object
             required:
             - containerImage
             - databaseInstance

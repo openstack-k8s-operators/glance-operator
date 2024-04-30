@@ -855,9 +855,15 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	}
 
 	// Inherit the values required for PVC creation from the top-level CR
-	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
-	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
-	apiSpec.GlanceAPITemplate.Ephemeral = instance.Spec.Ephemeral
+	if apiSpec.GlanceAPITemplate.Storage.StorageRequest == "" {
+		apiSpec.GlanceAPITemplate.Storage.StorageRequest = instance.Spec.Storage.StorageRequest
+	}
+	if apiSpec.GlanceAPITemplate.Storage.StorageClass == "" {
+		apiSpec.GlanceAPITemplate.Storage.StorageClass = instance.Spec.Storage.StorageClass
+	}
+	if !apiSpec.GlanceAPITemplate.Storage.Ephemeral {
+		apiSpec.GlanceAPITemplate.Storage.Ephemeral = instance.Spec.Storage.Ephemeral
+	}
 
 	apiSpec.MemcachedInstance = memcached.Name
 	// Make sure to inject the ContainerImage passed by the OpenStackVersions
