@@ -454,3 +454,280 @@ in the glance-operator we make the following assumptions:
 - A Deployment (intended as the `StatefulSet` that represents the GlanceAPIs) is
   considered `Ready` if the number of `Replicas` specified in the `Glance` CR
   spec is **equal** to the number of available instances (`ReadyCount`).
+
+
+
+
+
+
+
+
+## Storage Requirements: PVCs usage and available models
+
+Glance requires a `staging area` to manipulate data during an import operation.
+It is possible to copy image data into multiple stores using image import
+workflow, and all the `import methods` and `plugins` are based on this flow,
+hence some persistence is required for the resulting Glance `Pod`.
+`PVCs` represent the main `Storage` interface for the Glance service, and it's
+important to have a clear picture of how this interface is implemented and how
+it can be used in this context.
+In general, a `Storage` struct is exposed by the `glance-operator` API, and it
+helps to choose the best layout for a particular `glanceAPI`. If the storage
+layout is not defined for a single `glanceAPI`, it will be inherited by the
+top-level definition. When defining the storage requirements for a `GlanceAPI`,
+it is possible to choose between two different models:
+- External
+- PVC
+
+### External
+
+If `External` is chosen, no `PVCs` are created, and from a Storage point of
+view the `GlanceAPI` acts like a stateless instance, where no persistence is
+provided. In this case, it's expected that the human operator provides some
+persistence via `extraMounts`.
+For this particular scenario, the most popular choice is `NFS`, and it can be
+mapped to `/var/lib/glance/os_glance_staging_store`
+
+```yaml
+...
+default:
+  storage:
+    external: true
+...
+...
+extraMounts:
+- extraVol:
+  - extraVolType: NFS
+    mounts:
+    - mountPath: /var/lib/glance/os_glance_staging_store
+      name: nfs
+    volumes:
+    - name: nfs
+      nfs:
+        path: <NFS PATH>
+        server: <NFS IP ADDRESS>
+```
+
+It's important to note that the configuration described in the sample above
+conflicts with the distributed image import feature that uses `glance-direct`
+import method.
+`distributed image import` requires a `RWO` storage plugged into a particular
+instance: it owns the data and receives requests in case its staged data are
+required for an upload operation.
+When the `External` model is adopted, if `Ceph` is used as a backend and an
+`image conversion` operation is run in one of the existing replicas, the
+`glance-operator` does not have to make any assumption about the underlying
+storage that is tied to the staging area, and the conversion operation that
+uses the `os_glance_staging_store` directory (within the `Pod`) interacts with
+the `RWX` `NFS` backend provided via `extraMounts`.
+With this scenario, no image-cache PVC can be requested and mounted to a
+subPath, because it should be the human administrator responsibility to plan
+for persistence via ExtraMounts (where mounts are realized using SubPath to
+avoid directory overlapping).
+
+### PVC
+
+`External` is not the default option though, and when a `GlanceAPI` instance
+is deployed, a `PVC` is created and bound to `/var/lib/glance` according to the
+`StorageClass` and `StorageRequest` passed as input.
+
+```yaml
+...
+default:
+  replicas: 3
+  storage:
+    storageClass: local-storage
+    storageRequest: 10G
+...
+```
+
+In this case, if `Ceph` is set as a backend, no dedicated `image conversion`
+`PVC` is created, and the human operator must think about the `PVC` sizing in
+advance: the size of the `PVC` should be _at least up to the largest converted
+image size_.
+Concurrent conversions within the same `Pod` might be problematic in terms of
+`PVC` size: a conversion will fail or can't take place if the PVC is full and
+there's no enough space, and the upload should be retried after the previous
+conversion is over and the staging area space is released.
+However, concurrent conversion operations might happen in different `Pods`:
+it's recommended to deploy at least **3 replicas** for a particular `glanceAPI`,
+and this helps to handle heavy operations like image conversion.
+While multiple replicas help to handle this problem better, if a `PVC` layout
+is chosen it's important to highlight that the Storage requirements in terms of
+sizing linearly increase with the number of `glanceAPI` instances and replicas.
+
+```
+num pvc = ∑([(local + image_cache) * num_replicas]) * layout
+storage size = ∑([(storageRequest + imageCacheSize) * num_replicas]) * layout
+```
+
+where:
+- local: Local `PVC` bound to `/var/lib/glance`
+- image_cache: Cache `PVC` bound to `/var/lib/glance/image-cache`
+- ∑ - API: we sum the resulting value for each API
+- num_replicas: number of replicas for each glanceAPI (default is 3)
+- layout: `split=2` Pods , `single=1` Pod, `edge=1` Pod
+
+For a `PVC` based layout, the scale out of a `glanceAPI` in terms of replicas is
+limited by the available `Storage` provided by the `storageClass`, and depends
+on the `StorageRequest`.
+The `StorageRequest` is a critical parameter, it can be globally defined for all
+the `glanceAPI`, or defined with a different value for each API, and it will
+influence scale out operations for each of them.
+Other than a local `PVC` required to for the staging area, it is possible to
+enable `image cache`, which is translated into an additional `PVC` bound to each
+`glanceAPI` instance.
+A `glance-cache` `PVC` is bound to `/var/lib/glance/image-cache`, and the
+operator is responsible to configure the instance accordingly, setting both
+`image_cache_max_size` and the `image_cache_dir` parameters.
+The number of image cache `PVCs` follows the same rules described for the local
+`PVC`, and the number of requested `PVCs` is proportional to the number of
+replicas. In addition, it contributes to set the scale out limits discussed
+above.
+
+### Plan for a GlanceAPI deployment
+
+As per the assumptions described above, here's a few examples of GlanceAPIs
+requirements in a common scenario based on the `PVC` model.
+
+#### Example 1: PVC model without Image Cache
+
+```
+- GlanceAPI = 1
+- num_replicas = 3
+- no image cache
+- storageRequest = 30G
+- layout: single=1
+```
+
+```
+
+num_pvc = (1 + 0) * 3 = 3 * 1 = 3
+storage_size = 1 * [(30 + 0) * 3] = 90G
+```
+We can conclude that 90G is required for a single glanceAPI with 3 replicas.
+
+#### Example 2: PVC model with Image Cache
+
+```
+- GlanceAPI: 3
+- num_replicas = 3
+- image_cache_size = 20G
+- storageRequest = 30G
+- layout: edge (edge = 1)
+
+api0
+ -> replica1 (20 + 30 = 50G)
+ -> replica2 (20 + 30 = 50G)  => 150G (6 PVCs)
+ -> replica3 (20 + 30 = 50G)
+api1
+ -> replica1 (20 + 30 = 50G)
+ -> replica2 (20 + 30 = 50G)  => 150G (6 PVCs)
+ -> replica3 (20 + 30 = 50G)
+api2
+ -> replica1 (20 + 30 = 50G)
+ -> replica2 (20 + 30 = 50G)  => 150G (6 PVCs)
+ -> replica3 (20 + 30 = 50G)
+
+num_pvc = [(3 + 3) * 3] * 1 = 18
+storage_size = 3 * [(30 + 20) * 3] = 450G
+
+We can conclude that **150G** is required for each API: given we have 3 APIs the
+total number is **450G**.
+
+#### Example 3: Mixed deployment with multiple GlanceAPI
+
+Assume we have the following Glance CR
+
+```
+...
+  glanceAPIs:
+    api0:
+      type: single
+      replicas: 3
+    api1:
+      type: single
+      replicas: 3
+      storage:
+        external: true
+    api2:
+      type: single
+      replicas: 3
+      imageCache:
+        size: 5G
+      storage:
+        storageRequest: 30G
+        storageClass: local-storage
+    api3:
+      type: single
+      replicas: 3
+      storage:
+        external: true
+  secret: osp-secret
+  storage:
+    storageClass: local-storage
+    storageRequest: 10G
+...
+```
+
+As per the CR above, we can gather the following information.
+
+
+```
+
+api0
+---
+- num_replicas = 3
+- no image Cache
+- storageRequest = 10G (inherited by the top-level definition)
+
+num_pvc = 3
+storage_size = 10 *3 = 30G
+```
+
+```
+api1
+---
+- num_replicas = 3
+- no image cache (external = true)
+- no storageRequest (external = true)
+
+num_pvc = 0
+storage_size = 0
+
+The storage should be externally provisioned
+```
+
+```
+api2
+---
+- num_replicas = 3
+- image_cache_size = 5G
+- storageRequest = 30G
+- layout = single
+
+num_pvc = 2 * 3 = 6
+storage_size = (30 + 5) * 3 = 105G
+```
+
+```
+api3
+---
+- num_replicas = 3
+- image_cache_size = 2G
+- no storageRequest (external =  true)
+
+The storage should be externally provisioned
+```
+
+
+```
+num pvc = ∑([(local + image_cache) * num_replicas]) * layout
+num_pvc = Sum(3 + 0 + 6 + 0) =  9
+storage_size = Sum(30 + 0 + 105 + 0) = 135G
+```
+
+**Note:**
+we assume a `local-storage` `storageClass` exists and it's the only one used to
+keep the example simple, and only `single` layout is used. In case of `split`
+layout, the same API will double the required size.
