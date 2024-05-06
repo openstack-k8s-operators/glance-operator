@@ -72,3 +72,125 @@ that periodically executes the `glance-cache-cleaner` utility.
 
 You can find more about image-cache configuration options in the
 [upstream](https://docs.openstack.org/glance/latest/admin/cache.html) documentation.
+
+## How to test
+
+Assuming a given `GlanceAPI` instance has been scaled up, it is possible to
+perform cache related operations and verify that `Pods` are able to see each
+other (or resolve them by `hostname`) and the image can be cached on either
+of the replicas or deleted from either of the replicas.
+
+As glance cache are local, each glance `Pod` can cache the image locally
+using `--os-image-url` as shown below in Step 2. If you have multiple glance
+pods running and using `file` backend for storing the image then you need
+to ensure that your `filepath` is mounted using `NFS` otherwise caching
+will not work as expected.
+
+### Step 1: Create an image
+
+The first step is to create an image to be cached at later step.
+
+```bash
+  glance --verbose image-create \
+   --disk-format qcow2 \
+   --container-format bare \
+   --name $IMAGE_NAME
+   --file myimage
+```
+
+### Step 2: Cache an image on replica 0
+
+```bash
+UUID=$(openstack image show $IMAGE_NAME -c id -f value)
+glance --os-image-url "http://${REPLICA}""0.$DOMAIN:9292" cache-queue "$UUID"
+```
+
+- **REPLICA**: a glanceAPI replicas that doesn’t own the data
+
+- **DOMAIN**: Service hostname associated with a particular GlanceAPI
+
+  - These commands assume we have minimum 2 REPLICAS available
+
+## Step 3: Verify that image is cached on replica 0 and not on replica 1
+
+```bash
+glance --os-image-url "http://${REPLICA}""0.$DOMAIN:9292" cache-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
+# This should return 1 image in output
+glance --os-image-url "http://${REPLICA}""1.$DOMAIN:9292" cache-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
+# This should return 0 image in output
+```
+- **IMAGE_NAME**: the name of the image box that will be backed by the imported
+  data
+
+- **REPLICA**: a glanceAPI replicas that doesn’t own the data
+
+- **DOMAIN**: Service hostname associated with a particular GlanceAPI
+
+- These commands assume we have minimum 2 REPLICAS available
+
+## Step 4: Cache an image on replica 1
+```bash
+UUID=$(openstack image show $IMAGE_NAME -c id -f value)
+glance --os-image-url "http://${REPLICA}""1.$DOMAIN:9292" cache-queue "$UUID"
+```
+
+- **REPLICA**: a glanceAPI replicas that doesn’t own the data
+
+- **DOMAIN**: Service hostname associated with a particular GlanceAPI
+
+- These commands assume we have minimum 2 REPLICAS available
+
+## Step 5: Verify that image is cached on replica 1
+
+```bash
+glance --os-image-url "http://${REPLICA}""1.$DOMAIN:9292" cache-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
+# This should return 0 image in output
+```
+- **IMAGE_NAME**: the name of the image box that will be backed by the imported
+  data
+
+- **REPLICA**: a glanceAPI replicas that doesn’t own the data
+
+- **DOMAIN**: Service hostname associated with a particular GlanceAPI
+
+- These commands assume we have minimum 2 REPLICAS available
+
+## Step 6: Delete the cached image from replica 0
+```bash
+UUID=$(openstack image show $IMAGE_NAME -c id -f value)
+glance --os-image-url "http://${REPLICA}""0.$DOMAIN:9292" cache-delete "$UUID"
+```
+
+## Step 7: Verify that image is still cached on replica 1 and deleted from replica 0
+```bash
+glance --os-image-url "http://${REPLICA}""0.$DOMAIN:9292" cache-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
+# This should return 0 image in output
+glance --os-image-url "http://${REPLICA}""1.$DOMAIN:9292" cache-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
+# This should return 1 image in output
+```
+- **IMAGE_NAME**: the name of the image box that will be backed by the imported
+  data
+
+- **REPLICA**: a glanceAPI replicas that doesn’t own the data
+
+- **DOMAIN**: Service hostname associated with a particular GlanceAPI
+
+- These commands assume we have minimum 2 REPLICAS available
+
+## Step 8: Delete the actual image and verify that it is deleted from cached images as well
+```bash
+UUID=$(openstack image show $IMAGE_NAME -c id -f value)
+glance image-delete "$UUID"
+glance --os-image-url "http://${REPLICA}""0.$DOMAIN:9292" cache-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
+# This should return 0 image in output
+glance --os-image-url "http://${REPLICA}""1.$DOMAIN:9292" cache-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
+# This should return 0 image in output
+```
+- **IMAGE_NAME**: the name of the image box that will be backed by the imported
+  data
+
+- **REPLICA**: a glanceAPI replicas that doesn’t own the data
+
+- **DOMAIN**: Service hostname associated with a particular GlanceAPI
+
+- These commands assume we have minimum 2 REPLICAS available

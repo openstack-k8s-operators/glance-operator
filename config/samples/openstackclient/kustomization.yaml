@@ -33,4 +33,5 @@ configMapGenerator:
 - files:
   - ../distributed_image_import/dist-image-import.sh
   - ../image_signature/sign_glance_image.sh
+  - ../image_cache/cache_and_delete_image.sh
   name: openstack-scripts
