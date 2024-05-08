@@ -17,16 +17,19 @@ limitations under the License.
 package v1beta1
 
 import (
-	"errors"
 	"fmt"
 	"strings"
+
 	"github.com/google/go-cmp/cmp"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // GlanceDefaults -
@@ -35,7 +38,7 @@ type GlanceDefaults struct {
 	DBPurgeAge        int
 	DBPurgeSchedule   string
 	CleanerSchedule   string
-	PrunerSchedule   string
+	PrunerSchedule    string
 }
 
 var glanceDefaults GlanceDefaults
@@ -71,11 +74,11 @@ func (r *Glance) Default() {
 }
 
 // Check if the KeystoneEndpoint matches with a deployed glanceAPI
-func (spec *GlanceSpec) isValidKeystoneEP() bool {
-	for name, api := range spec.GlanceAPIs {
+func (r *GlanceSpecCore) isValidKeystoneEP() bool {
+	for name, api := range r.GlanceAPIs {
 		// A valid keystoneEndpoint can either be applied to
 		// a single API or split type, but not to an EdgeAPI
-		if api.Type != APIEdge && spec.KeystoneEndpoint == name {
+		if api.Type != APIEdge && r.KeystoneEndpoint == name {
 			return true
 		}
 	}
@@ -90,53 +93,53 @@ func GetTemplateBackend() string {
 }
 
 // Default - set defaults for this Glance spec
-func (spec *GlanceSpecCore) Default() {
+func (r *GlanceSpecCore) Default() {
 	var rep int32 = 0
 
-	if spec.DBPurge.Age == 0 {
-		spec.DBPurge.Age = glanceDefaults.DBPurgeAge
+	if r.DBPurge.Age == 0 {
+		r.DBPurge.Age = glanceDefaults.DBPurgeAge
 	}
 
-	if spec.DBPurge.Schedule == "" {
-		spec.DBPurge.Schedule = glanceDefaults.DBPurgeSchedule
+	if r.DBPurge.Schedule == "" {
+		r.DBPurge.Schedule = glanceDefaults.DBPurgeSchedule
 	}
 	// When no glanceAPI(s) are specified in the top-level CR
 	// we build one by default, but we set replicas=0 and we
 	// build a "CustomServiceConfig" template that should be
 	// customized: by doing this we force to provide the
 	// required parameters
-	if spec.GlanceAPIs == nil || len(spec.GlanceAPIs) == 0 {
+	if r.GlanceAPIs == nil || len(r.GlanceAPIs) == 0 {
 		// keystoneEndpoint will match with the only instance
 		// deployed by default
-		spec.KeystoneEndpoint = "default"
-		spec.CustomServiceConfig = GetTemplateBackend()
-		spec.GlanceAPIs = map[string]GlanceAPITemplate{
+		r.KeystoneEndpoint = "default"
+		r.CustomServiceConfig = GetTemplateBackend()
+		r.GlanceAPIs = map[string]GlanceAPITemplate{
 			"default": {
 				Replicas: &rep,
 			},
 		}
 	}
-	for key, glanceAPI := range spec.GlanceAPIs {
+	for key, glanceAPI := range r.GlanceAPIs {
 		// Check the sub-cr ContainerImage parameter
 		if glanceAPI.ContainerImage == "" {
 			glanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
-			spec.GlanceAPIs[key] = glanceAPI
+			r.GlanceAPIs[key] = glanceAPI
 		}
 		if glanceAPI.ImageCache.CleanerScheduler == "" {
 			glanceAPI.ImageCache.CleanerScheduler = glanceDefaults.CleanerSchedule
-			spec.GlanceAPIs[key] = glanceAPI
+			r.GlanceAPIs[key] = glanceAPI
 		}
 		if glanceAPI.ImageCache.PrunerScheduler == "" {
 			glanceAPI.ImageCache.PrunerScheduler = glanceDefaults.PrunerSchedule
-			spec.GlanceAPIs[key] = glanceAPI
+			r.GlanceAPIs[key] = glanceAPI
 		}
 	}
 	// In the special case where the GlanceAPI list is composed by a single
 	// element, we can omit the "KeystoneEndpoint" spec parameter and default
 	// it to that only instance present in the main CR
-	if spec.KeystoneEndpoint == "" && len(spec.GlanceAPIs) == 1 {
-		for k := range spec.GlanceAPIs {
-			spec.KeystoneEndpoint = k
+	if r.KeystoneEndpoint == "" && len(r.GlanceAPIs) == 1 {
+		for k := range r.GlanceAPIs {
+			r.KeystoneEndpoint = k
 			break
 		}
 	}
@@ -166,7 +169,7 @@ func isFileBackend(customServiceConfig string, topLevel bool) bool {
 }
 
 // Check if the File is used in combination with a wrong layout
-func (r *Glance) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel bool) bool {
+func (r *GlanceSpecCore) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel bool) bool {
 	var rep int32 = 0
 	// For each current glanceAPI instance, detect an invalid configuration
 	// made by "type: split && backend: file": raise an issue if this config
@@ -183,6 +186,31 @@ var _ webhook.Validator = &Glance{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	glancelog.Info("validate create", "name", r.Name)
+	var allErrs field.ErrorList
+	basePath := field.NewPath("spec")
+	if err := r.Spec.ValidateCreate(basePath); err != nil {
+		allErrs = append(allErrs, err...)
+	}
+
+	if len(allErrs) != 0 {
+		return nil, apierrors.NewInvalid(
+			schema.GroupKind{Group: "glance.openstack.org", Kind: "Glance"},
+			r.Name, allErrs)
+	}
+
+	return nil, nil
+}
+
+// ValidateCreate - Exported function wrapping non-exported validate functions,
+// this function can be called externally to validate an ironic spec.
+func (r *GlanceSpec) ValidateCreate(basePath *field.Path) field.ErrorList {
+	return r.GlanceSpecCore.ValidateCreate(basePath)
+}
+
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
 	// Check if the top-level CR has a "customServiceConfig" with an explicit
 	// "backend:file || empty string" and save the result into topLevel var.
 	// If it's empty it should be ignored and having a file backend depends
@@ -191,61 +219,107 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	// should play a role in the backedn evaluation. To save the result of
 	// top-level using the same function, "true" as the second parameter, as it
 	// represents an invariant for the top-level CR.
-	topLevelFileBackend := isFileBackend(r.Spec.CustomServiceConfig, true)
-	// For each Glance backend, fail if an invalid configuration/layout is
-	// detected
-	for _, glanceAPI := range r.Spec.GlanceAPIs {
+	topLevelFileBackend := isFileBackend(r.CustomServiceConfig, true)
+
+	// For each Glance backend
+	for key, glanceAPI := range r.GlanceAPIs {
+		path := basePath.Child("glanceAPIs").Key(key)
+
+		// fail if an invalid configuration/layout is detected
 		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
-			return nil, errors.New("Invalid backend configuration detected")
+			allErrs = append(allErrs, field.Invalid(
+				path, key, "Invalid backend configuration detected"))
 		}
+
+		// validate the service override key is valid
+		allErrs = append(allErrs, service.ValidateRoutedOverrides(
+			path.Child("override").Child("service"),
+			glanceAPI.Override.Service)...)
 	}
+
 	// At creation time, if the CR has an invalid keystoneEndpoint value (that
 	// doesn't match with any defined backend), return an error.
-	if !r.Spec.isValidKeystoneEP() {
-		return nil, errors.New("KeystoneEndpoint is assigned to an invalid glanceAPI instance")
+	if !r.isValidKeystoneEP() {
+		path := basePath.Child("keystoneEndpoint")
+		allErrs = append(allErrs, field.Invalid(
+			path, r.KeystoneEndpoint, "KeystoneEndpoint is assigned to an invalid glanceAPI instance"))
 	}
-	return nil, nil
+
+	return allErrs
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-
-	// Type can either be "split" or "single": we do not support changing layout
-	// because there's no logic in the operator to scale down the existing statefulset
-	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
 	o, ok := old.(*Glance)
 	if !ok || o == nil {
 		return nil, apierrors.NewInternalError(fmt.Errorf("unable to convert existing object"))
 	}
 	glancelog.Info("validate update", "diff", cmp.Diff(old, r))
 
-	topLevelFileBackend := isFileBackend(r.Spec.CustomServiceConfig, true)
-	for key, glanceAPI := range r.Spec.GlanceAPIs {
+	var allErrs field.ErrorList
+	basePath := field.NewPath("spec")
+
+	if err := r.Spec.ValidateUpdate(o.Spec, basePath); err != nil {
+		allErrs = append(allErrs, err...)
+	}
+
+	if len(allErrs) != 0 {
+		return nil, apierrors.NewInvalid(
+			schema.GroupKind{Group: "glance.openstack.org", Kind: "Glance"},
+			r.Name, allErrs)
+	}
+
+	return nil, nil
+}
+
+// ValidateUpdate - Exported function wrapping non-exported validate functions,
+// this function can be called externally to validate an glance spec.
+func (r *GlanceSpec) ValidateUpdate(old GlanceSpec, basePath *field.Path) field.ErrorList {
+	return r.GlanceSpecCore.ValidateUpdate(old.GlanceSpecCore, basePath)
+}
+
+func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	// Type can either be "split" or "single": we do not support changing layout
+	// because there's no logic in the operator to scale down the existing statefulset
+	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
+	topLevelFileBackend := isFileBackend(r.CustomServiceConfig, true)
+	for key, glanceAPI := range r.GlanceAPIs {
+		path := basePath.Child("glanceAPIs").Key(key)
+
 		// When a new entry (new glanceAPI instance) is added in the main CR, it's
 		// possible that the old CR used to compare the new map had no entry with
 		// the same name. This represent a valid use case and we shouldn't prevent
 		// to grow the deployment
-		if _, found := o.Spec.GlanceAPIs[key]; !found {
+		if _, found := old.GlanceAPIs[key]; !found {
 			continue
 		}
 		// The current glanceAPI exists and the layout is different
-		if glanceAPI.Type != o.Spec.GlanceAPIs[key].Type {
-			return nil, errors.New("GlanceAPI deployment layout can't be updated")
+		if glanceAPI.Type != old.GlanceAPIs[key].Type {
+			allErrs = append(allErrs, field.Invalid(path, key, "GlanceAPI deployment layout can't be updated"))
 		}
 		// Fail if an invalid configuration/layout is detected for the current
 		// glanceAPI instance
 		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
-			return nil, errors.New("Invalid backend configuration detected")
+			allErrs = append(allErrs, field.Invalid(path, key, "Invalid backend configuration detected"))
 		}
+		// validate the service override key is valid
+		allErrs = append(allErrs, service.ValidateRoutedOverrides(
+			path.Child("override").Child("service"),
+			glanceAPI.Override.Service)...)
 	}
+
 	// At update time, if the CR has an invalid keystoneEndpoint set
 	// (e.g. an Edge GlanceAPI instance that can't be registered in keystone)
 	// return an error message
-	if !r.Spec.isValidKeystoneEP() {
-		return nil, errors.New(
-			"KeystoneEndpoint is assigned to an invalid glanceAPI instance")
+	if !r.isValidKeystoneEP() {
+		path := basePath.Child("keystoneEndpoint")
+		allErrs = append(allErrs, field.Invalid(
+			path, r.KeystoneEndpoint, "KeystoneEndpoint is assigned to an invalid glanceAPI instance"))
 	}
-	return nil, nil
+
+	return allErrs
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type

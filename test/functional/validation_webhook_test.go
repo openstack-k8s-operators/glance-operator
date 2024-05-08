@@ -148,4 +148,41 @@ var _ = Describe("Glance validation", func() {
 				"KeystoneEndpoint is assigned to an invalid glanceAPI instance"),
 		)
 	})
+
+	It("webhook rejects with wrong service override endpoint type", func() {
+		spec := GetGlanceDefaultSpec()
+		gapis := map[string]interface{}{
+			"default": map[string]interface{}{
+				"replicas":            1,
+				"type":                "split",
+				"customServiceConfig": GetDummyBackend(),
+				"override": map[string]interface{}{
+					"service": map[string]interface{}{
+						"internal": map[string]interface{}{},
+						"wrooong":  map[string]interface{}{},
+					},
+				},
+			},
+		}
+		spec["glanceAPIs"] = gapis
+
+		raw := map[string]interface{}{
+			"apiVersion": "glance.openstack.org/v1beta1",
+			"kind":       "Glance",
+			"metadata": map[string]interface{}{
+				"name":      glanceTest.Instance.Name,
+				"namespace": glanceTest.Instance.Namespace,
+			},
+			"spec": spec,
+		}
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			ctx, k8sClient, unstructuredObj, func() error { return nil })
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(
+			ContainSubstring(
+				"invalid: spec.glanceAPIs[default].override.service[wrooong]: " +
+					"Invalid value: \"wrooong\": invalid endpoint type: wrooong"),
+		)
+	})
 })
