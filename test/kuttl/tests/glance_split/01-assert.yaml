@@ -235,8 +235,8 @@ kind: TestAssert
 namespaced: true
 commands:
   - script: |
-      template='{{.status.apiEndpoint.internal}}{{":"}}{{.status.apiEndpoint.public}}{{"\n"}}'
-      regex="http:\/\/glance-internal.$NAMESPACE.*:http:\/\/glance-public.$NAMESPACE.*"
+      template='{{ index .status.apiEndpoint "default-internal" }}{{ ":" }}{{ index .status.apiEndpoint "default-public" }}'
+      regex="http:\/\/glance-default-internal.$NAMESPACE.*:http:\/\/glance-default-public.$NAMESPACE.*"
       apiEndpoints=$(oc get -n $NAMESPACE Glance glance -o go-template="$template")
       matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")
       if [ -z "$matches" ]; then
