@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gophercloud/gophercloud"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -983,7 +984,8 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 	if err != nil {
 		return err
 	}
-	o, _, err := glancev1.GetAdminServiceClient(ctx, h, keystoneAPI)
+	scope := &gophercloud.AuthScope{System: true}
+	o, _, err := keystonev1.GetScopedAdminServiceClient(ctx, h, keystoneAPI, scope)
 	if err != nil {
 		return err
 	}
@@ -1053,7 +1055,8 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 	if err != nil {
 		return err
 	}
-	o, _, err := glancev1.GetAdminServiceClient(ctx, h, keystoneAPI)
+	scope := &gophercloud.AuthScope{System: true}
+	o, _, err := keystonev1.GetScopedAdminServiceClient(ctx, h, keystoneAPI, scope)
 	if err != nil {
 		return err
 	}

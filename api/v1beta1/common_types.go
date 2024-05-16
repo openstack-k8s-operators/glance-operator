@@ -17,21 +17,12 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
-	"time"
 	"strings"
 
-	"github.com/gophercloud/gophercloud"
-	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
-	openstack "github.com/openstack-k8s-operators/lib-common/modules/openstack"
 	corev1 "k8s.io/api/core/v1"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -162,53 +153,6 @@ func SetupAPIDefaults() {
 	}
 
 	SetupGlanceAPIDefaults(glanceAPIDefaults)
-}
-
-// GetAdminServiceClient - get an admin serviceClient for the Glance instance
-func GetAdminServiceClient(
-	ctx context.Context,
-	h *helper.Helper,
-	keystoneAPI *keystonev1.KeystoneAPI,
-) (*openstack.OpenStack, ctrl.Result, error) {
-	// get public endpoint as authurl from keystone instance
-	authURL, err := keystoneAPI.GetEndpoint(endpoint.EndpointPublic)
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-
-	// get the password of the admin user from Spec.Secret
-	// using PasswordSelectors.Admin
-	authPassword, ctrlResult, err := secret.GetDataFromSecret(
-		ctx,
-		h,
-		keystoneAPI.Spec.Secret,
-		time.Duration(10)*time.Second,
-		keystoneAPI.Spec.PasswordSelectors.Admin)
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-	if (ctrlResult != ctrl.Result{}) {
-		return nil, ctrlResult, nil
-	}
-
-	os, err := openstack.NewOpenStack(
-		h.GetLogger(),
-		openstack.AuthOpts{
-			AuthURL:    authURL,
-			Username:   keystoneAPI.Spec.AdminUser,
-			Password:   authPassword,
-			TenantName: keystoneAPI.Spec.AdminProject,
-			DomainName: "Default",
-			Region:     keystoneAPI.Spec.Region,
-			Scope: &gophercloud.AuthScope{
-				System: true,
-			},
-		})
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-
-	return os, ctrl.Result{}, nil
 }
 
 // GetEnabledBackends - Given a instance.Spec.CustomServiceConfig object, return
