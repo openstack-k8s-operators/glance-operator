@@ -678,21 +678,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// or, in case Cinder is a backend for the current GlanceAPI, the associated resources
 	// are present in the control plane
 	instance.Status.Conditions.MarkTrue(glancev1.CinderCondition, glancev1.CinderReadyMessage)
-
-	// Generate service config
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv, memcached)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ServiceConfigReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.ServiceConfigReadyErrorMessage,
-			err.Error()))
-		r.Log.Info("Glance config is not Ready, requeueing...")
-		return glance.ResultRequeue, nil
-	}
-
-	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
 	//
 	// TLS input validation
 	//
@@ -795,6 +780,20 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		return ctrlResult, nil
 	}
 
+	// Generate service config
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv, memcached)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ServiceConfigReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.ServiceConfigReadyErrorMessage,
+			err.Error()))
+		r.Log.Info("Glance config is not Ready, requeueing...")
+		return glance.ResultRequeue, nil
+	}
+
+	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
 	//
 	// normal reconcile tasks
 	//
@@ -1003,6 +1002,11 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		return err
 	}
 
+	endpointID, err := r.getEndpointID(ctx, instance)
+	if err != nil {
+		return err
+	}
+
 	databaseAccount := db.GetAccount()
 	dbSecret := db.GetSecret()
 
@@ -1037,6 +1041,12 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		"QuotaEnabled": instance.Spec.Quota,
 		"LogFile":      fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
 		"VHosts":       httpdVhostConfig,
+	}
+
+	// Only set EndpointID parameter when the Endpoint has been created and the
+	// associated ID is set in the keystoneapi CR
+	if len(endpointID) > 0 {
+		templateParameters["EndpointID"] = endpointID
 	}
 
 	// Configure the internal GlanceAPI to provide image location data, and the
@@ -1318,6 +1328,36 @@ func (r *GlanceAPIReconciler) deleteJob(
 		}
 	}
 	return ctrlResult, err
+}
+
+// getEndpointID - returns the endpointID associated to a keystone Endpoint
+func (r *GlanceAPIReconciler) getEndpointID(
+	ctx context.Context,
+	instance *glancev1.GlanceAPI,
+) (string, error) {
+	ep := &keystonev1.KeystoneEndpoint{}
+	epID := ""
+	epType := endpoint.EndpointInternal
+	// in case of split, the external API will point to its own keystone Endpoint
+	// instead of looking for a different API that might not exist or have issues
+	// we can't control here
+	if instance.Spec.APIType == glancev1.APIExternal {
+		epType = endpoint.EndpointPublic
+	}
+	err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}, ep)
+	if err != nil {
+		if k8s_errors.IsNotFound(err) {
+			// Just log the keystoneEndpoint CR does not exist so we have evidence
+			// in the operator output: it's not necessarily an error that should
+			// trigger a reconciliation loop
+			r.Log.Info(fmt.Sprintf("EndpointID not found for glanceAPI %s", instance.Name))
+		}
+		return epID, nil
+	}
+	if ep.Status.EndpointIDs != nil {
+		epID = ep.Status.EndpointIDs[string(epType)]
+	}
+	return epID, err
 }
 
 // glanceAPIRefresh - delete a StateFulSet when a configuration for a Forbidden
