@@ -429,6 +429,21 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			},
 		)
 
+		// For each StatefulSet associated with a given glanceAPI (single, internal, external)
+		// we create a headless service that allow to resolve pods by hostname (using kube-dns)
+		// and it allows to enable the glance-direct import method
+		ctrlResult, headlessSvcName, err := GetHeadlessService(
+			ctx,
+			helper,
+			instance,
+			serviceLabels,
+		)
+		if err != nil {
+			// The ExposeServiceReadyCondition is already marked as False
+			// within the GetHeadlessService function: we can return
+			return ctrlResult, err
+		}
+
 		// Create the internal/externl service(s) associated to the current API
 		svc, err := service.NewService(
 			service.GenericService(&service.GenericServiceDetails{
@@ -458,6 +473,17 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 		svc.AddAnnotation(map[string]string{
 			service.AnnotationEndpointKey: endpointTypeStr,
+			// Add to the current service an annotation that refers to the associated
+			// headless service: this information will be used by the openstack-operator
+			// to have an additional SubjectName that allows to reach every replica with
+			// an https endpoint
+			tls.AdditionalSubjectNamesKey: fmt.Sprintf("*.%s.%s.svc,*.%s.%s.svc.%s",
+				headlessSvcName,
+				instance.Namespace,
+				headlessSvcName,
+				instance.Namespace,
+				tls.DefaultClusterInternalDomain,
+			),
 		})
 
 		// add Annotation to whether creating an ingress is required or not
@@ -482,7 +508,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			}
 		}
 
-		ctrlResult, err := svc.CreateOrPatch(ctx, helper)
+		ctrlResult, err = svc.CreateOrPatch(ctx, helper)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.ExposeServiceReadyCondition,
@@ -499,21 +525,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 				condition.SeverityInfo,
 				condition.ExposeServiceReadyRunningMessage))
 			return ctrlResult, nil
-		}
-
-		// For each StatefulSet associated with a given glanceAPI (single, internal, external)
-		// we create a headless service that allow to resolve pods by hostname (using kube-dns)
-		// and it allows to enable the glance-direct import method
-		ctrlResult, err = GetHeadlessService(
-			ctx,
-			helper,
-			instance,
-			serviceLabels,
-		)
-		if err != nil {
-			// The ExposeServiceReadyCondition is already marked as False
-			// within the GetHeadlessService function: we can return
-			return ctrlResult, err
 		}
 
 		// create service - end
@@ -1009,10 +1020,15 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	dbSecret := db.GetSecret()
 
 	glanceEndpoints := glanceapi.GetGlanceEndpoints(instance.Spec.APIType)
+	endptName := instance.Name
+	if instance.Spec.APIType != glancev1.APISingle {
+		endptName = fmt.Sprintf("%s-api", instance.Name)
+	}
 	httpdVhostConfig := map[string]interface{}{}
 	for endpt := range glanceEndpoints {
 		endptConfig := map[string]interface{}{}
 		endptConfig["ServerName"] = fmt.Sprintf("glance-%s.%s.svc", endpt.String(), instance.Namespace)
+		endptConfig["ServerAlias"] = fmt.Sprintf("%s.%s.svc", endptName, instance.Namespace)
 		endptConfig["TLS"] = false // default TLS to false, and set it bellow to true if enabled
 		if instance.Spec.TLS.API.Enabled(endpt) {
 			endptConfig["TLS"] = true

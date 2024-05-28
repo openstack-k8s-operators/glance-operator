@@ -152,7 +152,7 @@ func GetHeadlessService(
 	helper *helper.Helper,
 	instance *glancev1.GlanceAPI,
 	serviceLabels map[string]string,
-) (ctrl.Result, error) {
+) (ctrl.Result, string, error) {
 
 	endpointName := instance.Name
 	// The endpointName for headless services **must** match with:
@@ -186,7 +186,7 @@ func GetHeadlessService(
 			condition.SeverityWarning,
 			condition.ExposeServiceReadyErrorMessage,
 			err.Error()))
-		return ctrl.Result{}, err
+		return ctrl.Result{}, endpointName, err
 	}
 
 	svc.AddAnnotation(map[string]string{
@@ -209,17 +209,17 @@ func GetHeadlessService(
 			condition.ExposeServiceReadyErrorMessage,
 			err.Error()))
 
-		return ctrlResult, err
+		return ctrlResult, endpointName, err
 	} else if (ctrlResult != ctrl.Result{}) {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ExposeServiceReadyCondition,
 			condition.RequestedReason,
 			condition.SeverityInfo,
 			condition.ExposeServiceReadyRunningMessage))
-		return ctrlResult, nil
+		return ctrlResult, endpointName, nil
 	}
 
-	return ctrlResult, nil
+	return ctrlResult, endpointName, nil
 }
 
 // GetPvcListWithLabel -
