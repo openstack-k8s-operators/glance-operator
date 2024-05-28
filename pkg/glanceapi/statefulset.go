@@ -76,6 +76,7 @@ func StatefulSet(
 	//
 
 	port := int32(glance.GlancePublicPort)
+	glanceURIScheme := corev1.URISchemeHTTP
 	tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
 
 	if instance.Spec.APIType == glancev1.APIInternal ||
@@ -96,6 +97,7 @@ func StatefulSet(
 	if tlsEnabled {
 		livenessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
 		readinessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
+		glanceURIScheme = corev1.URISchemeHTTPS
 	}
 	startupProbe.Exec = &corev1.ExecAction{
 		Command: []string{
@@ -107,6 +109,7 @@ func StatefulSet(
 	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
 	envVars["GLANCE_DOMAIN"] = env.SetValue(instance.Status.Domain)
+	envVars["URISCHEME"] = env.SetValue(string(glanceURIScheme))
 
 	apiVolumes := []corev1.Volume{
 		{
