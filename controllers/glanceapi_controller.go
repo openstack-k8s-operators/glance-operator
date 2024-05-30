@@ -738,26 +738,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// all cert input checks out so report InputReady
 	instance.Status.Conditions.MarkTrue(condition.TLSInputReadyCondition, condition.InputReadyMessage)
 
-	//
-	// create hash over all the different input resources to identify if any those changed
-	// and a restart/recreate is required.
-	//
-	inputHash, _, err := r.createHashOfInputHashes(instance, configVars)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ServiceConfigReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.ServiceConfigReadyErrorMessage,
-			err.Error()))
-		return ctrl.Result{}, err
-	}
-	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
-	// Create Secrets - end
-
-	//
-	// TODO check when/if Init, Update, or Upgrade should/could be skipped
-	//
 	var serviceAnnotations map[string]string
 	// networks to attach to
 	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
@@ -797,6 +777,24 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	//
 	// normal reconcile tasks
 	//
+
+	//
+	// create hash over all the different input resources to identify if any those changed
+	// and a restart/recreate is required.
+	//
+	inputHash, _, err := r.createHashOfInputHashes(instance, configVars)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ServiceConfigReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.ServiceConfigReadyErrorMessage,
+			err.Error()))
+		return ctrl.Result{}, err
+	}
+	// At this point the config is generated and the inputHash is computed
+	// we can mark the ServiceConfigReady as True and rollout the new pods
+	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
 
 	// Define a new StatefuleSet object
 	deplDef, err := glanceapi.StatefulSet(instance,
