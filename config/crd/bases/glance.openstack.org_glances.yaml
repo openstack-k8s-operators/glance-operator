@@ -36,6 +36,10 @@ spec:
             type: object
           spec:
             properties:
+              apiTimeout:
+                default: 60
+                minimum: 1
+                type: integer
               containerImage:
                 type: string
               customServiceConfig:
@@ -818,6 +822,9 @@ spec:
               glanceAPIs:
                 additionalProperties:
                   properties:
+                    apiTimeout:
+                      minimum: 1
+                      type: integer
                     containerImage:
                       type: string
                     customServiceConfig:

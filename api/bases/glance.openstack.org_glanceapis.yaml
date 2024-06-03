@@ -40,6 +40,9 @@ spec:
             type: object
           spec:
             properties:
+              apiTimeout:
+                minimum: 1
+                type: integer
               apiType:
                 default: external
                 enum:

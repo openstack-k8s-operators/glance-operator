@@ -125,6 +125,12 @@ type GlanceSpecCore struct {
 	// +kubebuilder:validation:Optional
 	// DBPurge parameters -
 	DBPurge DBPurge `json:"dbPurge,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=60
+	// +kubebuilder:validation:Minimum=1
+	// Default APITimeout for HAProxy and Apache, defaults to 60 seconds
+	APITimeout int `json:"apiTimeout"`
 }
 
 // GlanceSpec defines the desired state of Glance
