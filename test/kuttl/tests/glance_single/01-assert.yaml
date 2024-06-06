@@ -7,6 +7,7 @@
 # - glance-internal service
 # - glance-public service
 # - glance internal and public endpoints
+# - glance-dbpurge cronjob
 
 apiVersion: glance.openstack.org/v1beta1
 kind: Glance
@@ -140,6 +141,54 @@ spec:
     targetPort: 9292
   selector:
     service: glance
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: glance-dbpurge
+spec:
+  jobTemplate:
+    metadata:
+      labels:
+        service: glance
+    spec:
+      template:
+        spec:
+          containers:
+          - args:
+            - -c
+            - /usr/bin/glance-manage --config-dir /etc/glance/glance.conf.d db purge
+              30
+            command:
+            - /bin/bash
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            volumeMounts:
+            - mountPath: /etc/glance/glance.conf.d
+              name: db-purge-config-data
+              readOnly: true
+            - mountPath: /etc/my.cnf
+              name: config-data
+              readOnly: true
+              subPath: my.cnf
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          serviceAccount: glance-glance
+          serviceAccountName: glance-glance
+          terminationGracePeriodSeconds: 30
+          volumes:
+          - name: db-purge-config-data
+            secret:
+              defaultMode: 420
+              items:
+              - key: 00-config.conf
+                path: 00-config.conf
+              secretName: glance-config-data
+          - name: config-data
+            secret:
+              defaultMode: 420
+              secretName: glance-config-data
+  schedule: 1 0 * * *
 ---
 # the actual addresses of the apiEndpoints are platform specific, so we can't rely on
 # kuttl asserts to check them. This short script gathers the addresses and checks that
