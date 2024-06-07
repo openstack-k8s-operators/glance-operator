@@ -107,6 +107,11 @@ type GlanceAPITemplate struct {
 	// parameters (size of the PVC and cronJob schedule)
 	// +kubebuilder:validation:Optional
 	ImageCache ImageCache `json:"imageCache,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=1
+	// APITimeout for HAProxy and Apache defaults to GlanceSpecCore APITimeout
+	APITimeout int `json:"apiTimeout,omitempty"`
 }
 
 // ImageCache - struct where the exposed imageCache params are defined

@@ -1014,6 +1014,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		endptConfig := map[string]interface{}{}
 		endptConfig["ServerName"] = fmt.Sprintf("glance-%s.%s.svc", endpt.String(), instance.Namespace)
 		endptConfig["TLS"] = false // default TLS to false, and set it bellow to true if enabled
+		endptConfig["TimeOut"] = instance.Spec.APITimeout
 		if instance.Spec.TLS.API.Enabled(endpt) {
 			endptConfig["TLS"] = true
 			endptConfig["SSLCertificateFile"] = fmt.Sprintf("/etc/pki/tls/certs/%s.crt", endpt.String())

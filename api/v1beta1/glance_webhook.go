@@ -119,6 +119,7 @@ func (r *GlanceSpecCore) Default() {
 			},
 		}
 	}
+
 	for key, glanceAPI := range r.GlanceAPIs {
 		// Check the sub-cr ContainerImage parameter
 		if glanceAPI.ContainerImage == "" {
@@ -131,6 +132,11 @@ func (r *GlanceSpecCore) Default() {
 		}
 		if glanceAPI.ImageCache.PrunerScheduler == "" {
 			glanceAPI.ImageCache.PrunerScheduler = glanceDefaults.PrunerSchedule
+			r.GlanceAPIs[key] = glanceAPI
+		}
+		// Default to the global Glance APITimeout
+		if glanceAPI.APITimeout == 0 {
+			glanceAPI.APITimeout = r.APITimeout
 			r.GlanceAPIs[key] = glanceAPI
 		}
 	}
@@ -328,4 +334,30 @@ func (r *Glance) ValidateDelete() (admission.Warnings, error) {
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil
+}
+
+// SetDefaultRouteAnnotations sets HAProxy timeout values of the route
+func (glanceAPI *GlanceAPITemplate) SetDefaultRouteAnnotations(annotations map[string]string) {
+	const haProxyAnno = "haproxy.router.openshift.io/timeout"
+	// Use a custom annotation to flag when the operator has set the default HAProxy timeout
+	// With the annotation func determines when to overwrite existing HAProxy timeout with the APITimeout
+	const glanceAnno = "api.glance.openstack.org/timeout"
+
+	valGlance, okGlance := annotations[glanceAnno]
+	valHAProxy, okHAProxy := annotations[haProxyAnno]
+
+	// Human operator set the HAProxy timeout manually
+	if (!okGlance && okHAProxy) {
+		return
+	}
+
+	// Human operator modified the HAProxy timeout manually without removing the Glance flag
+	if (okGlance && okHAProxy && valGlance != valHAProxy) {
+		delete(annotations, glanceAnno)
+		return
+	}
+
+	timeout := fmt.Sprintf("%ds", glanceAPI.APITimeout)
+	annotations[glanceAnno] = timeout
+	annotations[haProxyAnno] = timeout
 }
