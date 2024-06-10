@@ -38,6 +38,8 @@ const (
 	CleanerDefaultSchedule = "*/30 * * * *"
 	//PrunerDefaultSchedule is in crontab format, and the default runs the job once every day
 	PrunerDefaultSchedule = "1 0 * * *"
+	// APIDefaultTimeout indicates the default APITimeout for HAProxy and Apache, defaults to 60 seconds
+	APIDefaultTimeout = 60
 )
 
 // GlanceAPITemplate defines the desired state of GlanceAPI
@@ -145,6 +147,7 @@ func SetupDefaults() {
 		DBPurgeSchedule: DBPurgeDefaultSchedule,
 		CleanerSchedule: CleanerDefaultSchedule,
 		PrunerSchedule: PrunerDefaultSchedule,
+		APITimeout: APIDefaultTimeout,
 	}
 
 	SetupGlanceDefaults(glanceDefaults)

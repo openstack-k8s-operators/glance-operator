@@ -39,6 +39,7 @@ type GlanceDefaults struct {
 	DBPurgeSchedule   string
 	CleanerSchedule   string
 	PrunerSchedule    string
+	APITimeout int
 }
 
 var glanceDefaults GlanceDefaults
@@ -95,6 +96,10 @@ func GetTemplateBackend() string {
 // Default - set defaults for this Glance spec
 func (r *GlanceSpecCore) Default() {
 	var rep int32 = 0
+
+	if r.APITimeout == 0 {
+		r.APITimeout = glanceDefaults.APITimeout
+	}
 
 	if r.DBPurge.Age == 0 {
 		r.DBPurge.Age = glanceDefaults.DBPurgeAge
