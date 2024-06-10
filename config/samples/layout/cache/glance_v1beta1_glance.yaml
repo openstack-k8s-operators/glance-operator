@@ -1,0 +1,30 @@
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  serviceUser: glance
+  databaseInstance: openstack
+  databaseAccount: glance
+  keystoneEndpoint: default
+  customServiceConfig: |
+    [DEFAULT]
+    enabled_backends = default_backend:swift
+    [glance_store]
+    default_backend = default_backend
+    [default_backend]
+    swift_store_create_container_on_put = True
+    swift_store_auth_version = 3
+    swift_store_auth_address = {{ .KeystoneInternalURL }}
+    swift_store_endpoint_type = internalURL
+    swift_store_user = service:glance
+    swift_store_key = {{ .ServicePassword }}
+  glanceAPIs:
+    default:
+      preserveJobs: false
+      replicas: 1
+      imageCache:
+        size: 2G
+  secret: osp-secret
+  storageClass: local-storage
+  storageRequest: 10G
