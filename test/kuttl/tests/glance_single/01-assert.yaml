@@ -22,7 +22,8 @@ spec:
       replicas: 1
       type: "single"
   secret: osp-secret
-  storageRequest: 10G
+  storage:
+    storageRequest: 10G
 status:
   databaseHostname: openstack.glance-kuttl-tests.svc
 ---

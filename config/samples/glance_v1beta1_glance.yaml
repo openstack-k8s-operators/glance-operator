@@ -11,5 +11,6 @@ spec:
   databaseInstance: openstack
   databaseAccount: glance
   secret: osp-secret
-  storageClass: local-storage
-  storageRequest: 10G
+  storage:
+    storageClass: local-storage
+    storageRequest: 10G

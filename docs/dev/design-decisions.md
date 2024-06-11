@@ -455,13 +455,6 @@ in the glance-operator we make the following assumptions:
   considered `Ready` if the number of `Replicas` specified in the `Glance` CR
   spec is **equal** to the number of available instances (`ReadyCount`).
 
-
-
-
-
-
-
-
 ## Storage Requirements: PVCs usage and available models
 
 Glance requires a `staging area` to manipulate data during an import operation.

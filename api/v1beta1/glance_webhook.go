@@ -97,6 +97,11 @@ func GetTemplateBackend() string {
 func (r *GlanceSpecCore) Default() {
 	var rep int32 = 0
 
+	// If no storage request has been made, do not provision PVCs
+	if r.Storage.StorageRequest == "" {
+		r.Storage.External = true
+	}
+
 	if r.APITimeout == 0 {
 		r.APITimeout = glanceDefaults.APITimeout
 	}
