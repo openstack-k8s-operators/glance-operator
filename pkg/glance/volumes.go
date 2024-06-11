@@ -132,7 +132,7 @@ func GetVolumes(
 func GetVolumeMounts(
 	secretNames []string,
 	hasCinder bool,
-	ephemeral bool,
+	external bool,
 	extraVol []glancev1.GlanceExtraVolMounts,
 	svc []storage.PropagationType,
 ) []corev1.VolumeMount {
@@ -158,8 +158,8 @@ func GetVolumeMounts(
 			ReadOnly:  false,
 		},
 	}
-	// a PVC is mounted only if ephemeral is not set
-	if !ephemeral {
+	// a PVC is mounted only if external is not set
+	if !external {
 		vm = append(vm, localPVC...)
 	}
 	for _, exv := range extraVol {

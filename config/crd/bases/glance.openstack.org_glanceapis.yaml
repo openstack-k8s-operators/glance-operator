@@ -953,7 +953,7 @@ spec:
                 type: string
               storage:
                 properties:
-                  ephemeral:
+                  external:
                     type: boolean
                   storageClass:
                     type: string

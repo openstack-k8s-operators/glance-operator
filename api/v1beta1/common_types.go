@@ -117,8 +117,8 @@ type Storage struct {
 	StorageRequest string `json:"storageRequest,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// Ephemeral -
-	Ephemeral bool `json:"ephemeral,omitempty"`
+	// External -
+	External bool `json:"external,omitempty"`
 }
 
 // ImageCache - struct where the exposed imageCache params are defined

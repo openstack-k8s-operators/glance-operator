@@ -861,8 +861,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	if apiSpec.GlanceAPITemplate.Storage.StorageClass == "" {
 		apiSpec.GlanceAPITemplate.Storage.StorageClass = instance.Spec.Storage.StorageClass
 	}
-	if !apiSpec.GlanceAPITemplate.Storage.Ephemeral {
-		apiSpec.GlanceAPITemplate.Storage.Ephemeral = instance.Spec.Storage.Ephemeral
+	if !apiSpec.GlanceAPITemplate.Storage.External {
+		apiSpec.GlanceAPITemplate.Storage.External = instance.Spec.Storage.External
 	}
 
 	apiSpec.MemcachedInstance = memcached.Name
