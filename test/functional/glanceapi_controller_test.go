@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+
 	//revive:disable-next-line:dot-imports
 	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
@@ -276,8 +277,8 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(headlessSvc.Name).To(Equal(glanceTest.GlanceEdgeStatefulSet.Name))
 
 			// Check the Internal service exists and follow the usual convention
-			internalSvc := th.GetService(glanceTest.GlanceInternal)
-			Expect(internalSvc.Name).To(Equal(glanceTest.GlanceInternal.Name))
+			internalSvc := th.GetService(glanceTest.GlanceInternalSvc)
+			Expect(internalSvc.Name).To(Equal(glanceTest.GlanceInternalSvc.Name))
 
 			// Check the Public service doesn't exist
 			th.AssertServiceDoesNotExist(glanceTest.GlanceExternal)
@@ -467,7 +468,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(glanceAPI.Status.ReadyCount).To(BeNumerically(">", 0))
 		})
 		It("exposes the service", func() {
-			apiInstance := th.GetService(glanceTest.GlanceInternal)
+			apiInstance := th.GetService(glanceTest.GlanceInternalSvc)
 			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
 		})
 		It("creates KeystoneEndpoint", func() {

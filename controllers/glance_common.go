@@ -136,7 +136,7 @@ func GenerateConfigsGeneric(
 	// TODO: Scripts have no reason to be secrets, should move to configmap
 	if scripts {
 		cms = append(cms, util.Template{
-			Name:         fmt.Sprintf("%s-scripts", instance.GetName()),
+			Name:         glance.ServiceName + "-scripts",
 			Namespace:    instance.GetNamespace(),
 			Type:         util.TemplateTypeScripts,
 			InstanceType: instance.GetObjectKind().GroupVersionKind().Kind,
@@ -251,7 +251,7 @@ func GetServiceLabels(
 	return map[string]string{
 		common.AppSelector:       glance.ServiceName,
 		common.ComponentSelector: glance.Component,
-		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name), instance.Spec.APIType),
+		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
 		common.OwnerSelector:     instance.Name,
 	}
 }

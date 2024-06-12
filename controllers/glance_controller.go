@@ -653,7 +653,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	}
 
 	// remove finalizers from unused MariaDBAccount records
-	err = mariadbv1.DeleteUnusedMariaDBAccountFinalizers(ctx, helper, instance.Name, instance.Spec.DatabaseAccount, instance.Namespace)
+	err = mariadbv1.DeleteUnusedMariaDBAccountFinalizers(ctx, helper, glance.DatabaseName, instance.Spec.DatabaseAccount, instance.Namespace)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -877,6 +877,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	if instance.Spec.KeystoneEndpoint == apiName {
 		apiAnnotations[glance.KeystoneEndpoint] = "true"
 	}
+	// Add the API name to the GlanceAPI instance as a label
+	serviceLabels[glancev1.APINameLabel] = apiName
 	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        fmt.Sprintf("%s-%s-%s", instance.Name, apiName, apiType),
@@ -885,6 +887,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 			Namespace:   instance.Namespace,
 		},
 	}
+	defer delete(serviceLabels, glancev1.APINameLabel)
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, glanceStatefulset, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
@@ -1098,7 +1101,7 @@ func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glanc
 		if glance.GetOwningGlanceName(&glanceAPI) != instance.Name {
 			continue
 		}
-		apiName := glance.GetGlanceAPIName(glanceAPI.Name)
+		apiName := glanceAPI.APIName()
 		// Simply return if the apiName doesn't match the existing pattern, log but do not
 		// raise an error
 		if apiName == "" {

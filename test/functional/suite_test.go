@@ -250,7 +250,7 @@ var _ = BeforeEach(func() {
 	// we run the test in an existing cluster.
 	glanceName = types.NamespacedName{
 		Namespace: namespace,
-		Name:      "glance",
+		Name:      "glance-" + uuid.NewString()[:5],
 	}
 
 	glanceTest = GetGlanceTestData(glanceName)

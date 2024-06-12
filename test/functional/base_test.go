@@ -165,6 +165,7 @@ func CreateGlanceAPI(name types.NamespacedName, spec map[string]interface{}) cli
 			},
 			"name":      name.Name,
 			"namespace": name.Namespace,
+			"labels":    map[string]string{"api-name": "default"},
 		},
 		"spec": spec,
 	}

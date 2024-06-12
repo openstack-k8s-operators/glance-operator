@@ -26,6 +26,7 @@ import (
 	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
@@ -227,7 +228,7 @@ var _ = Describe("Glance controller", func() {
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
 			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
-			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
 		})
 		It("Glance DB is Ready and db-sync reports ReadyCondition", func() {
 			th.ExpectCondition(
@@ -283,7 +284,7 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
-			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 		})
 		It("Creates glanceAPI", func() {
@@ -318,11 +319,11 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
-			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 		})
 		It("removes the finalizers from the Glance DB", func() {
-			mDB := mariadb.GetMariaDBDatabase(glanceTest.Instance)
+			mDB := mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName)
 			Expect(mDB.Finalizers).To(ContainElement("openstack.org/glance"))
 			th.DeleteInstance(GetGlance(glanceTest.Instance))
 		})
@@ -392,7 +393,7 @@ var _ = Describe("Glance controller", func() {
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Status().Update(ctx, keystoneAPIName.DeepCopy())).Should(Succeed())
 			}, timeout, interval).Should(Succeed())
-			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
 		})
 		It("Check the resulting endpoints of the generated sub-CRs", func() {
 			th.SimulateStatefulSetReplicaReadyWithPods(
@@ -426,7 +427,7 @@ var _ = Describe("Glance controller", func() {
 			harness.Setup(
 				"Glance",
 				glanceName.Namespace,
-				glanceTest.Instance.Name,
+				glance.DatabaseName,
 				"openstack.org/glance",
 				mariadb,
 				timeout,
@@ -466,7 +467,7 @@ var _ = Describe("Glance controller", func() {
 			mariadb.SimulateMariaDBAccountCompleted(accountName)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
-			keystone.SimulateKeystoneServiceReady(glanceTest.Instance)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 			GlanceAPIExists(glanceTest.GlanceSingle)
 		},

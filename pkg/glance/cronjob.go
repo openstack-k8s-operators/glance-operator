@@ -76,7 +76,7 @@ func DBPurgeJob(
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					DefaultMode: &config0644AccessMode,
-					SecretName:  ServiceName + "-config-data",
+					SecretName:  instance.Name + "-config-data",
 				},
 			},
 		},
