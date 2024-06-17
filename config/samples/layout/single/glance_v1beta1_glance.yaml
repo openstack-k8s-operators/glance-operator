@@ -18,5 +18,6 @@ spec:
       imageCache:
         size: 2G
   secret: osp-secret
-  storageClass: local-storage
-  storageRequest: 10G
+  storage:
+    storageClass: local-storage
+    storageRequest: 10G

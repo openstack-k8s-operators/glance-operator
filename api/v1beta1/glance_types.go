@@ -89,13 +89,8 @@ type GlanceSpecCore struct {
 	// /etc/<service>/<service>.conf.d directory as a custom config file.
 	CustomServiceConfigSecrets []string `json:"customServiceConfigSecrets,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	// StorageClass
-	StorageClass string `json:"storageClass,omitempty"`
-
-	// +kubebuilder:validation:Required
-	// StorageRequest
-	StorageRequest string `json:"storageRequest"`
+	// Storage -
+	Storage Storage `json:"storage,omitempty"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:default={}

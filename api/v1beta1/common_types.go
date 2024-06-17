@@ -61,10 +61,6 @@ type GlanceAPITemplate struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// Pvc - Storage claim for file-backed Glance
-	Pvc string `json:"pvc,omitempty"`
-
-	// +kubebuilder:validation:Optional
 	// CustomServiceConfig - customize the service config using this parameter to change service defaults,
 	// or overwrite rendered information using raw OpenStack config format. The content gets added to
 	// to /etc/<service>/<service>.conf.d directory as custom.conf file.
@@ -88,12 +84,8 @@ type GlanceAPITemplate struct {
 	// Override, provides the ability to override the generated manifest of several child resources.
 	Override APIOverrideSpec `json:"override,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	// StorageClass
-	StorageClass string `json:"storageClass,omitempty"`
-
-	// StorageRequest
-	StorageRequest string `json:"storageRequest"`
+	// Storage -
+	Storage Storage `json:"storage,omitempty"`
 
 	// +kubebuilder:validation:Enum=split;single;edge
 	// +kubebuilder:default:=split
@@ -114,6 +106,19 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Minimum=1
 	// APITimeout for HAProxy and Apache defaults to GlanceSpecCore APITimeout
 	APITimeout int `json:"apiTimeout,omitempty"`
+}
+
+type Storage struct {
+	// +kubebuilder:validation:Optional
+	// StorageClass -
+	StorageClass string `json:"storageClass,omitempty"`
+
+	// StorageRequest -
+	StorageRequest string `json:"storageRequest,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// External -
+	External bool `json:"external,omitempty"`
 }
 
 // ImageCache - struct where the exposed imageCache params are defined

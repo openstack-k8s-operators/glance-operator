@@ -23,5 +23,6 @@ spec:
         caBundleSecretName: combined-ca-bundle
       type: single
   secret: osp-secret
-  storageClass: local-storage
-  storageRequest: 10G
+  storage:
+    storageClass: local-storage
+    storageRequest: 10G

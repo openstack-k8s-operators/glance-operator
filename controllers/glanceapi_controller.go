@@ -813,7 +813,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		GetServiceLabels(instance),
 		serviceAnnotations,
 		privileged,
-		imageConv,
 	)
 	if err != nil {
 		return ctrlResult, err
@@ -1377,8 +1376,7 @@ func (r *GlanceAPIReconciler) getEndpointID(
 
 // glanceAPIRefresh - delete a StateFulSet when a configuration for a Forbidden
 // parameter happens: it might be required if we add / remove a backend (including
-// ceph) where imageConversion is enabled and a dedicated PVC is created using
-// statefulsets volume templates
+// ceph)
 func (r *GlanceAPIReconciler) glanceAPIRefresh(
 	ctx context.Context,
 	h *helper.Helper,

@@ -132,6 +132,7 @@ func GetVolumes(
 func GetVolumeMounts(
 	secretNames []string,
 	hasCinder bool,
+	external bool,
 	extraVol []glancev1.GlanceExtraVolMounts,
 	svc []storage.PropagationType,
 ) []corev1.VolumeMount {
@@ -148,13 +149,19 @@ func GetVolumeMounts(
 			SubPath:   "my.cnf",
 			ReadOnly:  true,
 		},
+	}
+
+	localPVC := []corev1.VolumeMount{
 		{
 			Name:      ServiceName,
 			MountPath: "/var/lib/glance",
 			ReadOnly:  false,
 		},
 	}
-
+	// a PVC is mounted only if external is not set
+	if !external {
+		vm = append(vm, localPVC...)
+	}
 	for _, exv := range extraVol {
 		for _, vol := range exv.Propagate(svc) {
 			vm = append(vm, vol.Mounts...)
@@ -300,17 +307,6 @@ func GetCacheVolumeMount() []corev1.VolumeMount {
 		{
 			Name:      "glance-cache",
 			MountPath: ImageCacheDir,
-			ReadOnly:  false,
-		},
-	}
-}
-
-// GetImageConvVolumeMount - Return the VolumeMount used for image conversion
-func GetImageConvVolumeMount() []corev1.VolumeMount {
-	return []corev1.VolumeMount{
-		{
-			Name:      "glance-conversion",
-			MountPath: "/var/lib/glance/os_glance_staging_store",
 			ReadOnly:  false,
 		},
 	}

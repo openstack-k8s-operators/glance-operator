@@ -25,7 +25,8 @@ spec:
         prunerScheduler: 1 0 * * *
         size: 2G
   secret: osp-secret
-  storageRequest: 10G
+  storage:
+    storageRequest: 10G
 ---
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
