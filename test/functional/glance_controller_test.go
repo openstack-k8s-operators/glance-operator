@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
+
 	//revive:disable-next-line:dot-imports
 	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
 
@@ -86,7 +87,7 @@ var _ = Describe("Glance controller", func() {
 			// it to run
 			Eventually(func() []string {
 				return GetGlance(glanceTest.Instance).Finalizers
-			}, timeout, interval).Should(ContainElement("Glance"))
+			}, timeout, interval).Should(ContainElement("openstack.org/glance"))
 		})
 		It("should not create a config map", func() {
 			Eventually(func() []corev1.ConfigMap {
@@ -322,7 +323,7 @@ var _ = Describe("Glance controller", func() {
 		})
 		It("removes the finalizers from the Glance DB", func() {
 			mDB := mariadb.GetMariaDBDatabase(glanceTest.Instance)
-			Expect(mDB.Finalizers).To(ContainElement("Glance"))
+			Expect(mDB.Finalizers).To(ContainElement("openstack.org/glance"))
 			th.DeleteInstance(GetGlance(glanceTest.Instance))
 		})
 	})
@@ -426,7 +427,7 @@ var _ = Describe("Glance controller", func() {
 				"Glance",
 				glanceName.Namespace,
 				glanceTest.Instance.Name,
-				"Glance",
+				"openstack.org/glance",
 				mariadb,
 				timeout,
 				interval,
