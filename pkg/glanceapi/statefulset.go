@@ -196,6 +196,8 @@ func StatefulSet(
 	if instance.Spec.APIType != glancev1.APISingle {
 		stsName = fmt.Sprintf("%s-api", instance.Name)
 	}
+
+	LogFile := string(glance.GlanceLogPath + instance.Name + ".log")
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      stsName,
@@ -229,10 +231,9 @@ func StatefulSet(
 							Args: []string{
 								"--single-child",
 								"--",
-								"/usr/bin/tail",
-								"-n+1",
-								"-F",
-								string(glance.GlanceLogPath + instance.Name + ".log"),
+								"/bin/sh",
+								"-c",
+								"/usr/bin/tail -n+1 -F " + LogFile + " 2>/dev/null",
 							},
 							Image: instance.Spec.ContainerImage,
 							SecurityContext: &corev1.SecurityContext{
