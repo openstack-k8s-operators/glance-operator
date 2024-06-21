@@ -84,6 +84,7 @@ type GlanceTestData struct {
 	PublicCertSecret            types.NamespacedName
 	MemcachedInstance           string
 	GlanceMemcached             types.NamespacedName
+	KeystoneService             types.NamespacedName
 }
 
 // GetGlanceTestData is a function that initialize the GlanceTestData
@@ -96,7 +97,7 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 
 		GlanceDBSync: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-db-sync", glanceName.Name),
+			Name:      "glance-db-sync",
 		},
 		GlanceSingle: types.NamespacedName{
 			Namespace: glanceName.Namespace,
@@ -129,11 +130,11 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		// Also used to identify GlanceKeystoneService
 		GlanceInternalSvc: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-default-internal", glanceName.Name),
+			Name:      fmt.Sprintf("%s-default-internal", glance.ServiceName),
 		},
 		GlancePublicSvc: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-default-public", glanceName.Name),
+			Name:      fmt.Sprintf("%s-default-public", glance.ServiceName),
 		},
 		GlanceRole: types.NamespacedName{
 			Namespace: glanceName.Namespace,
@@ -214,5 +215,9 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Name:      MemcachedInstance,
 		},
 		MemcachedInstance: MemcachedInstance,
+		KeystoneService: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      glance.ServiceName,
+		},
 	}
 }

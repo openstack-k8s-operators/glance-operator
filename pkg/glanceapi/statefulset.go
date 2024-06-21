@@ -147,7 +147,7 @@ func StatefulSet(
 	}
 
 	extraVolPropagation := append(glance.GlanceAPIPropagation,
-		storage.PropagationType(glance.GetGlanceAPIName(instance.Name)))
+		storage.PropagationType(instance.APIName()))
 
 	httpdVolumeMount := glance.GetHttpdVolumeMount()
 

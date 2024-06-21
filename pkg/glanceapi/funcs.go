@@ -58,7 +58,7 @@ func GetGlanceAPIPodAffinity(instance *glancev1.GlanceAPI) *corev1.Affinity {
 								Key:      glance.GlanceAPIName,
 								Operator: metav1.LabelSelectorOpIn,
 								Values: []string{
-									fmt.Sprintf("%s-%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name), instance.Spec.APIType),
+									fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
 								},
 							},
 						},
