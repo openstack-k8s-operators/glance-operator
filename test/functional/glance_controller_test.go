@@ -394,6 +394,7 @@ var _ = Describe("Glance controller", func() {
 				g.Expect(k8sClient.Status().Update(ctx, keystoneAPIName.DeepCopy())).Should(Succeed())
 			}, timeout, interval).Should(Succeed())
 			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+			th.SimulateLoadBalancerServiceIP(glanceTest.GlanceInternalSvc)
 		})
 		It("Check the resulting endpoints of the generated sub-CRs", func() {
 			th.SimulateStatefulSetReplicaReadyWithPods(

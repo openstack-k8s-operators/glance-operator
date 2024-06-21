@@ -499,7 +499,6 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-
 			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
 			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
 
@@ -528,6 +527,7 @@ var _ = Describe("Glanceapi controller", func() {
 				"service": serviceOverride,
 			}
 			glance := CreateGlanceAPI(glanceTest.GlanceInternal, spec)
+			th.SimulateLoadBalancerServiceIP(glanceTest.GlanceInternalSvc)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
