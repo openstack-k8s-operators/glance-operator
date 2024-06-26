@@ -300,10 +300,8 @@ spec:
           - central
           volumes:
           - name: ceph0
-            projected:
-              sources:
-              - secret:
-                  name: ceph-conf-files-0
+            secret:
+              secretName: ceph-conf-files-0
           mounts:
           - name: ceph0
             mountPath: "/etc/ceph"
@@ -315,10 +313,8 @@ spec:
           - edge0
           volumes:
           - name: ceph1
-            projected:
-              sources:
-              - secret:
-                  name: ceph-conf-files-1
+            secret:
+              secretName: ceph-conf-files-1
           mounts:
           - name: ceph1
             mountPath: "/etc/ceph"
@@ -330,10 +326,8 @@ spec:
           - edge1
           volumes:
           - name: ceph2
-            projected:
-              sources:
-              - secret:
-                  name: ceph-conf-files-2
+            secret:
+              secretName: ceph-conf-files-2
           mounts:
           - name: ceph2
             mountPath: "/etc/ceph"

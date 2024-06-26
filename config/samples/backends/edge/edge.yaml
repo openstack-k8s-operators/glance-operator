@@ -124,10 +124,8 @@ spec:
           extraVolType: Ceph
           volumes:
           - name: ceph
-            projected:
-              sources:
-              - secret:
-                  name: ceph-client-conf
+            secret:
+              secretName: ceph-conf-files
           mounts:
           - name: ceph
             mountPath: "/etc/ceph"
