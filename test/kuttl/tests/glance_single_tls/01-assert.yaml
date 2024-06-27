@@ -54,10 +54,9 @@ spec:
       - args:
         - --single-child
         - --
-        - /usr/bin/tail
-        - -n+1
-        - -F
-        - /var/log/glance/glance-default-single.log
+        - /bin/sh
+        - -c
+        - /usr/bin/tail -n+1 -F /var/log/glance/glance-default-single.log 2>/dev/null
         volumeMounts:
         - mountPath: /var/log/glance
           name: logs

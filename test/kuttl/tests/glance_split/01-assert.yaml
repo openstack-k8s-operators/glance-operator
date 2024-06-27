@@ -70,10 +70,9 @@ spec:
       - args:
         - --single-child
         - --
-        - /usr/bin/tail
-        - -n+1
-        - -F
-        - /var/log/glance/glance-default-external.log
+        - /bin/sh
+        - -c
+        - /usr/bin/tail -n+1 -F /var/log/glance/glance-default-external.log 2>/dev/null
         command:
         - /usr/bin/dumb-init
         name: glance-log
@@ -119,10 +118,9 @@ spec:
       - args:
         - --single-child
         - --
-        - /usr/bin/tail
-        - -n+1
-        - -F
-        - /var/log/glance/glance-default-internal.log
+        - /bin/sh
+        - -c
+        - /usr/bin/tail -n+1 -F /var/log/glance/glance-default-internal.log 2>/dev/null
         command:
         - /usr/bin/dumb-init
         name: glance-log
