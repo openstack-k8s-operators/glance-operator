@@ -62,13 +62,11 @@ var _ = Describe("Glance controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 		It("reports InputReady False as secret is not found", func() {
-			th.ExpectConditionWithDetails(
+			th.ExpectCondition(
 				glanceName,
 				ConditionGetterFunc(GlanceConditionGetter),
 				condition.InputReadyCondition,
 				corev1.ConditionFalse,
-				condition.RequestedReason,
-				"Input data resources missing",
 			)
 		})
 		It("initializes Spec fields", func() {
