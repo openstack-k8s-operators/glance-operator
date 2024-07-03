@@ -19,9 +19,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-
+	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
+	"k8s.io/apimachinery/pkg/types"
 	"time"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
@@ -64,6 +64,39 @@ var (
 type conditionUpdater interface {
 	Set(c *condition.Condition)
 	MarkTrue(t condition.Type, messageFormat string, messageArgs ...interface{})
+}
+
+// ensureSecret - ensures that the Secret object exists and the expected fields
+// are in the Secret. It returns a hash of the values of the expected fields
+// passed as input.
+func ensureSecret(
+	ctx context.Context,
+	secretName types.NamespacedName,
+	expectedFields []string,
+	reader client.Reader,
+	conditionUpdater conditionUpdater,
+	requeueTimeout time.Duration,
+) (string, ctrl.Result, error) {
+
+	hash, res, err := oko_secret.VerifySecret(ctx, secretName, expectedFields, reader, requeueTimeout)
+	if err != nil {
+		if k8s_errors.IsNotFound(err) {
+			conditionUpdater.Set(condition.FalseCondition(
+				condition.InputReadyCondition,
+				condition.RequestedReason,
+				condition.SeverityInfo,
+				condition.InputReadyWaitingMessage))
+			return "", glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", secretName)
+		}
+		conditionUpdater.Set(condition.FalseCondition(
+			condition.InputReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.InputReadyErrorMessage,
+			err.Error()))
+		return "", res, err
+	}
+	return hash, ctrl.Result{}, nil
 }
 
 // ensureNAD - common function called in the glance controllers that GetNAD based
