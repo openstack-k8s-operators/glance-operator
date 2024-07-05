@@ -38,9 +38,6 @@ spec:
       version: v1beta1
   description: Glance Operator
   displayName: Glance Operator
-  icon:
-  - base64data: ""
-    mediatype: ""
   install:
     spec:
       deployments: null
