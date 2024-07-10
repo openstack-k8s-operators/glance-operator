@@ -187,11 +187,22 @@ func isFileBackend(customServiceConfig string, topLevel bool) bool {
 // Check if the File is used in combination with a wrong layout
 func (r *GlanceSpecCore) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel bool) bool {
 	var rep int32 = 0
-	// For each current glanceAPI instance, detect an invalid configuration
+
+	// Do not take assumptions about the backend when replicas: 0, because it
+	// means the human operator has not made any choice or has no backend
+	// available yet.
+	if *glanceAPI.Replicas == rep {
+		return false
+	}
+	// For the current glanceAPI instance, detect an invalid configuration
 	// made by "type: split && backend: file": raise an issue if this config
-	// is found. However, do not fail if 'replica: 0' because it means the
-	// operator has not made any choice about the backend yet
-	if *glanceAPI.Replicas != rep && glanceAPI.Type == "split" && isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
+	// is found.
+	if glanceAPI.Type == "split" && isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
+		return true
+	}
+	// Do not allow to deploy a glanceAPI with "type: single" and a backend
+	// different than File (Cinder, Swift, Ceph): we must split in that case
+	if glanceAPI.Type == APISingle && !isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
 		return true
 	}
 	return false
@@ -309,6 +320,11 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 		// the same name. This represent a valid use case and we shouldn't prevent
 		// to grow the deployment
 		if _, found := old.GlanceAPIs[key]; !found {
+			// Fail if an invalid configuration/layout is detected for the current
+			// // glanceAPI instance
+			if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
+				allErrs = append(allErrs, field.Invalid(path, key, "New API - Invalid backend configuration detected"))
+			}
 			continue
 		}
 		// The current glanceAPI exists and the layout is different
