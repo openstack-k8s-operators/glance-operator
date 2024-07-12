@@ -67,6 +67,13 @@ var _ = Describe("Glance validation", func() {
 					"replicas": 1,
 					"type":     "edge",
 				},
+				// Webhooks catch that a backend != File is set for an instance
+				// that has type: single
+				"api1": map[string]interface{}{
+					"customServiceConfig": GetDummyBackend(),
+					"replicas":            1,
+					"type":                "single",
+				},
 			},
 		}
 
