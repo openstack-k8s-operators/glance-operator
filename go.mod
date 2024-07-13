@@ -11,8 +11,8 @@ require (
 	github.com/onsi/gomega v1.33.1
 	github.com/openstack-k8s-operators/cinder-operator/api v0.4.1-0.20240709170501-8cdb9c68d2b2
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/infra-operator/apis v0.4.1-0.20240709180246-47886a2ee103
-	github.com/openstack-k8s-operators/keystone-operator/api v0.4.1-0.20240709174900-227f06945e72
+	github.com/openstack-k8s-operators/infra-operator/apis v0.4.1-0.20240710144010-493348a1e882
+	github.com/openstack-k8s-operators/keystone-operator/api v0.4.1-0.20240710140425-fcaeeb81f955
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.4.1-0.20240709153313-544a55696489
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.4.1-0.20240709153313-544a55696489
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20240709153313-544a55696489
