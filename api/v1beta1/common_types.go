@@ -148,11 +148,11 @@ func SetupDefaults() {
 	// Acquire environmental defaults and initialize Glance defaults with them
 	glanceDefaults := GlanceDefaults{
 		ContainerImageURL: util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", GlanceAPIContainerImage),
-		DBPurgeAge: DBPurgeDefaultAge,
-		DBPurgeSchedule: DBPurgeDefaultSchedule,
-		CleanerSchedule: CleanerDefaultSchedule,
-		PrunerSchedule: PrunerDefaultSchedule,
-		APITimeout: APIDefaultTimeout,
+		DBPurgeAge:        DBPurgeDefaultAge,
+		DBPurgeSchedule:   DBPurgeDefaultSchedule,
+		CleanerSchedule:   CleanerDefaultSchedule,
+		PrunerSchedule:    PrunerDefaultSchedule,
+		APITimeout:        APIDefaultTimeout,
 	}
 
 	SetupGlanceDefaults(glanceDefaults)
