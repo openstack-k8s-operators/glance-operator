@@ -192,4 +192,68 @@ var _ = Describe("Glance validation", func() {
 					"Invalid value: \"wrooong\": invalid endpoint type: wrooong"),
 		)
 	})
+
+	It("webhooks reject the request - glanceAPI key too long", func() {
+		// GlanceEmptySpec is used to provide a standard Glance CR where no
+		// field is customized: we can inject our parameters to test webhooks
+		spec := GetGlanceDefaultSpec()
+		raw := map[string]interface{}{
+			"apiVersion": "glance.openstack.org/v1beta1",
+			"kind":       "Glance",
+			"metadata": map[string]interface{}{
+				"name":      glanceTest.Instance.Name,
+				"namespace": glanceTest.Instance.Namespace,
+			},
+			"spec": spec,
+		}
+
+		apiList := map[string]interface{}{
+			"foo-1234567890-1234567890-1234567890-1234567890-1234567890": GetDefaultGlanceAPISpec(GlanceAPITypeSingle),
+		}
+		spec["glanceAPIs"] = apiList
+
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			ctx, k8sClient, unstructuredObj, func() error { return nil })
+
+		Expect(err).Should(HaveOccurred())
+		var statusError *k8s_errors.StatusError
+		Expect(errors.As(err, &statusError)).To(BeTrue())
+		Expect(statusError.ErrStatus.Message).To(
+			ContainSubstring(
+				"Invalid value: \"foo-1234567890-1234567890-1234567890-1234567890-1234567890\": must be no more than 32 characters"),
+		)
+	})
+
+	It("webhooks reject the request - glanceAPI wrong key/name", func() {
+		// GlanceEmptySpec is used to provide a standard Glance CR where no
+		// field is customized: we can inject our parameters to test webhooks
+		spec := GetGlanceDefaultSpec()
+		raw := map[string]interface{}{
+			"apiVersion": "glance.openstack.org/v1beta1",
+			"kind":       "Glance",
+			"metadata": map[string]interface{}{
+				"name":      glanceTest.Instance.Name,
+				"namespace": glanceTest.Instance.Namespace,
+			},
+			"spec": spec,
+		}
+
+		apiList := map[string]interface{}{
+			"foo_bar": GetDefaultGlanceAPISpec(GlanceAPITypeSingle),
+		}
+		spec["glanceAPIs"] = apiList
+
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			ctx, k8sClient, unstructuredObj, func() error { return nil })
+
+		Expect(err).Should(HaveOccurred())
+		var statusError *k8s_errors.StatusError
+		Expect(errors.As(err, &statusError)).To(BeTrue())
+		Expect(statusError.ErrStatus.Message).To(
+			ContainSubstring(
+				"Invalid value: \"foo_bar\": a lowercase RFC 1123 label must consist of lower case alphanumeric characters"),
+		)
+	})
 })
