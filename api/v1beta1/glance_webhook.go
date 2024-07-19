@@ -30,6 +30,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	common_webhook "github.com/openstack-k8s-operators/lib-common/modules/common/webhook"
 )
 
 // GlanceDefaults -
@@ -39,7 +41,7 @@ type GlanceDefaults struct {
 	DBPurgeSchedule   string
 	CleanerSchedule   string
 	PrunerSchedule    string
-	APITimeout int
+	APITimeout        int
 }
 
 var glanceDefaults GlanceDefaults
@@ -215,6 +217,26 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	glancelog.Info("validate create", "name", r.Name)
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
+
+	for key, glanceAPI := range r.Spec.GlanceAPIs {
+		// Validate glanceapi name is valid
+		// GlanceAPI name is <glance name>-<api name>-<api type>
+		// The glanceAPI controller creates StatefulSet for glanceapi to run.
+		// This adds a StatefulSet pod's label
+		// "controller-revision-hash": "<statefulset_name>-<hash>"
+		// to the pod.
+		// The kubernetes label is restricted under 63 char and the revision
+		// hash is an int32, 10 chars + the hyphen. Which results in a default
+		// statefulset max len of 52 chars. The statefulset name also
+		// contain the glance name and the glanceAPI type + 2 hyphens. So the
+		// max len also need to be reduced bye the length of those.
+		err := common_webhook.ValidateDNS1123Label(
+			basePath.Child("glanceAPIs"),
+			[]string{key},
+			GetCrMaxLengthCorrection(r.Name, glanceAPI.Type)) // omit issue with statefulset pod label "controller-revision-hash": "<statefulset_name>-<hash>"
+		allErrs = append(allErrs, err...)
+	}
+
 	if err := r.Spec.ValidateCreate(basePath); err != nil {
 		allErrs = append(allErrs, err...)
 	}
@@ -285,6 +307,25 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
+
+	for key, glanceAPI := range r.Spec.GlanceAPIs {
+		// Validate glanceapi name is valid
+		// GlanceAPI name is <glance name>-<api name>-<api type>
+		// The glanceAPI controller creates StatefulSet for glanceapi to run.
+		// This adds a StatefulSet pod's label
+		// "controller-revision-hash": "<statefulset_name>-<hash>"
+		// to the pod.
+		// The kubernetes label is restricted under 63 char and the revision
+		// hash is an int32, 10 chars + the hyphen. Which results in a default
+		// statefulset max len of 52 chars. The statefulset name also
+		// contain the glance name and the glanceAPI type + 2 hyphens. So the
+		// max len also need to be reduced bye the length of those.
+		err := common_webhook.ValidateDNS1123Label(
+			basePath.Child("glanceAPIs"),
+			[]string{key},
+			GetCrMaxLengthCorrection(r.Name, glanceAPI.Type)) // omit issue with statefulset pod label "controller-revision-hash": "<statefulset_name>-<hash>"
+		allErrs = append(allErrs, err...)
+	}
 
 	if err := r.Spec.ValidateUpdate(o.Spec, basePath); err != nil {
 		allErrs = append(allErrs, err...)
@@ -373,12 +414,12 @@ func (glanceAPI *GlanceAPITemplate) SetDefaultRouteAnnotations(annotations map[s
 	valHAProxy, okHAProxy := annotations[haProxyAnno]
 
 	// Human operator set the HAProxy timeout manually
-	if (!okGlance && okHAProxy) {
+	if !okGlance && okHAProxy {
 		return
 	}
 
 	// Human operator modified the HAProxy timeout manually without removing the Glance flag
-	if (okGlance && okHAProxy && valGlance != valHAProxy) {
+	if okGlance && okHAProxy && valGlance != valHAProxy {
 		delete(annotations, glanceAnno)
 		return
 	}
@@ -386,4 +427,17 @@ func (glanceAPI *GlanceAPITemplate) SetDefaultRouteAnnotations(annotations map[s
 	timeout := fmt.Sprintf("%ds", glanceAPI.APITimeout)
 	annotations[glanceAnno] = timeout
 	annotations[haProxyAnno] = timeout
+}
+
+// GetCrMaxLengthCorrection - get correction for ValidateDNS1123Label to get the real max string len of the glance API key
+func GetCrMaxLengthCorrection(name string, apiType string) int {
+	// defaultCrMaxLengthCorrection - DNS1123LabelMaxLength (63) - CrMaxLengthCorrection used in validation to
+	// omit issue with statefulset pod label "controller-revision-hash": "<statefulset_name>-<hash>"
+	// Int32 is a 10 character + hyphen = 11
+	defaultCrMaxLengthCorrection := 11
+
+	// GlanceAPI name is <glance name>-<api name>-<api type> with this
+	// crMaxLengthCorrection = defaultCrMaxLengthCorrection + len(<glance name>) + "-" + "-" + len(<api type>)
+
+	return (defaultCrMaxLengthCorrection + len(name) + len(apiType) + 2)
 }
