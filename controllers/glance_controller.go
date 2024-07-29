@@ -215,33 +215,16 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	memcachedFn := func(ctx context.Context, o client.Object) []reconcile.Request {
-		result := []reconcile.Request{}
-
-		// get all Glance CRs
-		glances := &glancev1.GlanceList{}
-		listOpts := []client.ListOption{
-			client.InNamespace(o.GetNamespace()),
-		}
-		if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
-			r.Log.Error(err, "Unable to retrieve Glance CRs %w")
+	// index memcachedInstanceField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.Glance{}, memcachedInstanceField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.Glance)
+		if cr.Spec.MemcachedInstance == "" {
 			return nil
 		}
-
-		for _, cr := range glances.Items {
-			if o.GetName() == cr.Spec.MemcachedInstance {
-				name := client.ObjectKey{
-					Namespace: o.GetNamespace(),
-					Name:      cr.Name,
-				}
-				r.Log.Info(fmt.Sprintf("Memcached %s is used by Glance CR %s", o.GetName(), cr.Name))
-				result = append(result, reconcile.Request{NamespacedName: name})
-			}
-		}
-		if len(result) > 0 {
-			return result
-		}
-		return nil
+		return []string{cr.Spec.MemcachedInstance}
+	}); err != nil {
+		return err
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -263,7 +246,9 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Watches(&memcachedv1.Memcached{},
-			handler.EnqueueRequestsFromMapFunc(memcachedFn)).
+			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
 		Complete(r)
 }
 
@@ -625,6 +610,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 			return ctrlResult, err
 		}
 	}
+
 	// Handle service init
 	ctrlResult, err = r.reconcileInit(ctx, instance, helper, serviceLabels, serviceAnnotations)
 	if err != nil {

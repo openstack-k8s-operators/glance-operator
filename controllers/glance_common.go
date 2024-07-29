@@ -19,10 +19,11 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"k8s.io/apimachinery/pkg/types"
-	"time"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
@@ -43,21 +44,28 @@ import (
 
 // fields to index to reconcile when change
 const (
-	passwordSecretField     = ".spec.secret"
-	caBundleSecretNameField = ".spec.tls.caBundleSecretName"
-	tlsAPIInternalField     = ".spec.tls.api.internal.secretName"
-	tlsAPIPublicField       = ".spec.tls.api.public.secretName"
+	passwordSecretField             = ".spec.secret"
+	caBundleSecretNameField         = ".spec.tls.caBundleSecretName"
+	tlsAPIInternalField             = ".spec.tls.api.internal.secretName"
+	tlsAPIPublicField               = ".spec.tls.api.public.secretName"
+	networkAttachmentsField         = ".spec.networkAttachments"
+	customServiceConfigSecretsField = ".spec.customServiceConfigSecrets"
+	memcachedInstanceField          = ".spec.memcachedInstance"
 )
 
 var (
 	glanceWatchFields = []string{
 		passwordSecretField,
+		memcachedInstanceField,
 	}
 	glanceAPIWatchFields = []string{
 		passwordSecretField,
 		caBundleSecretNameField,
 		tlsAPIInternalField,
 		tlsAPIPublicField,
+		networkAttachmentsField,
+		customServiceConfigSecretsField,
+		memcachedInstanceField,
 	}
 )
 

@@ -241,95 +241,40 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
-	svcSecretFn := func(ctx context.Context, o client.Object) []reconcile.Request {
-		var namespace string = o.GetNamespace()
-		var secretName string = o.GetName()
-		result := []reconcile.Request{}
-
-		// get all API CRs
-		apis := &glancev1.GlanceAPIList{}
-		listOpts := []client.ListOption{
-			client.InNamespace(namespace),
-		}
-		if err := r.Client.List(context.Background(), apis, listOpts...); err != nil {
-			r.Log.Error(err, "Unable to retrieve API CRs %v")
+	// index networkAttachmentsField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, networkAttachmentsField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.NetworkAttachments == nil {
 			return nil
 		}
-		for _, cr := range apis.Items {
-			for _, v := range cr.Spec.CustomServiceConfigSecrets {
-				if v == secretName {
-					name := client.ObjectKey{
-						Namespace: namespace,
-						Name:      cr.Name,
-					}
-					r.Log.Info(fmt.Sprintf("Secret %s is used by Glance CR %s", secretName, cr.Name))
-					result = append(result, reconcile.Request{NamespacedName: name})
-				}
-			}
-		}
-		if len(result) > 0 {
-			return result
-		}
-		return nil
+		return cr.Spec.NetworkAttachments
+	}); err != nil {
+		return err
 	}
 
-	// Watch for changes to NADs
-	nadFn := func(ctx context.Context, o client.Object) []reconcile.Request {
-		result := []reconcile.Request{}
-
-		// get all GlanceAPI CRs
-		glanceAPIs := &glancev1.GlanceAPIList{}
-		listOpts := []client.ListOption{
-			client.InNamespace(o.GetNamespace()),
-		}
-		if err := r.Client.List(context.Background(), glanceAPIs, listOpts...); err != nil {
-			r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
+	// index customServiceConfigSecretsField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, customServiceConfigSecretsField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.CustomServiceConfigSecrets == nil {
 			return nil
 		}
-		for _, cr := range glanceAPIs.Items {
-			if util.StringInSlice(o.GetName(), cr.Spec.NetworkAttachments) {
-				name := client.ObjectKey{
-					Namespace: cr.GetNamespace(),
-					Name:      cr.GetName(),
-				}
-				r.Log.Info(fmt.Sprintf("NAD %s is used by GlanceAPI CR %s", o.GetName(), cr.GetName()))
-				result = append(result, reconcile.Request{NamespacedName: name})
-			}
-		}
-		if len(result) > 0 {
-			return result
-		}
-		return nil
+		return cr.Spec.CustomServiceConfigSecrets
+	}); err != nil {
+		return err
 	}
 
-	memcachedFn := func(ctx context.Context, o client.Object) []reconcile.Request {
-		result := []reconcile.Request{}
-
-		// get all GlanceAPIs CRs
-		glanceAPIs := &glancev1.GlanceAPIList{}
-		listOpts := []client.ListOption{
-			client.InNamespace(o.GetNamespace()),
-		}
-		if err := r.Client.List(context.Background(), glanceAPIs, listOpts...); err != nil {
-			r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
+	// index memcachedInstanceField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, memcachedInstanceField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.MemcachedInstance == "" {
 			return nil
 		}
-
-		for _, cr := range glanceAPIs.Items {
-			if o.GetName() == cr.Spec.MemcachedInstance {
-				name := client.ObjectKey{
-					Namespace: o.GetNamespace(),
-					Name:      cr.Name,
-				}
-				r.Log.Info(fmt.Sprintf("Memcached %s is used by GlanceAPI CR %s", o.GetName(), cr.Name))
-				result = append(result, reconcile.Request{NamespacedName: name})
-			}
-		}
-		if len(result) > 0 {
-			return result
-		}
-		return nil
+		return []string{cr.Spec.MemcachedInstance}
+	}); err != nil {
+		return err
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -339,16 +284,22 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		Owns(&appsv1.StatefulSet{}).
 		Watches(&corev1.Secret{},
-			handler.EnqueueRequestsFromMapFunc(svcSecretFn)).
-		Watches(&networkv1.NetworkAttachmentDefinition{},
-			handler.EnqueueRequestsFromMapFunc(nadFn)).
+			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
 		Watches(
 			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Watches(&memcachedv1.Memcached{},
-			handler.EnqueueRequestsFromMapFunc(memcachedFn)).
+			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
+		Watches(&networkv1.NetworkAttachmentDefinition{},
+			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
 		Complete(r)
 }
 
