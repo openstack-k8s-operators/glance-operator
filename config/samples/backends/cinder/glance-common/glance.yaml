@@ -16,7 +16,7 @@ spec:
         default_backend = default_backend
         [default_backend]
         rootwrap_config = /etc/glance/rootwrap.conf
-        description = Default cinder backend
+        store_description = Default cinder backend
         cinder_store_auth_address = {{ .KeystoneInternalURL }}
         cinder_store_user_name = {{ .ServiceUser }}
         cinder_store_password = {{ .ServicePassword }}
