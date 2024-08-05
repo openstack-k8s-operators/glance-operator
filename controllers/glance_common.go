@@ -125,13 +125,14 @@ func ensureNAD(
 		_, err = nad.GetNADWithName(ctx, helper, netAtt, helper.GetBeforeObject().GetNamespace())
 		if err != nil {
 			if k8s_errors.IsNotFound(err) {
+				helper.GetLogger().Info(fmt.Sprintf("network-attachment-definition %s not found", netAtt))
 				conditionUpdater.Set(condition.FalseCondition(
 					condition.NetworkAttachmentsReadyCondition,
 					condition.RequestedReason,
 					condition.SeverityInfo,
 					condition.NetworkAttachmentsReadyWaitingMessage,
 					netAtt))
-				return serviceAnnotations, ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("network-attachment-definition %s not found", netAtt)
+				return serviceAnnotations, glance.ResultRequeue, nil
 			}
 			conditionUpdater.Set(condition.FalseCondition(
 				condition.NetworkAttachmentsReadyCondition,
