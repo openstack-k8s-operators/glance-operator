@@ -39,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // fields to index to reconcile when change
@@ -81,12 +82,13 @@ func ensureSecret(
 	hash, res, err := oko_secret.VerifySecret(ctx, secretName, expectedFields, reader, requeueTimeout)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
+			log.FromContext(ctx).Info(fmt.Sprintf("OpenStack secret %s not found", secretName))
 			conditionUpdater.Set(condition.FalseCondition(
 				condition.InputReadyCondition,
 				condition.RequestedReason,
 				condition.SeverityInfo,
 				condition.InputReadyWaitingMessage))
-			return "", glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", secretName)
+			return "", glance.ResultRequeue, nil
 		}
 		conditionUpdater.Set(condition.FalseCondition(
 			condition.InputReadyCondition,
@@ -117,13 +119,14 @@ func ensureNAD(
 		_, err = nad.GetNADWithName(ctx, helper, netAtt, helper.GetBeforeObject().GetNamespace())
 		if err != nil {
 			if k8s_errors.IsNotFound(err) {
+				helper.GetLogger().Info(fmt.Sprintf("network-attachment-definition %s not found", netAtt))
 				conditionUpdater.Set(condition.FalseCondition(
 					condition.NetworkAttachmentsReadyCondition,
 					condition.RequestedReason,
 					condition.SeverityInfo,
 					condition.NetworkAttachmentsReadyWaitingMessage,
 					netAtt))
-				return serviceAnnotations, ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("network-attachment-definition %s not found", netAtt)
+				return serviceAnnotations, glance.ResultRequeue, nil
 			}
 			conditionUpdater.Set(condition.FalseCondition(
 				condition.NetworkAttachmentsReadyCondition,

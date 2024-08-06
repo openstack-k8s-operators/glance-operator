@@ -408,7 +408,8 @@ func (r *GlanceReconciler) reconcileInit(
 	_, _, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
-			return glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
+			r.Log.Info(fmt.Sprintf("OpenStack secret %s not found", instance.Spec.Secret))
+			return glance.ResultRequeue, nil
 		}
 		return ctrl.Result{}, err
 	}

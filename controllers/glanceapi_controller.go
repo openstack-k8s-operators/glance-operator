@@ -612,12 +612,13 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	memcached, err := memcachedv1.GetMemcachedByName(ctx, helper, instance.Spec.MemcachedInstance, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("memcached %s not found", instance.Spec.MemcachedInstance))
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.MemcachedReadyCondition,
 				condition.RequestedReason,
 				condition.SeverityInfo,
 				condition.MemcachedReadyWaitingMessage))
-			return glance.ResultRequeue, fmt.Errorf("memcached %s not found", instance.Spec.MemcachedInstance)
+			return glance.ResultRequeue, nil
 		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.MemcachedReadyCondition,
@@ -1161,7 +1162,8 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		// the registered endpoints with the new URL.
 		err = keystonev1.DeleteKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
 		if err != nil {
-			return glance.ResultRequeue, fmt.Errorf("Endpoint %s not found", instance.Name)
+			r.Log.Info(fmt.Sprintf("Endpoint %s not found", instance.Name))
+			return glance.ResultRequeue, nil
 		}
 		return ctrlResult, nil
 	}
