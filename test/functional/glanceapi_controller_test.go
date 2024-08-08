@@ -17,8 +17,6 @@ limitations under the License.
 package functional
 
 import (
-	"fmt"
-
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
@@ -763,15 +761,15 @@ var _ = Describe("Glanceapi controller", func() {
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
-				corev1.ConditionFalse,
-				condition.ErrorReason,
-				fmt.Sprintf("TLSInput error occured in TLS sources Secret %s/combined-ca-bundle not found", namespace),
+				corev1.ConditionUnknown,
+				condition.RequestedReason,
+				condition.InputReadyWaitingMessage,
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.ReadyCondition,
-				corev1.ConditionFalse,
+				corev1.ConditionUnknown,
 			)
 		})
 
@@ -781,15 +779,15 @@ var _ = Describe("Glanceapi controller", func() {
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
-				corev1.ConditionFalse,
-				condition.ErrorReason,
-				fmt.Sprintf("TLSInput error occured in TLS sources Secret %s/internal-tls-certs not found", namespace),
+				corev1.ConditionUnknown,
+				condition.RequestedReason,
+				condition.InputReadyWaitingMessage,
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.ReadyCondition,
-				corev1.ConditionFalse,
+				corev1.ConditionUnknown,
 			)
 		})
 
@@ -800,15 +798,15 @@ var _ = Describe("Glanceapi controller", func() {
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
-				corev1.ConditionFalse,
-				condition.ErrorReason,
-				fmt.Sprintf("TLSInput error occured in TLS sources Secret %s/public-tls-certs not found", namespace),
+				corev1.ConditionUnknown,
+				condition.RequestedReason,
+				condition.InputReadyWaitingMessage,
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.ReadyCondition,
-				corev1.ConditionFalse,
+				corev1.ConditionUnknown,
 			)
 		})
 

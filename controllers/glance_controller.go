@@ -577,6 +577,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	)
 	if err != nil {
 		return result, err
+	} else if (result != ctrl.Result{}) {
+		return result, nil
 	}
 
 	configVars[instance.Spec.Secret] = env.SetValue(secretHash)
