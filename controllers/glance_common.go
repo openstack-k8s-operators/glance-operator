@@ -19,10 +19,11 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"k8s.io/apimachinery/pkg/types"
-	"time"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
@@ -81,15 +82,6 @@ func ensureSecret(
 
 	hash, res, err := oko_secret.VerifySecret(ctx, secretName, expectedFields, reader, requeueTimeout)
 	if err != nil {
-		if k8s_errors.IsNotFound(err) {
-			log.FromContext(ctx).Info(fmt.Sprintf("OpenStack secret %s not found", secretName))
-			conditionUpdater.Set(condition.FalseCondition(
-				condition.InputReadyCondition,
-				condition.RequestedReason,
-				condition.SeverityInfo,
-				condition.InputReadyWaitingMessage))
-			return "", glance.ResultRequeue, nil
-		}
 		conditionUpdater.Set(condition.FalseCondition(
 			condition.InputReadyCondition,
 			condition.ErrorReason,
@@ -97,7 +89,16 @@ func ensureSecret(
 			condition.InputReadyErrorMessage,
 			err.Error()))
 		return "", res, err
+	} else if (res != ctrl.Result{}) {
+		log.FromContext(ctx).Info(fmt.Sprintf("OpenStack secret %s not found", secretName))
+		conditionUpdater.Set(condition.FalseCondition(
+			condition.InputReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.InputReadyWaitingMessage))
+		return "", res, nil
 	}
+
 	return hash, ctrl.Result{}, nil
 }
 
