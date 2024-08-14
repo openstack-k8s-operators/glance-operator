@@ -21,8 +21,9 @@ spec:
       databaseInstance: openstack
       databaseAccount: glance
       secret: osp-secret
-      storageClass: ""
-      storageRequest: 1G
+      storage:
+        storageClass: ""
+        storageRequest: 1G
   extraMounts:
     - name: v1
       region: r1
