@@ -21,9 +21,10 @@ spec:
         swift_store_user = service:glance
         swift_store_key = {{ .ServicePassword }}
       databaseInstance: openstack
+      storage:
+        storageClass: ""
+        storageRequest: 1G
       glanceAPIs:
         default:
           preserveJobs: false
           replicas: 1
-      storageClass: ""
-      storageRequest: 1G

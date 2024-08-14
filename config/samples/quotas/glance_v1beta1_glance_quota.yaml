@@ -14,8 +14,9 @@ spec:
       replicas: 1
       type: single
   secret: osp-secret
-  storageClass: ""
-  storageRequest: 1G
+  storage:
+    storageClass: ""
+    storageRequest: 1G
   quotas:
     imageSizeTotal: 1000
     imageStageTotal: 1000

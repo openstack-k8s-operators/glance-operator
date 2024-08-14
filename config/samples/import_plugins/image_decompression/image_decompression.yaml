@@ -26,8 +26,9 @@ spec:
     preserveJobs: false
     replicas: 1
   secret: osp-secret
-  storageClass: ""
-  storageRequest: 1G
+  storage:
+    storageClass: ""
+    storageRequest: 1G
   extraMounts:
     - name: v1
       region: r1

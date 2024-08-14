@@ -10,8 +10,9 @@ spec:
       databaseInstance: openstack
       databaseAccount: glance
       secret: osp-secret
-      storageClass: ""
-      storageRequest: 10G
+      storage:
+        storageClass: ""
+        storageRequest: 10G
       keystoneEndpoint: default
       glanceAPIs:
         default:

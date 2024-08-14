@@ -24,10 +24,11 @@ spec:
         cinder_catalog_info = volumev3::internalURL
         cinder_use_multipath = true
       databaseInstance: openstack
+      storage:
+        storageClass: ""
+        storageRequest: 1G
       glanceAPIs:
         default:
           preserveJobs: false
           replicas: 1
           type: split
-      storageClass: ""
-      storageRequest: 1G
