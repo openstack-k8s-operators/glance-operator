@@ -17,21 +17,51 @@ func GetOwningGlanceName(instance client.Object) string {
 	return ""
 }
 
-// glanceSecurityContext - currently used to make sure we don't run db-sync as
+// dbSyncSecurityContext - currently used to make sure we don't run db-sync as
 // root user
-func glanceSecurityContext() *corev1.SecurityContext {
-	trueVal := true
+func dbSyncSecurityContext() *corev1.SecurityContext {
 	runAsUser := int64(GlanceUID)
 	runAsGroup := int64(GlanceGID)
 
 	return &corev1.SecurityContext{
-		RunAsUser:    &runAsUser,
-		RunAsGroup:   &runAsGroup,
-		RunAsNonRoot: &trueVal,
+		RunAsUser:  &runAsUser,
+		RunAsGroup: &runAsGroup,
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
 				"MKNOD",
 			},
 		},
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
+// BaseSecurityContext - currently used to make sure we don't run cronJob and Log
+// Pods as root user, and we drop privileges and Capabilities we don't need
+func BaseSecurityContext() *corev1.SecurityContext {
+	falseVal := true
+	runAsUser := int64(GlanceUID)
+
+	return &corev1.SecurityContext{
+		RunAsUser:                &runAsUser,
+		AllowPrivilegeEscalation: &falseVal,
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{
+				"ALL",
+			},
+		},
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
+// HttpdSecurityContext -
+func HttpdSecurityContext() *corev1.SecurityContext {
+
+	runAsUser := int64(GlanceUID)
+	return &corev1.SecurityContext{
+		RunAsUser: &runAsUser,
 	}
 }
