@@ -124,7 +124,7 @@ func DbSyncJob(
 							},
 							Args:            args,
 							Image:           instance.Spec.ContainerImage,
-							SecurityContext: glanceSecurityContext(),
+							SecurityContext: dbSyncSecurityContext(),
 							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts:    dbSyncMounts,
 						},

@@ -41,7 +41,6 @@ func DBPurgeJob(
 	instance *glancev1.Glance,
 	cronSpec CronJobSpec,
 ) *batchv1.CronJob {
-	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
 
 	cronCommand := fmt.Sprintf(
@@ -130,11 +129,9 @@ func DBPurgeJob(
 									Command: []string{
 										"/bin/bash",
 									},
-									Args:         args,
-									VolumeMounts: cronJobVolumeMounts,
-									SecurityContext: &corev1.SecurityContext{
-										RunAsUser: &runAsUser,
-									},
+									Args:            args,
+									VolumeMounts:    cronJobVolumeMounts,
+									SecurityContext: BaseSecurityContext(),
 								},
 							},
 							Volumes:            cronJobVolume,
