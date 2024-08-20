@@ -40,11 +40,15 @@ func dbSyncSecurityContext() *corev1.SecurityContext {
 // BaseSecurityContext - currently used to make sure we don't run cronJob and Log
 // Pods as root user, and we drop privileges and Capabilities we don't need
 func BaseSecurityContext() *corev1.SecurityContext {
-	falseVal := true
+	falseVal := false
+	trueVal := true
 	runAsUser := int64(GlanceUID)
+	runAsGroup := int64(GlanceGID)
 
 	return &corev1.SecurityContext{
 		RunAsUser:                &runAsUser,
+		RunAsGroup:               &runAsGroup,
+		RunAsNonRoot:             &trueVal,
 		AllowPrivilegeEscalation: &falseVal,
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
@@ -57,11 +61,34 @@ func BaseSecurityContext() *corev1.SecurityContext {
 	}
 }
 
+// APISecurityContext -
+func APISecurityContext(userID int64, privileged bool) *corev1.SecurityContext {
+	runAsUser := int64(userID)
+	trueVal := true
+	return &corev1.SecurityContext{
+		AllowPrivilegeEscalation: &trueVal,
+		RunAsUser:                &runAsUser,
+		Privileged:               &privileged,
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
 // HttpdSecurityContext -
 func HttpdSecurityContext() *corev1.SecurityContext {
-
-	runAsUser := int64(GlanceUID)
+	runAsUser := int64(0)
+	falseVal := false
 	return &corev1.SecurityContext{
+		AllowPrivilegeEscalation: &falseVal,
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{
+				"ALL",
+			},
+		},
 		RunAsUser: &runAsUser,
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
 	}
 }
