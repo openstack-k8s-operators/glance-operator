@@ -8,8 +8,8 @@ The local image cache is transparent to the end user: the end user does not know
 that the Glance API is streaming an image file from its local cache or from the
 actual backend storage system.
 To enable the `Glance` image-cache feature, the human operator must specify in
-the main Glance CR the size assigned to the Cache by adding the `imageCacheSize`
-parameter:
+the main Glance CR the size assigned to the Cache by adding the `Size` parameter
+to the `ImageCache` section:
 
 
 ```
@@ -22,9 +22,10 @@ parameter:
         ...
         ...
       databaseInstance: openstack
-      imageCacheSize: 10G
+      imageCache:
+        size: 10Gi
       storage:
-        storageRequest: 10G
+        storageRequest: 10Gi
         storageClass: ""
       glanceAPIs:
         default:
@@ -55,13 +56,13 @@ from this directory to make the changes.
 
 ## Glance Cache cleaner and pruner utilities
 
-When images are successfully returned from a call to GET /images/<IMAGE_ID>, the
-image cache automatically writes the image file to its cache, regardless of
+When images are successfully returned from a call to GET /images/<IMAGE_ID>,
+the image cache automatically writes the image file to its cache, regardless of
 whether the resulting write would make the image cache’s size exceed the value
-of `image_cache_max_size`, which is defined by the `imageCacheSize` parameter
-exposed by the top level `Glance` CR. In order to keep the image cache at or
-below this maximum cache size, Glance provides utilities that can be periodically
-executed.
+of `image_cache_max_size`, which is defined by the `size` parameter exposed in
+the `imageCache` section of the `Glance` CR. In order to keep the image cache
+at or below this maximum cache size, Glance provides utilities that can be
+periodically executed.
 The glance-operator defines a `cronJob` Pod that periodically executes the
 `glance-cache-pruner` utility, with the purpose of keeping under the
 `image_cache_max_size` value the image cache size.

@@ -30,7 +30,8 @@ spec:
       storage:
         storageClass: ""
         storageRequest: 1G
-      imageCacheSize: 10G
+      imageCache:
+        size: 2G
   extraMounts:
     - name: v1
       region: r1
