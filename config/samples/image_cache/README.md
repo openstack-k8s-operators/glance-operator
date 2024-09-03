@@ -63,15 +63,19 @@ of `image_cache_max_size`, which is defined by the `size` parameter exposed in
 the `imageCache` section of the `Glance` CR. In order to keep the image cache
 at or below this maximum cache size, Glance provides utilities that can be
 periodically executed.
-The glance-operator defines a `cronJob` Pod that periodically executes the
+The glance-operator defines a `cronJob` resource that periodically executes the
 `glance-cache-pruner` utility, with the purpose of keeping under the
 `image_cache_max_size` value the image cache size.
 Over time, the image cache can accumulate image files that are either in a
 stalled or invalid state. Stalled image files are the result of an image cache
 write failing to complete. Invalid image files are the result of an image file
 not being written properly to disk.
-To remove these types of files, the `glance-operator` defines a `cronJob` Pod
-that periodically executes the `glance-cache-cleaner` utility.
+The amount of time an incomplete image can stay in the cache is defined by the
+`image_cache_stall_time` parameter (which defaults to 86400 seconds), after
+this time the incomplete or stalled image is qualified to be deleted from the
+`Glance` cache.
+To remove these types of files, the `glance-operator` defines a `cronJob`
+resource that periodically executes the `glance-cache-cleaner` utility.
 
 You can find more about image-cache configuration options in the
 [upstream](https://docs.openstack.org/glance/latest/admin/cache.html) documentation.
