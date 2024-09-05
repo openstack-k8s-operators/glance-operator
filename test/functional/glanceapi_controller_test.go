@@ -17,6 +17,8 @@ limitations under the License.
 package functional
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
@@ -761,15 +763,15 @@ var _ = Describe("Glanceapi controller", func() {
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
-				corev1.ConditionUnknown,
+				corev1.ConditionFalse,
 				condition.RequestedReason,
-				condition.InputReadyWaitingMessage,
+				fmt.Sprintf("TLSInput is missing: %s", CABundleSecretName),
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.ReadyCondition,
-				corev1.ConditionUnknown,
+				corev1.ConditionFalse,
 			)
 		})
 
@@ -779,15 +781,16 @@ var _ = Describe("Glanceapi controller", func() {
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
-				corev1.ConditionUnknown,
+				corev1.ConditionFalse,
 				condition.RequestedReason,
-				condition.InputReadyWaitingMessage,
+				fmt.Sprintf("TLSInput is missing: secrets \"%s in namespace %s\" not found",
+					glanceTest.InternalCertSecret.Name, glanceTest.InternalCertSecret.Namespace),
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.ReadyCondition,
-				corev1.ConditionUnknown,
+				corev1.ConditionFalse,
 			)
 		})
 
@@ -798,15 +801,16 @@ var _ = Describe("Glanceapi controller", func() {
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
-				corev1.ConditionUnknown,
+				corev1.ConditionFalse,
 				condition.RequestedReason,
-				condition.InputReadyWaitingMessage,
+				fmt.Sprintf("TLSInput is missing: secrets \"%s in namespace %s\" not found",
+					glanceTest.PublicCertSecret.Name, glanceTest.PublicCertSecret.Namespace),
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.ReadyCondition,
-				corev1.ConditionUnknown,
+				corev1.ConditionFalse,
 			)
 		})
 

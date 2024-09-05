@@ -691,7 +691,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	//
 	// Validate the CA cert secret if provided
 	if instance.Spec.TLS.CaBundleSecretName != "" {
-		hash, ctrlResult, err := tls.ValidateCACertSecret(
+		hash, err := tls.ValidateCACertSecret(
 			ctx,
 			helper.GetClient(),
 			types.NamespacedName{
@@ -700,22 +700,21 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 			},
 		)
 		if err != nil {
+			if k8s_errors.IsNotFound(err) {
+				instance.Status.Conditions.Set(condition.FalseCondition(
+					condition.TLSInputReadyCondition,
+					condition.RequestedReason,
+					condition.SeverityInfo,
+					fmt.Sprintf(condition.TLSInputReadyWaitingMessage, instance.Spec.TLS.CaBundleSecretName)))
+				return ctrl.Result{}, nil
+			}
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.TLSInputReadyCondition,
 				condition.ErrorReason,
 				condition.SeverityWarning,
 				condition.TLSInputErrorMessage,
 				err.Error()))
-			return ctrlResult, err
-		} else if (ctrlResult != ctrl.Result{}) {
-			// Marking the condition as Unknown because we are not returining
-			// an err, but comparing the ctrlResult: this represents an in
-			// progress operation rather than something that failed
-			instance.Status.Conditions.MarkUnknown(
-				condition.TLSInputReadyCondition,
-				condition.RequestedReason,
-				condition.InputReadyWaitingMessage)
-			return ctrlResult, nil
+			return ctrl.Result{}, err
 		}
 		if hash != "" {
 			configVars[tls.CABundleKey] = env.SetValue(hash)
@@ -723,24 +722,23 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	}
 
 	// Validate API service certs secrets
-	certsHash, ctrlResult, err := instance.Spec.TLS.API.ValidateCertSecrets(ctx, helper, instance.Namespace)
+	certsHash, err := instance.Spec.TLS.API.ValidateCertSecrets(ctx, helper, instance.Namespace)
 	if err != nil {
+		if k8s_errors.IsNotFound(err) {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.TLSInputReadyCondition,
+				condition.RequestedReason,
+				condition.SeverityInfo,
+				fmt.Sprintf(condition.TLSInputReadyWaitingMessage, err.Error())))
+			return ctrl.Result{}, nil
+		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.TLSInputReadyCondition,
 			condition.ErrorReason,
 			condition.SeverityWarning,
 			condition.TLSInputErrorMessage,
 			err.Error()))
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		// Marking the condition as Unknown because we are not returining
-		// an err, but comparing the ctrlResult: this represents an in
-		// progress operation rather than something that failed
-		instance.Status.Conditions.MarkUnknown(
-			condition.TLSInputReadyCondition,
-			condition.RequestedReason,
-			condition.InputReadyWaitingMessage)
-		return ctrlResult, nil
+		return ctrl.Result{}, err
 	}
 	configVars[tls.TLSHashName] = env.SetValue(certsHash)
 	// all cert input checks out so report InputReady
@@ -748,7 +746,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 
 	var serviceAnnotations map[string]string
 	// networks to attach to
-	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
+	serviceAnnotations, ctrlResult, err := ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
 	if err != nil {
 		instance.Status.Conditions.MarkFalse(
 			condition.NetworkAttachmentsReadyCondition,
