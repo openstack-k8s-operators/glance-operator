@@ -69,8 +69,8 @@ github.com/openshift/api v0.0.0-20230414143018-3367bc7e6ac7 h1:rncLxJBpFGqBztyxC
 github.com/openshift/api v0.0.0-20230414143018-3367bc7e6ac7/go.mod h1:ctXNyWanKEjGj8sss1KjjHQ3ENKFm33FFnS5BKaIPh4=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.4.1-0.20240905123813-174296c09ec6 h1:VSbVNzUa41hybq/lZi0L8bNv/yzYyNylc8yKSEO+ZCA=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.4.1-0.20240905123813-174296c09ec6/go.mod h1:6zxa5xg9uvpObVKFSJa/SA+vDDlgh0Q1aswxDB2XbxU=
-github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20240814075458-0ae9f7f9e059 h1:HzvUWSO61v7RvJsteIAdyTycMIIJpr0Kk6FER6d1XAE=
-github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20240814075458-0ae9f7f9e059/go.mod h1:u8JnCwm6XfPaJJrtOJFNDGI30AohRMY1gGau9m2Ruzg=
+github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20240905123813-174296c09ec6 h1:8ZxdzRXUXDqiW9iaUgt7LbVt9vkcqbsNLkOahglDqkc=
+github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20240905123813-174296c09ec6/go.mod h1:r49GAmxTPMIpYS6BXmUYkC9rQN0x6CkPdtnjWeO0r9o=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

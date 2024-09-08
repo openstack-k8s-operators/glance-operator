@@ -9,15 +9,15 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.4.0
 	github.com/onsi/ginkgo/v2 v2.20.1
 	github.com/onsi/gomega v1.34.1
-	github.com/openstack-k8s-operators/cinder-operator/api v0.4.1-0.20240814190057-861c886d4d4c
+	github.com/openstack-k8s-operators/cinder-operator/api v0.4.1-0.20240906102621-9d122003aaea
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/infra-operator/apis v0.4.1-0.20240813061654-72bf12d9b73e
-	github.com/openstack-k8s-operators/keystone-operator/api v0.4.1-0.20240812074544-7379da550fef
+	github.com/openstack-k8s-operators/infra-operator/apis v0.4.1-0.20240906153437-12ffed69a34c
+	github.com/openstack-k8s-operators/keystone-operator/api v0.4.1-0.20240906103150-990fe66f2e5d
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.4.1-0.20240905123813-174296c09ec6
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.4.1-0.20240814075458-0ae9f7f9e059
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20240814075458-0ae9f7f9e059
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.4.1-0.20240814075458-0ae9f7f9e059
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.4.1-0.20240812075114-497caae42b27
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.4.1-0.20240905123813-174296c09ec6
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20240905123813-174296c09ec6
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.4.1-0.20240905123813-174296c09ec6
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.4.1-0.20240906121602-64a741be0e7f
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.28.13
