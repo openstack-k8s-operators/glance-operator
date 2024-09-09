@@ -108,6 +108,7 @@ type GlanceAPITemplate struct {
 	APITimeout int `json:"apiTimeout,omitempty"`
 }
 
+// Storage -
 type Storage struct {
 	// +kubebuilder:validation:Optional
 	// StorageClass -

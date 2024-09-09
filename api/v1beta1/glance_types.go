@@ -35,7 +35,7 @@ const (
 	APIEdge = "edge"
 )
 
-// GlanceSpec defines the desired state of Glance
+// GlanceSpecCore defines the desired state of Glance
 type GlanceSpecCore struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=glance

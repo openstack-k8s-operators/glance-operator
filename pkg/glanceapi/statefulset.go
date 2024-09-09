@@ -179,6 +179,9 @@ func StatefulSet(
 					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
+					SecurityContext: &corev1.PodSecurityContext{
+						FSGroup: &userID,
+					},
 					ServiceAccountName: instance.Spec.ServiceAccount,
 					// When using Cinder we run as privileged, but also some
 					// commands need to be run on the host using nsenter (eg:

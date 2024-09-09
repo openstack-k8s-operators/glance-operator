@@ -2,6 +2,7 @@ package glance
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -13,19 +14,16 @@ func GetOwningGlanceName(instance client.Object) string {
 			return ownerRef.Name
 		}
 	}
-
 	return ""
 }
 
 // dbSyncSecurityContext - currently used to make sure we don't run db-sync as
 // root user
 func dbSyncSecurityContext() *corev1.SecurityContext {
-	runAsUser := int64(GlanceUID)
-	runAsGroup := int64(GlanceGID)
 
 	return &corev1.SecurityContext{
-		RunAsUser:  &runAsUser,
-		RunAsGroup: &runAsGroup,
+		RunAsUser:  ptr.To(GlanceUID),
+		RunAsGroup: ptr.To(GlanceGID),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
 				"MKNOD",
@@ -40,16 +38,12 @@ func dbSyncSecurityContext() *corev1.SecurityContext {
 // BaseSecurityContext - currently used to make sure we don't run cronJob and Log
 // Pods as root user, and we drop privileges and Capabilities we don't need
 func BaseSecurityContext() *corev1.SecurityContext {
-	falseVal := false
-	trueVal := true
-	runAsUser := int64(GlanceUID)
-	runAsGroup := int64(GlanceGID)
 
 	return &corev1.SecurityContext{
-		RunAsUser:                &runAsUser,
-		RunAsGroup:               &runAsGroup,
-		RunAsNonRoot:             &trueVal,
-		AllowPrivilegeEscalation: &falseVal,
+		RunAsUser:                ptr.To(GlanceUID),
+		RunAsGroup:               ptr.To(GlanceGID),
+		RunAsNonRoot:             ptr.To(true),
+		AllowPrivilegeEscalation: ptr.To(false),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
 				"ALL",
@@ -63,11 +57,10 @@ func BaseSecurityContext() *corev1.SecurityContext {
 
 // APISecurityContext -
 func APISecurityContext(userID int64, privileged bool) *corev1.SecurityContext {
-	runAsUser := int64(userID)
-	trueVal := true
+
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: &trueVal,
-		RunAsUser:                &runAsUser,
+		AllowPrivilegeEscalation: ptr.To(true),
+		RunAsUser:                ptr.To(userID),
 		Privileged:               &privileged,
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
@@ -77,16 +70,15 @@ func APISecurityContext(userID int64, privileged bool) *corev1.SecurityContext {
 
 // HttpdSecurityContext -
 func HttpdSecurityContext() *corev1.SecurityContext {
-	runAsUser := int64(0)
-	falseVal := false
+
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: &falseVal,
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
-				"ALL",
+				"MKNOD",
 			},
 		},
-		RunAsUser: &runAsUser,
+		RunAsUser:  ptr.To(GlanceUID),
+		RunAsGroup: ptr.To(GlanceGID),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		},

@@ -802,6 +802,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 
 	// This is currently required because cleaner and pruner cronJobs
 	// mount the same pvc to clean data present in /var/lib/glance/image-cache
+	// TODO (fpantano) reference a Glance spec/proposal to move to a different
+	// approach
 	if len(instance.Spec.ImageCache.Size) > 0 {
 		privileged = true
 	}

@@ -346,6 +346,7 @@ func (r *GlanceSpec) ValidateUpdate(old GlanceSpec, basePath *field.Path) field.
 	return r.GlanceSpecCore.ValidateUpdate(old.GlanceSpecCore, basePath)
 }
 
+// ValidateUpdate -
 func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
