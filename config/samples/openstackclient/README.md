@@ -64,7 +64,7 @@ Once everything is ready, the `openstackclient` `Pod` can be deployed with the
 following command:
 
 ```bash
-oc -n <namespace> kustomize --load-restrictor LoadRestrictionsNone $pwd/openstackclient | oc apply -f -
+oc -n <namespace> kustomize --load-restrictor LoadRestrictionsNone ../openstackclient | oc apply -f -
 ```
 
 **Note:**
