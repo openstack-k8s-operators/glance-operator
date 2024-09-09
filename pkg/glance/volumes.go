@@ -268,20 +268,13 @@ func GetHttpdVolumeMount() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
 			Name:      "config-data",
-			MountPath: "/etc/httpd/conf/httpd.conf",
-			SubPath:   "httpd.conf",
+			MountPath: "/var/lib/config-data/default",
 			ReadOnly:  true,
 		},
 		{
 			Name:      "config-data",
-			MountPath: "/etc/httpd/conf.d/10-glance.conf",
-			SubPath:   "10-glance-httpd.conf",
-			ReadOnly:  true,
-		},
-		{
-			Name:      "config-data",
-			MountPath: "/etc/httpd/conf.d/ssl.conf",
-			SubPath:   "ssl.conf",
+			MountPath: "/var/lib/kolla/config_files/config.json",
+			SubPath:   "glance-httpd-config.json",
 			ReadOnly:  true,
 		},
 	}
@@ -338,4 +331,46 @@ func GetScriptVolumeMount() []corev1.VolumeMount {
 			ReadOnly:  true,
 		},
 	}
+}
+
+// GetAPIVolumes -
+func GetAPIVolumes(name string) []corev1.Volume {
+	var config0644AccessMode int32 = 0644
+	apiVolumes := []corev1.Volume{
+		{
+			Name: "config-data-custom",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					DefaultMode: &config0644AccessMode,
+					SecretName:  name + "-config-data",
+				},
+			},
+		},
+	}
+	// Append LogVolume to the apiVolumes: this will be used to stream logging
+	apiVolumes = append(apiVolumes, GetLogVolume()...)
+	apiVolumes = append(apiVolumes, GetScriptVolume()...)
+	return apiVolumes
+}
+
+// GetAPIVolumeMount -
+func GetAPIVolumeMount(cacheSize string) []corev1.VolumeMount {
+	apiVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "config-data",
+			MountPath: "/var/lib/kolla/config_files/config.json",
+			SubPath:   "glance-api-config.json",
+			ReadOnly:  true,
+		},
+	}
+	// Append LogVolume to apiVolumes: this will be used to stream logging
+	apiVolumeMounts = append(apiVolumeMounts, GetLogVolumeMount()...)
+	// Append ScriptsVolume to apiVolumes
+	apiVolumeMounts = append(apiVolumeMounts, GetScriptVolumeMount()...)
+	// If cache is provided, we expect the main glance_controller to request a
+	// PVC that should be used for that purpose (according to ImageCache.Size)
+	if len(cacheSize) > 0 {
+		apiVolumeMounts = append(apiVolumeMounts, GetCacheVolumeMount()...)
+	}
+	return apiVolumeMounts
 }

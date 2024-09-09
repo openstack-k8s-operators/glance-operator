@@ -68,7 +68,7 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/sbin/httpd -DFOREGROUND
+        - /usr/local/bin/kolla_start
         command:
         - /usr/bin/dumb-init
         name: glance-httpd
@@ -77,7 +77,7 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        - /usr/local/bin/kolla_start
         command:
         - /usr/bin/dumb-init
         name: glance-api

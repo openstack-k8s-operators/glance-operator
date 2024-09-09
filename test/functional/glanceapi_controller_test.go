@@ -217,7 +217,7 @@ var _ = Describe("Glanceapi controller", func() {
 
 			// Check the glance-httpd container
 			container = ss.Spec.Template.Spec.Containers[1]
-			Expect(container.VolumeMounts).To(HaveLen(3))
+			Expect(container.VolumeMounts).To(HaveLen(2))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 
 			// Check the glance-log container
