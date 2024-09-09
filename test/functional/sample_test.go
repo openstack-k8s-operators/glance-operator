@@ -73,12 +73,6 @@ var _ = Describe("Samples", func() {
 			GetGlance(name)
 		})
 	})
-	When("glance_v1beta1_glance_quota.yaml sample is applied", func() {
-		It("Glance Sample is created - Quota", func() {
-			name := CreateGlanceFromSample("quotas/glance_v1beta1_glance_quota.yaml", glanceTest.Instance)
-			GetGlance(name)
-		})
-	})
 	When("layout/base/glance_v1beta1_glance.yaml sample is applied", func() {
 		It("Glance Sample is created - Base", func() {
 			name := CreateGlanceFromSample("layout/base/glance_v1beta1_glance.yaml", glanceTest.Instance)

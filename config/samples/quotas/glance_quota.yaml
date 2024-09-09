@@ -1,4 +1,4 @@
-# Inject inject_metadata config
+# Sample of a Glance CR where quotas are customized
 apiVersion: core.openstack.org/v1beta1
 kind: OpenStackControlPlane
 metadata:
@@ -6,7 +6,10 @@ metadata:
 spec:
   glance:
     template:
+      serviceUser: glance
       databaseInstance: openstack
+      databaseAccount: glance
+      keystoneEndpoint: default
       customServiceConfig: |
         [DEFAULT]
         enabled_backends = default_backend:swift
@@ -19,14 +22,15 @@ spec:
         swift_store_endpoint_type = internalURL
         swift_store_user = service:glance
         swift_store_key = {{ .ServicePassword }}
-        [image_import_opts]
-        image_import_plugins = [inject_image_metadata]
-        [inject_metadata_properties]
-        ignore_user_roles = admin,user1
-        inject = "property1":"value1","property2":"value2"
       glanceAPIs:
         default:
           replicas: 1
+          type: split
       secret: osp-secret
       storage:
-        storageRequest: 1G
+        storageRequest: 10G
+      quotas:
+        imageSizeTotal: 1000
+        imageStageTotal: 1000
+        imageCountUpload: 100
+        imageCountTotal: 100
