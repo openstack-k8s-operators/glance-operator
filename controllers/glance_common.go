@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"k8s.io/apimachinery/pkg/types"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
@@ -68,19 +67,20 @@ type conditionUpdater interface {
 	MarkTrue(t condition.Type, messageFormat string, messageArgs ...interface{})
 }
 
-// ensureSecret - ensures that the Secret object exists and the expected fields
-// are in the Secret. It returns a hash of the values of the expected fields
-// passed as input.
-func ensureSecret(
+// verifyServiceSecret - ensures that the Secret object exists and the expected
+// fields are in the Secret. It also sets a hash of the values of the expected
+// fields passed as input.
+func verifyServiceSecret(
 	ctx context.Context,
 	secretName types.NamespacedName,
 	expectedFields []string,
 	reader client.Reader,
 	conditionUpdater conditionUpdater,
 	requeueTimeout time.Duration,
-) (string, ctrl.Result, error) {
+	envVars *map[string]env.Setter,
+) (ctrl.Result, error) {
 
-	hash, res, err := oko_secret.VerifySecret(ctx, secretName, expectedFields, reader, requeueTimeout)
+	hash, res, err := secret.VerifySecret(ctx, secretName, expectedFields, reader, requeueTimeout)
 	if err != nil {
 		conditionUpdater.Set(condition.FalseCondition(
 			condition.InputReadyCondition,
@@ -88,7 +88,7 @@ func ensureSecret(
 			condition.SeverityWarning,
 			condition.InputReadyErrorMessage,
 			err.Error()))
-		return "", res, err
+		return res, err
 	} else if (res != ctrl.Result{}) {
 		log.FromContext(ctx).Info(fmt.Sprintf("OpenStack secret %s not found", secretName))
 		conditionUpdater.Set(condition.FalseCondition(
@@ -96,10 +96,10 @@ func ensureSecret(
 			condition.RequestedReason,
 			condition.SeverityInfo,
 			condition.InputReadyWaitingMessage))
-		return "", res, nil
+		return res, nil
 	}
-
-	return hash, ctrl.Result{}, nil
+	(*envVars)[secretName.Name] = env.SetValue(hash)
+	return ctrl.Result{}, nil
 }
 
 // ensureNAD - common function called in the glance controllers that GetNAD based

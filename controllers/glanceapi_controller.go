@@ -587,8 +587,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
 	//
-
-	secretHash, result, err := ensureSecret(
+	ctrlResult, err := verifyServiceSecret(
 		ctx,
 		types.NamespacedName{Namespace: instance.Namespace, Name: instance.Spec.Secret},
 		[]string{
@@ -597,12 +596,11 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		helper.GetClient(),
 		&instance.Status.Conditions,
 		glance.NormalDuration,
+		&configVars,
 	)
-	if err != nil {
-		return result, err
+	if (err != nil || ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
 	}
-
-	configVars[instance.Spec.Secret] = env.SetValue(secretHash)
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
@@ -746,7 +744,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 
 	var serviceAnnotations map[string]string
 	// networks to attach to
-	serviceAnnotations, ctrlResult, err := ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
+	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
 	if err != nil {
 		instance.Status.Conditions.MarkFalse(
 			condition.NetworkAttachmentsReadyCondition,
