@@ -38,10 +38,8 @@ import (
 )
 
 const (
-	// GlanceAPIServiceCommand -
-	GlanceAPIServiceCommand = "/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start"
-	// GlanceAPIHttpdCommand -
-	GlanceAPIHttpdCommand = "/usr/sbin/httpd -DFOREGROUND"
+	// GlanceServiceCommand -
+	GlanceServiceCommand = "/usr/local/bin/kolla_start"
 )
 
 // StatefulSet func
@@ -53,8 +51,6 @@ func StatefulSet(
 	privileged bool,
 ) (*appsv1.StatefulSet, error) {
 	runAsUser := int64(0)
-
-	var config0644AccessMode int32 = 0644
 
 	startupProbe := &corev1.Probe{
 		FailureThreshold: 6,
@@ -111,41 +107,8 @@ func StatefulSet(
 	envVars["GLANCE_DOMAIN"] = env.SetValue(instance.Status.Domain)
 	envVars["URISCHEME"] = env.SetValue(string(glanceURIScheme))
 
-	apiVolumes := []corev1.Volume{
-		{
-			Name: "config-data-custom",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
-					SecretName:  instance.Name + "-config-data",
-				},
-			},
-		},
-	}
-	// Append LogVolume to the apiVolumes: this will be used to stream
-	// logging
-	apiVolumes = append(apiVolumes, glance.GetLogVolume()...)
-	apiVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "glance-api-config.json",
-			ReadOnly:  true,
-		},
-	}
-
-	// Append LogVolume to the apiVolumes: this will be used to stream logging
-	apiVolumeMounts = append(apiVolumeMounts, glance.GetLogVolumeMount()...)
-
-	// Append scripts
-	apiVolumes = append(apiVolumes, glance.GetScriptVolume()...)
-	apiVolumeMounts = append(apiVolumeMounts, glance.GetScriptVolumeMount()...)
-
-	// If cache is provided, we expect the main glance_controller to request a
-	// PVC that should be used for that purpose (according to ImageCacheSize)
-	if len(instance.Spec.ImageCache.Size) > 0 {
-		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
-	}
+	apiVolumes := glance.GetAPIVolumes(instance.Name)
+	apiVolumeMounts := glance.GetAPIVolumeMount(instance.Spec.ImageCache.Size)
 
 	extraVolPropagation := append(glance.GlanceAPIPropagation,
 		storage.PropagationType(instance.APIName()))
@@ -255,7 +218,7 @@ func StatefulSet(
 								"--",
 								"/bin/bash",
 								"-c",
-								string(GlanceAPIHttpdCommand),
+								string(GlanceServiceCommand),
 							},
 							Image: instance.Spec.ContainerImage,
 							SecurityContext: &corev1.SecurityContext{
@@ -278,7 +241,7 @@ func StatefulSet(
 								"--",
 								"/bin/bash",
 								"-c",
-								string(GlanceAPIServiceCommand),
+								string(GlanceServiceCommand),
 							},
 							Image: instance.Spec.ContainerImage,
 							SecurityContext: &corev1.SecurityContext{
