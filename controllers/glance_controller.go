@@ -51,7 +51,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	common_rbac "github.com/openstack-k8s-operators/lib-common/modules/common/rbac"
-	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	"github.com/openstack-k8s-operators/lib-common/modules/openstack"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
@@ -405,14 +404,6 @@ func (r *GlanceReconciler) reconcileInit(
 	//
 	// create Keystone service and users - https://docs.openstack.org/Glance/latest/install/install-rdo.html#configure-user-and-endpoints
 	//
-	_, _, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
-	if err != nil {
-		if k8s_errors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("OpenStack secret %s not found", instance.Spec.Secret))
-			return glance.ResultRequeue, nil
-		}
-		return ctrl.Result{}, err
-	}
 
 	ksSvcSpec := keystonev1.KeystoneServiceSpec{
 		ServiceType:        glance.ServiceType,
@@ -565,7 +556,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
 	//
-	secretHash, result, err := ensureSecret(
+	ctrlResult, err := verifyServiceSecret(
 		ctx,
 		types.NamespacedName{Namespace: instance.Namespace, Name: instance.Spec.Secret},
 		[]string{
@@ -574,14 +565,12 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 		helper.GetClient(),
 		&instance.Status.Conditions,
 		glance.NormalDuration,
+		&configVars,
 	)
-	if err != nil {
-		return result, err
-	} else if (result != ctrl.Result{}) {
-		return result, nil
+	if (err != nil || ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
 	}
 
-	configVars[instance.Spec.Secret] = env.SetValue(secretHash)
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
