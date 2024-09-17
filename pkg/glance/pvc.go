@@ -2,6 +2,7 @@ package glance
 
 import (
 	"fmt"
+
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -49,7 +50,7 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 		AccessModes: []corev1.PersistentVolumeAccessMode{
 			corev1.ReadWriteOnce,
 		},
-		Resources: corev1.ResourceRequirements{
+		Resources: corev1.VolumeResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: storageSize,
 			},
