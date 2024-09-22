@@ -7,7 +7,7 @@
 # - glance-internal service
 # - glance-public service
 # - glance internal and public endpoints
-# - glance-dbpurge cronjob
+# - glance-db-purge cronjob
 
 apiVersion: glance.openstack.org/v1beta1
 kind: Glance
@@ -145,7 +145,7 @@ spec:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: glance-dbpurge
+  name: glance-db-purge
 spec:
   jobTemplate:
     metadata:

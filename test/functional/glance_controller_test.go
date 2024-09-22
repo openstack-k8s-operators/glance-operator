@@ -297,6 +297,26 @@ var _ = Describe("Glance controller", func() {
 		It("should not have a cache pvc (no imageCacheSize provided)", func() {
 			AssertPVCDoesNotExist(glanceTest.GlanceCache)
 		})
+		It("configures DB Purge job", func() {
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				cron := GetCronJob(glanceTest.DBPurgeCronJob)
+				g.Expect(cron.Spec.Schedule).To(Equal(glance.Spec.DBPurge.Schedule))
+			}, timeout, interval).Should(Succeed())
+		})
+		It("update DB Purge job", func() {
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				glance.Spec.DBPurge.Schedule = "*/30 * * * *"
+				g.Expect(k8sClient.Update(ctx, glance)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				cron := GetCronJob(glanceTest.DBPurgeCronJob)
+				g.Expect(cron.Spec.Schedule).To(Equal(glance.Spec.DBPurge.Schedule))
+			}, timeout, interval).Should(Succeed())
+		})
 	})
 	When("Glance CR is deleted", func() {
 		BeforeEach(func() {
@@ -487,5 +507,4 @@ var _ = Describe("Glance controller", func() {
 	}
 
 	mariadbSuite.RunBasicSuite()
-
 })
