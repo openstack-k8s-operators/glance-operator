@@ -14,7 +14,8 @@ spec:
       databaseInstance: openstack
       databaseAccount: glance
       glanceAPIs:
-        replicas: 1
+        default:
+          replicas: 1
       secret: osp-secret
       storage:
         storageRequest: 10G
