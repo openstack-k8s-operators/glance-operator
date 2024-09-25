@@ -242,7 +242,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
-	svcSecretFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+	svcSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		var namespace string = o.GetNamespace()
 		var secretName string = o.GetName()
 		result := []reconcile.Request{}
@@ -275,7 +275,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to NADs
-	nadFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+	nadFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
 
 		// get all GlanceAPI CRs
@@ -303,7 +303,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return nil
 	}
 
-	memcachedFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+	memcachedFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
 
 		// get all GlanceAPIs CRs
