@@ -800,6 +800,14 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// we can mark the ServiceConfigReady as True and rollout the new pods
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
 
+	// This is currently required because cleaner and pruner cronJobs
+	// mount the same pvc to clean data present in /var/lib/glance/image-cache
+	// TODO (fpantano) reference a Glance spec/proposal to move to a different
+	// approach
+	if len(instance.Spec.ImageCache.Size) > 0 {
+		privileged = true
+	}
+
 	// Define a new StatefuleSet object
 	deplDef, err := glanceapi.StatefulSet(instance,
 		inputHash,

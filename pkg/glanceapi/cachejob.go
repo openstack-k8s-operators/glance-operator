@@ -16,14 +16,13 @@ limitations under the License.
 package glanceapi
 
 import (
+	"fmt"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
-
-	"fmt"
-
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 // ImageCacheJob -
@@ -31,7 +30,6 @@ func ImageCacheJob(
 	instance *glancev1.GlanceAPI,
 	cronSpec glance.CronJobSpec,
 ) *batchv1.CronJob {
-	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
 
 	cronCommand := fmt.Sprintf(
@@ -100,6 +98,9 @@ func ImageCacheJob(
 					Completions: &completions,
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
+							SecurityContext: &corev1.PodSecurityContext{
+								FSGroup: ptr.To(glance.GlanceUID),
+							},
 							Affinity: GetGlanceAPIPodAffinity(instance),
 							Containers: []corev1.Container{
 								{
@@ -108,11 +109,9 @@ func ImageCacheJob(
 									Command: []string{
 										"/bin/bash",
 									},
-									Args:         args,
-									VolumeMounts: cronJobVolumeMounts,
-									SecurityContext: &corev1.SecurityContext{
-										RunAsUser: &runAsUser,
-									},
+									Args:            args,
+									VolumeMounts:    cronJobVolumeMounts,
+									SecurityContext: glance.BaseSecurityContext(),
 								},
 							},
 							Volumes:            cronJobVolume,

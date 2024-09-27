@@ -50,8 +50,7 @@ func StatefulSet(
 	annotations map[string]string,
 	privileged bool,
 ) (*appsv1.StatefulSet, error) {
-	runAsUser := int64(0)
-
+	userID := glance.GlanceUID
 	startupProbe := &corev1.Probe{
 		FailureThreshold: 6,
 		PeriodSeconds:    10,
@@ -180,6 +179,9 @@ func StatefulSet(
 					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
+					SecurityContext: &corev1.PodSecurityContext{
+						FSGroup: &userID,
+					},
 					ServiceAccountName: instance.Spec.ServiceAccount,
 					// When using Cinder we run as privileged, but also some
 					// commands need to be run on the host using nsenter (eg:
@@ -220,16 +222,14 @@ func StatefulSet(
 								"-c",
 								string(GlanceServiceCommand),
 							},
-							Image: instance.Spec.ContainerImage,
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser: &runAsUser,
-							},
-							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts:   httpdVolumeMount,
-							Resources:      instance.Spec.Resources,
-							StartupProbe:   startupProbe,
-							ReadinessProbe: readinessProbe,
-							LivenessProbe:  livenessProbe,
+							Image:           instance.Spec.ContainerImage,
+							SecurityContext: glance.HttpdSecurityContext(),
+							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts:    httpdVolumeMount,
+							Resources:       instance.Spec.Resources,
+							StartupProbe:    startupProbe,
+							ReadinessProbe:  readinessProbe,
+							LivenessProbe:   livenessProbe,
 						},
 						{
 							Name: glance.ServiceName + "-api",
@@ -243,12 +243,9 @@ func StatefulSet(
 								"-c",
 								string(GlanceServiceCommand),
 							},
-							Image: instance.Spec.ContainerImage,
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser:  &runAsUser,
-								Privileged: &privileged,
-							},
-							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							Image:           instance.Spec.ContainerImage,
+							SecurityContext: glance.APISecurityContext(userID, privileged),
+							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts: append(glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
 								privileged,
