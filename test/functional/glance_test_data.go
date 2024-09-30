@@ -85,6 +85,7 @@ type GlanceTestData struct {
 	MemcachedInstance           string
 	GlanceMemcached             types.NamespacedName
 	KeystoneService             types.NamespacedName
+	DBPurgeCronJob              types.NamespacedName
 }
 
 // GetGlanceTestData is a function that initialize the GlanceTestData
@@ -218,6 +219,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		KeystoneService: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      glance.ServiceName,
+		},
+		DBPurgeCronJob: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-db-purge", glanceName.Name),
 		},
 	}
 }

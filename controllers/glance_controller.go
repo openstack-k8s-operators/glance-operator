@@ -1016,7 +1016,7 @@ func (r *GlanceReconciler) ensureDBPurgeJob(
 ) (ctrl.Result, error) {
 
 	cronSpec := glance.CronJobSpec{
-		Name:        fmt.Sprintf("%s-dbpurge", glance.ServiceName),
+		Name:        fmt.Sprintf("%s-db-purge", instance.Name),
 		PvcClaim:    nil,
 		Command:     glance.GlanceManage,
 		Schedule:    instance.Spec.DBPurge.Schedule,
