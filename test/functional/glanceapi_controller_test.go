@@ -19,10 +19,12 @@ package functional
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
+	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+
+	//revive:disable-next-line:dot-imports
 	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -215,7 +217,7 @@ var _ = Describe("Glanceapi controller", func() {
 
 			// Check the glance-httpd container
 			container = ss.Spec.Template.Spec.Containers[1]
-			Expect(container.VolumeMounts).To(HaveLen(3))
+			Expect(container.VolumeMounts).To(HaveLen(2))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 
 			// Check the glance-log container
@@ -275,8 +277,8 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(headlessSvc.Name).To(Equal(glanceTest.GlanceEdgeStatefulSet.Name))
 
 			// Check the Internal service exists and follow the usual convention
-			internalSvc := th.GetService(glanceTest.GlanceInternal)
-			Expect(internalSvc.Name).To(Equal(glanceTest.GlanceInternal.Name))
+			internalSvc := th.GetService(glanceTest.GlanceInternalSvc)
+			Expect(internalSvc.Name).To(Equal(glanceTest.GlanceInternalSvc.Name))
 
 			// Check the Public service doesn't exist
 			th.AssertServiceDoesNotExist(glanceTest.GlanceExternal)
@@ -466,7 +468,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(glanceAPI.Status.ReadyCount).To(BeNumerically(">", 0))
 		})
 		It("exposes the service", func() {
-			apiInstance := th.GetService(glanceTest.GlanceInternal)
+			apiInstance := th.GetService(glanceTest.GlanceInternalSvc)
 			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
 		})
 		It("creates KeystoneEndpoint", func() {
@@ -497,7 +499,6 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
-
 			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
 			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
 
@@ -526,6 +527,7 @@ var _ = Describe("Glanceapi controller", func() {
 				"service": serviceOverride,
 			}
 			glance := CreateGlanceAPI(glanceTest.GlanceInternal, spec)
+			th.SimulateLoadBalancerServiceIP(glanceTest.GlanceInternalSvc)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
@@ -762,8 +764,8 @@ var _ = Describe("Glanceapi controller", func() {
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
 				corev1.ConditionFalse,
-				condition.ErrorReason,
-				fmt.Sprintf("TLSInput error occured in TLS sources Secret %s/combined-ca-bundle not found", namespace),
+				condition.RequestedReason,
+				fmt.Sprintf("TLSInput is missing: %s", CABundleSecretName),
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
@@ -780,8 +782,9 @@ var _ = Describe("Glanceapi controller", func() {
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
 				corev1.ConditionFalse,
-				condition.ErrorReason,
-				fmt.Sprintf("TLSInput error occured in TLS sources Secret %s/internal-tls-certs not found", namespace),
+				condition.RequestedReason,
+				fmt.Sprintf("TLSInput is missing: secrets \"%s in namespace %s\" not found",
+					glanceTest.InternalCertSecret.Name, glanceTest.InternalCertSecret.Namespace),
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
@@ -799,8 +802,9 @@ var _ = Describe("Glanceapi controller", func() {
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
 				corev1.ConditionFalse,
-				condition.ErrorReason,
-				fmt.Sprintf("TLSInput error occured in TLS sources Secret %s/public-tls-certs not found", namespace),
+				condition.RequestedReason,
+				fmt.Sprintf("TLSInput is missing: secrets \"%s in namespace %s\" not found",
+					glanceTest.PublicCertSecret.Name, glanceTest.PublicCertSecret.Namespace),
 			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
@@ -821,6 +825,13 @@ var _ = Describe("Glanceapi controller", func() {
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.TLSInputReadyCondition,
 				corev1.ConditionTrue,
 			)
 
@@ -870,6 +881,13 @@ var _ = Describe("Glanceapi controller", func() {
 				corev1.ConditionTrue,
 			)
 
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.TLSInputReadyCondition,
+				corev1.ConditionTrue,
+			)
+
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceSingle)
 			endpoints := keystoneEndpoint.Spec.Endpoints
 			Expect(endpoints).To(HaveKeyWithValue("public", "https://glance-default-public."+glanceTest.Instance.Namespace+".svc:9292"))
@@ -888,6 +906,13 @@ var _ = Describe("Glanceapi controller", func() {
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
+
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.TLSInputReadyCondition,
+				corev1.ConditionTrue,
+			)
 
 			// Grab the current config hash
 			apiOriginalHash := GetEnvVarValue(
@@ -950,6 +975,12 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(endpoints).To(HaveKeyWithValue("public", "https://glance-openstack.apps-crc.testing"))
 			Expect(endpoints).To(HaveKeyWithValue("internal", "https://glance-default-internal."+glanceTest.Instance.Namespace+".svc:9292"))
 
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.TLSInputReadyCondition,
+				corev1.ConditionTrue,
+			)
 			th.ExpectCondition(
 				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),

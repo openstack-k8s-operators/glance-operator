@@ -23,7 +23,8 @@ spec:
     default:
       replicas: 1
   secret: osp-secret
-  storageRequest: 10G
+  storage:
+    storageRequest: 10G
 status:
   databaseHostname: openstack.glance-kuttl-tests.svc
 ---
@@ -69,10 +70,9 @@ spec:
       - args:
         - --single-child
         - --
-        - /usr/bin/tail
-        - -n+1
-        - -F
-        - /var/log/glance/glance-default-external.log
+        - /bin/sh
+        - -c
+        - /usr/bin/tail -n+1 -F /var/log/glance/glance-default-external.log 2>/dev/null
         command:
         - /usr/bin/dumb-init
         name: glance-log
@@ -81,7 +81,7 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/sbin/httpd -DFOREGROUND
+        - /usr/local/bin/kolla_start
         command:
         - /usr/bin/dumb-init
         name: glance-httpd
@@ -90,7 +90,7 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        - /usr/local/bin/kolla_start
         command:
         - /usr/bin/dumb-init
         name: glance-api
@@ -118,10 +118,9 @@ spec:
       - args:
         - --single-child
         - --
-        - /usr/bin/tail
-        - -n+1
-        - -F
-        - /var/log/glance/glance-default-internal.log
+        - /bin/sh
+        - -c
+        - /usr/bin/tail -n+1 -F /var/log/glance/glance-default-internal.log 2>/dev/null
         command:
         - /usr/bin/dumb-init
         name: glance-log
@@ -130,7 +129,7 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/sbin/httpd -DFOREGROUND
+        - /usr/local/bin/kolla_start
         command:
         - /usr/bin/dumb-init
         name: glance-httpd
@@ -139,7 +138,7 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        - /usr/local/bin/kolla_start
         command:
         - /usr/bin/dumb-init
         name: glance-api
@@ -235,8 +234,9 @@ kind: TestAssert
 namespaced: true
 commands:
   - script: |
-      template='{{.status.apiEndpoint.internal}}{{":"}}{{.status.apiEndpoint.public}}{{"\n"}}'
-      regex="http:\/\/glance-internal.$NAMESPACE.*:http:\/\/glance-public.$NAMESPACE.*"
+      set -euxo pipefail
+      template='{{ index .status.apiEndpoint "default-internal" }}{{ ":" }}{{ index .status.apiEndpoint "default-public" }}'
+      regex="http:\/\/glance-default-internal.$NAMESPACE.*:http:\/\/glance-default-public.$NAMESPACE.*"
       apiEndpoints=$(oc get -n $NAMESPACE Glance glance -o go-template="$template")
       matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")
       if [ -z "$matches" ]; then
@@ -244,13 +244,9 @@ commands:
       else
         exit 1
       fi
----
 # Verify that Glance CRs have the containerImage defaulted from the CSV RELATED_IMAGE parameter default
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-namespaced: true
-commands:
   - script: |
+      set -euxo pipefail
       tupleTemplate='{{ range (index .spec.template.spec.containers 1).env }}{{ .name }}{{ "#" }}{{ .value}}{{"\n"}}{{ end }}'
       imageTuples=$(oc get -n openstack-operators deployment glance-operator-controller-manager -o go-template="$tupleTemplate")
       for ITEM in $(echo $imageTuples); do

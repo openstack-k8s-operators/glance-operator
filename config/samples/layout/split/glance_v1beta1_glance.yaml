@@ -18,7 +18,7 @@ spec:
   keystoneEndpoint: default
   glanceAPIs:
     default:
-      preserveJobs: false
       replicas: 1
-  storageClass: local-storage
-  storageRequest: 10G
+  storage:
+    storageClass: local-storage
+    storageRequest: 10G

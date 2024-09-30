@@ -19,7 +19,8 @@ spec:
   databaseHostname: glance
   preserveJobs: false
   replicas: 1
-  storageRequest: 10G
+  storage:
+    storageRequest: 10G
   secret: glance-secret
   #tls:
   #  api:

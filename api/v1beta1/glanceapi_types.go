@@ -27,6 +27,8 @@ import (
 const (
 	// DeploymentHash hash used to detect changes
 	DeploymentHash = "deployment"
+	// APINameLabel - Label on a GlanceAPI that signals the name of the API
+	APINameLabel = "api-name"
 )
 
 // GlanceAPISpec defines the desired state of GlanceAPI
@@ -154,4 +156,10 @@ func (instance GlanceAPI) GetEndpoint(endpointType endpoint.Endpoint) (string, e
 // IsReady - returns true if GlanceAPI is reconciled successfully
 func (instance GlanceAPI) IsReady() bool {
 	return instance.Status.Conditions.IsTrue(condition.ReadyCondition)
+}
+
+// APIName - returns the name used to identify the API
+func (instance GlanceAPI) APIName() string {
+	// The information is stored as a label
+	return instance.Labels[APINameLabel]
 }

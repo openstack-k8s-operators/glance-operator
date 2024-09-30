@@ -2,6 +2,7 @@ package glance
 
 import (
 	"fmt"
+
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -14,8 +15,8 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 	// that will be customized in case the pvc is requested
 	// for cache purposes
 	var err error
-	requestSize := api.Spec.StorageRequest
-	pvcName := ServiceName
+	var requestSize string
+	var pvcName string
 	pvcAnnotation := map[string]string{}
 
 	switch {
@@ -24,14 +25,9 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 		requestSize = api.Spec.GlanceAPITemplate.ImageCache.Size
 		// append -cache to avoid confusion when listing PVCs
 		pvcName = fmt.Sprintf("%s-cache", ServiceName)
-	case pvcType == PvcImageConv:
-		pvcAnnotation["image-conversion"] = "true"
-		requestSize = api.Spec.StorageRequest
-		// append -conversion to avoid confusion when listing PVCs
-		pvcName = fmt.Sprintf("%s-conversion", ServiceName)
 	default:
 		pvcName = ServiceName
-		requestSize = api.Spec.StorageRequest
+		requestSize = api.Spec.Storage.StorageRequest
 	}
 	// Build the basic pvc object
 	pvc := corev1.PersistentVolumeClaim{
@@ -54,12 +50,12 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 		AccessModes: []corev1.PersistentVolumeAccessMode{
 			corev1.ReadWriteOnce,
 		},
-		Resources: corev1.ResourceRequirements{
+		Resources: corev1.VolumeResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceStorage: storageSize,
 			},
 		},
-		StorageClassName: &api.Spec.StorageClass,
+		StorageClassName: &api.Spec.Storage.StorageClass,
 	}
 
 	return pvc, err

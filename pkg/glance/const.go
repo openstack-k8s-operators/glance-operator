@@ -54,7 +54,7 @@ const (
 	GlanceInternalPort int32 = 9292
 	// GlanceUID - https://github.com/openstack/kolla/blob/master/kolla/common/users.py
 	GlanceUID int64 = 42415
-	// GlanceGid - https://github.com/openstack/kolla/blob/master/kolla/common/users.py
+	// GlanceGID - https://github.com/openstack/kolla/blob/master/kolla/common/users.py
 	GlanceGID int64 = 42415
 	// DefaultsConfigFileName -
 	DefaultsConfigFileName = "00-config.conf"

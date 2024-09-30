@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega" //revive:disable:dot-imports
 	corev1 "k8s.io/api/core/v1"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
@@ -70,8 +70,10 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 			"keystoneEndpoint":  "default",
 			"databaseInstance":  "openstack",
 			"databaseAccount":   glanceTest.GlanceDatabaseAccount.Name,
-			"storageRequest":    glanceTest.GlancePVCSize,
-			"glanceAPIs":        GetAPIList(),
+			"storage": map[string]interface{}{
+				"storageRequest": glanceTest.GlancePVCSize,
+			},
+			"glanceAPIs": GetAPIList(),
 		},
 	}
 	return th.CreateUnstructured(raw)
@@ -84,8 +86,10 @@ func GetGlanceEmptySpec() map[string]interface{} {
 		"keystoneEndpoint": "default",
 		"secret":           SecretName,
 		"databaseInstance": "openstack",
-		"storageRequest":   glanceTest.GlancePVCSize,
-		"glanceAPIs":       map[string]interface{}{},
+		"storage": map[string]interface{}{
+			"storageRequest": glanceTest.GlancePVCSize,
+		},
+		"glanceAPIs": map[string]interface{}{},
 	}
 }
 
@@ -97,7 +101,9 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
 		"glanceAPIs":       GetAPIList(),
-		"storageRequest":   glanceTest.GlancePVCSize,
+		"storage": map[string]interface{}{
+			"storageRequest": glanceTest.GlancePVCSize,
+		},
 	}
 }
 
@@ -109,9 +115,11 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 		"serviceUser":      glanceName.Name,
 		"secret":           SecretName,
 		"glanceAPIs":       GetAPIList(),
-		"storageRequest":   glanceTest.GlancePVCSize,
-		"quotas":           glanceTest.GlanceQuotas,
-		"memcached":        glanceTest.MemcachedInstance,
+		"storage": map[string]interface{}{
+			"storageRequest": glanceTest.GlancePVCSize,
+		},
+		"quotas":    glanceTest.GlanceQuotas,
+		"memcached": glanceTest.MemcachedInstance,
 	}
 }
 
@@ -123,10 +131,12 @@ func GetAPIList() map[string]interface{} {
 	return apiList
 }
 
-func GetGlanceAPIDefaultSpec(apiType APIType) map[string]interface{} {
+func GetGlanceAPIDefaultSpec() map[string]interface{} {
 	return map[string]interface{}{
-		"replicas":        1,
-		"storageRequest":  glanceTest.GlancePVCSize,
+		"replicas": 1,
+		"storage": map[string]interface{}{
+			"storageRequest": glanceTest.GlancePVCSize,
+		},
 		"databaseAccount": glanceTest.GlanceDatabaseAccount.Name,
 	}
 }
@@ -155,6 +165,7 @@ func CreateGlanceAPI(name types.NamespacedName, spec map[string]interface{}) cli
 			},
 			"name":      name.Name,
 			"namespace": name.Namespace,
+			"labels":    map[string]string{"api-name": "default"},
 		},
 		"spec": spec,
 	}
@@ -183,10 +194,12 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 // CreateGlanceAPISpec -
 func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := map[string]interface{}{
-		"replicas":         1,
-		"serviceAccount":   glanceTest.GlanceSA.Name,
-		"containerImage":   glanceTest.ContainerImage,
-		"storageRequest":   glanceTest.GlancePVCSize,
+		"replicas":       1,
+		"serviceAccount": glanceTest.GlanceSA.Name,
+		"containerImage": glanceTest.ContainerImage,
+		"storage": map[string]interface{}{
+			"storageRequest": glanceTest.GlancePVCSize,
+		},
 		"apiType":          apiType,
 		"name":             "default",
 		"databaseHostname": "openstack",
@@ -199,10 +212,12 @@ func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 // GetDefaultGlanceAPISpec -
 func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := map[string]interface{}{
-		"replicas":         1,
-		"containerImage":   glanceTest.ContainerImage,
-		"serviceAccount":   glanceTest.GlanceSA.Name,
-		"storageRequest":   glanceTest.GlancePVCSize,
+		"replicas":       1,
+		"containerImage": glanceTest.ContainerImage,
+		"serviceAccount": glanceTest.GlanceSA.Name,
+		"storage": map[string]interface{}{
+			"storageRequest": glanceTest.GlancePVCSize,
+		},
 		"type":             apiType,
 		"name":             "default",
 		"databaseHostname": "openstack",

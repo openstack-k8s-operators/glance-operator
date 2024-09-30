@@ -36,6 +36,10 @@ spec:
             type: object
           spec:
             properties:
+              apiTimeout:
+                default: 60
+                minimum: 1
+                type: integer
               containerImage:
                 type: string
               customServiceConfig:
@@ -321,18 +325,6 @@ spec:
                                               type: object
                                             resources:
                                               properties:
-                                                claims:
-                                                  items:
-                                                    properties:
-                                                      name:
-                                                        type: string
-                                                    required:
-                                                    - name
-                                                    type: object
-                                                  type: array
-                                                  x-kubernetes-list-map-keys:
-                                                  - name
-                                                  x-kubernetes-list-type: map
                                                 limits:
                                                   additionalProperties:
                                                     anyOf:
@@ -375,6 +367,8 @@ spec:
                                               type: object
                                               x-kubernetes-map-type: atomic
                                             storageClassName:
+                                              type: string
+                                            volumeAttributesClassName:
                                               type: string
                                             volumeMode:
                                               type: string
@@ -564,6 +558,43 @@ spec:
                                     sources:
                                       items:
                                         properties:
+                                          clusterTrustBundle:
+                                            properties:
+                                              labelSelector:
+                                                properties:
+                                                  matchExpressions:
+                                                    items:
+                                                      properties:
+                                                        key:
+                                                          type: string
+                                                        operator:
+                                                          type: string
+                                                        values:
+                                                          items:
+                                                            type: string
+                                                          type: array
+                                                      required:
+                                                      - key
+                                                      - operator
+                                                      type: object
+                                                    type: array
+                                                  matchLabels:
+                                                    additionalProperties:
+                                                      type: string
+                                                    type: object
+                                                type: object
+                                                x-kubernetes-map-type: atomic
+                                              name:
+                                                type: string
+                                              optional:
+                                                type: boolean
+                                              path:
+                                                type: string
+                                              signerName:
+                                                type: string
+                                            required:
+                                            - path
+                                            type: object
                                           configMap:
                                             properties:
                                               items:
@@ -818,6 +849,9 @@ spec:
               glanceAPIs:
                 additionalProperties:
                   properties:
+                    apiTimeout:
+                      minimum: 1
+                      type: integer
                     containerImage:
                       type: string
                     customServiceConfig:
@@ -899,8 +933,6 @@ spec:
                             type: object
                           type: object
                       type: object
-                    pvc:
-                      type: string
                     replicas:
                       default: 1
                       format: int32
@@ -938,10 +970,15 @@ spec:
                             x-kubernetes-int-or-string: true
                           type: object
                       type: object
-                    storageClass:
-                      type: string
-                    storageRequest:
-                      type: string
+                    storage:
+                      properties:
+                        external:
+                          type: boolean
+                        storageClass:
+                          type: string
+                        storageRequest:
+                          type: string
+                      type: object
                     tls:
                       properties:
                         api:
@@ -969,7 +1006,6 @@ spec:
                       type: string
                   required:
                   - containerImage
-                  - storageRequest
                   type: object
                 type: object
               imageCache:
@@ -1032,10 +1068,15 @@ spec:
               serviceUser:
                 default: glance
                 type: string
-              storageClass:
-                type: string
-              storageRequest:
-                type: string
+              storage:
+                properties:
+                  external:
+                    type: boolean
+                  storageClass:
+                    type: string
+                  storageRequest:
+                    type: string
+                type: object
             required:
             - containerImage
             - databaseInstance
@@ -1044,7 +1085,6 @@ spec:
             - keystoneEndpoint
             - memcachedInstance
             - secret
-            - storageRequest
             type: object
           status:
             properties:

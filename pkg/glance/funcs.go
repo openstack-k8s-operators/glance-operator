@@ -1,10 +1,9 @@
 package glance
 
 import (
-	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
 )
 
 // GetOwningGlanceName - Given a GlanceAPI (both internal and external)
@@ -15,61 +14,73 @@ func GetOwningGlanceName(instance client.Object) string {
 			return ownerRef.Name
 		}
 	}
-
 	return ""
 }
 
-// GetGlanceAPIName - For a given full glanceAPIName passed as input, this utility
-// resolves the name used in the glance CR to identify the API.
-func GetGlanceAPIName(name string) string {
-
-	/***
-	A given GlanceAPI name can be found in the form:
-
-	+--------------------------------------------------------+
-	|   "glance.ServiceName + instance.Name + instance.Type" |
-	+--------------------------------------------------------+
-
-	but only "instance.Name" is used to identify the glanceAPI instance in
-	the main CR. For this reason we cut the string passed as input and we
-	trim both prefix and suffix.
-
-	Example:
-	input = "glance-api1-internal"
-	output = "api1"
-	***/
-	var api = ""
-	prefix := ServiceName + "-"
-	suffixes := []string{
-		glancev1.APIInternal,
-		glancev1.APIExternal,
-		glancev1.APISingle,
-		glancev1.APIEdge,
-	}
-	for _, suffix := range suffixes {
-		if strings.Contains(name, suffix) {
-			apiName := strings.TrimSuffix(name, "-"+suffix)
-			api = apiName[len(prefix):]
-		}
-	}
-	return api
-}
-
-// glanceSecurityContext - currently used to make sure we don't run db-sync as
+// dbSyncSecurityContext - currently used to make sure we don't run db-sync as
 // root user
-func glanceSecurityContext() *corev1.SecurityContext {
-	trueVal := true
-	runAsUser := int64(GlanceUID)
-	runAsGroup := int64(GlanceGID)
+func dbSyncSecurityContext() *corev1.SecurityContext {
 
 	return &corev1.SecurityContext{
-		RunAsUser:    &runAsUser,
-		RunAsGroup:   &runAsGroup,
-		RunAsNonRoot: &trueVal,
+		RunAsUser:  ptr.To(GlanceUID),
+		RunAsGroup: ptr.To(GlanceGID),
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
 				"MKNOD",
 			},
+		},
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
+// BaseSecurityContext - currently used to make sure we don't run cronJob and Log
+// Pods as root user, and we drop privileges and Capabilities we don't need
+func BaseSecurityContext() *corev1.SecurityContext {
+
+	return &corev1.SecurityContext{
+		RunAsUser:                ptr.To(GlanceUID),
+		RunAsGroup:               ptr.To(GlanceGID),
+		RunAsNonRoot:             ptr.To(true),
+		AllowPrivilegeEscalation: ptr.To(false),
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{
+				"ALL",
+			},
+		},
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
+// APISecurityContext -
+func APISecurityContext(userID int64, privileged bool) *corev1.SecurityContext {
+
+	return &corev1.SecurityContext{
+		AllowPrivilegeEscalation: ptr.To(true),
+		RunAsUser:                ptr.To(userID),
+		Privileged:               &privileged,
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
+// HttpdSecurityContext -
+func HttpdSecurityContext() *corev1.SecurityContext {
+
+	return &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{
+				"MKNOD",
+			},
+		},
+		RunAsUser:  ptr.To(GlanceUID),
+		RunAsGroup: ptr.To(GlanceGID),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		},
 	}
 }

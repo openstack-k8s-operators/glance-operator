@@ -56,7 +56,14 @@ repos:
       entry: bashate --error . --ignore=E006,E040,E011,E020,E012
 
 - repo: https://github.com/golangci/golangci-lint
-  rev: v1.55.2
+  rev: v1.59.1
   hooks:
-    - id: golangci-lint
+    - id: golangci-lint-full
       args: ["-v"]
+
+- repo: https://github.com/openstack-k8s-operators/openstack-k8s-operators-ci
+  # NOTE(gibi): we cannot automatically track main here
+  # see https://pre-commit.com/#using-the-latest-version-for-a-repository
+  rev: e30d72fcbced0ab8a7b6d23be1dee129e2a7b849
+  hooks:
+    - id: kuttl-single-test-assert

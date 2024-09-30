@@ -55,7 +55,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
-	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/statefulset"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
@@ -76,7 +75,7 @@ type GlanceAPIReconciler struct {
 
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update
+//+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups=cinder.openstack.org,resources=cinders,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
@@ -189,7 +188,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return r.reconcileDelete(ctx, instance, helper)
 	}
 	// Handle non-deleted clusters
-	return r.reconcileNormal(ctx, instance, helper, req)
+	return r.reconcileNormal(ctx, instance, helper)
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -243,7 +242,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
-	svcSecretFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+	svcSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		var namespace string = o.GetNamespace()
 		var secretName string = o.GetName()
 		result := []reconcile.Request{}
@@ -276,7 +275,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to NADs
-	nadFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+	nadFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
 
 		// get all GlanceAPI CRs
@@ -304,7 +303,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return nil
 	}
 
-	memcachedFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+	memcachedFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
 
 		// get all GlanceAPIs CRs
@@ -356,7 +355,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *GlanceAPIReconciler) findObjectsForSrc(ctx context.Context, src client.Object) []reconcile.Request {
 	requests := []reconcile.Request{}
 
-	l := log.FromContext(context.Background()).WithName("Controllers").WithName("GlanceAPI")
+	l := log.FromContext(ctx).WithName("Controllers").WithName("GlanceAPI")
 
 	for _, field := range glanceAPIWatchFields {
 		crList := &glancev1.GlanceAPIList{}
@@ -364,7 +363,7 @@ func (r *GlanceAPIReconciler) findObjectsForSrc(ctx context.Context, src client.
 			FieldSelector: fields.OneTermEqualSelector(field, src.GetName()),
 			Namespace:     src.GetNamespace(),
 		}
-		err := r.List(context.TODO(), crList, listOps)
+		err := r.List(ctx, crList, listOps)
 		if err != nil {
 			return []reconcile.Request{}
 		}
@@ -415,7 +414,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 	for endpointType, data := range glanceEndpoints {
 		endpointTypeStr := string(endpointType)
-		apiName := glance.GetGlanceAPIName(instance.Name)
+		apiName := instance.APIName()
 		endpointName := fmt.Sprintf("%s-%s-%s", glance.ServiceName, apiName, endpointTypeStr)
 		svcOverride := instance.Spec.Override.Service[endpointType]
 		if svcOverride.EmbeddedLabelsAnnotations == nil {
@@ -428,6 +427,21 @@ func (r *GlanceAPIReconciler) reconcileInit(
 				service.AnnotationEndpointKey: endpointTypeStr,
 			},
 		)
+
+		// For each StatefulSet associated with a given glanceAPI (single, internal, external)
+		// we create a headless service that allow to resolve pods by hostname (using kube-dns)
+		// and it allows to enable the glance-direct import method
+		ctrlResult, headlessSvcName, err := GetHeadlessService(
+			ctx,
+			helper,
+			instance,
+			serviceLabels,
+		)
+		if err != nil {
+			// The ExposeServiceReadyCondition is already marked as False
+			// within the GetHeadlessService function: we can return
+			return ctrlResult, err
+		}
 
 		// Create the internal/externl service(s) associated to the current API
 		svc, err := service.NewService(
@@ -458,6 +472,17 @@ func (r *GlanceAPIReconciler) reconcileInit(
 
 		svc.AddAnnotation(map[string]string{
 			service.AnnotationEndpointKey: endpointTypeStr,
+			// Add to the current service an annotation that refers to the associated
+			// headless service: this information will be used by the openstack-operator
+			// to have an additional SubjectName that allows to reach every replica with
+			// an https endpoint
+			tls.AdditionalSubjectNamesKey: fmt.Sprintf("*.%s.%s.svc,*.%s.%s.svc.%s",
+				headlessSvcName,
+				instance.Namespace,
+				headlessSvcName,
+				instance.Namespace,
+				tls.DefaultClusterInternalDomain,
+			),
 		})
 
 		// add Annotation to whether creating an ingress is required or not
@@ -482,7 +507,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			}
 		}
 
-		ctrlResult, err := svc.CreateOrPatch(ctx, helper)
+		ctrlResult, err = svc.CreateOrPatch(ctx, helper)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.ExposeServiceReadyCondition,
@@ -499,21 +524,6 @@ func (r *GlanceAPIReconciler) reconcileInit(
 				condition.SeverityInfo,
 				condition.ExposeServiceReadyRunningMessage))
 			return ctrlResult, nil
-		}
-
-		// For each StatefulSet associated with a given glanceAPI (single, internal, external)
-		// we create a headless service that allow to resolve pods by hostname (using kube-dns)
-		// and it allows to enable the glance-direct import method
-		ctrlResult, err = GetHeadlessService(
-			ctx,
-			helper,
-			instance,
-			serviceLabels,
-		)
-		if err != nil {
-			// The ExposeServiceReadyCondition is already marked as False
-			// within the GetHeadlessService function: we can return
-			return ctrlResult, err
 		}
 
 		// create service - end
@@ -563,7 +573,11 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	return ctrl.Result{}, nil
 }
 
-func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper, req ctrl.Request) (ctrl.Result, error) {
+func (r *GlanceAPIReconciler) reconcileNormal(
+	ctx context.Context,
+	instance *glancev1.GlanceAPI,
+	helper *helper.Helper,
+) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
 	configVars := make(map[string]env.Setter)
@@ -573,25 +587,20 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
 	//
-	ospSecret, hash, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
-	if err != nil {
-		if k8s_errors.IsNotFound(err) {
-			instance.Status.Conditions.Set(condition.FalseCondition(
-				condition.InputReadyCondition,
-				condition.RequestedReason,
-				condition.SeverityInfo,
-				condition.InputReadyWaitingMessage))
-			return glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
-		}
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.InputReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.InputReadyErrorMessage,
-			err.Error()))
-		return ctrl.Result{}, err
+	ctrlResult, err := verifyServiceSecret(
+		ctx,
+		types.NamespacedName{Namespace: instance.Namespace, Name: instance.Spec.Secret},
+		[]string{
+			instance.Spec.PasswordSelectors.Service,
+		},
+		helper.GetClient(),
+		&instance.Status.Conditions,
+		glance.NormalDuration,
+		&configVars,
+	)
+	if (err != nil || ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
 	}
-	configVars[ospSecret.Name] = env.SetValue(hash)
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
@@ -601,12 +610,13 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	memcached, err := memcachedv1.GetMemcachedByName(ctx, helper, instance.Spec.MemcachedInstance, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("memcached %s not found", instance.Spec.MemcachedInstance))
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.MemcachedReadyCondition,
 				condition.RequestedReason,
 				condition.SeverityInfo,
 				condition.MemcachedReadyWaitingMessage))
-			return glance.ResultRequeue, fmt.Errorf("memcached %s not found", instance.Spec.MemcachedInstance)
+			return glance.ResultRequeue, nil
 		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.MemcachedReadyCondition,
@@ -674,27 +684,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	// or, in case Cinder is a backend for the current GlanceAPI, the associated resources
 	// are present in the control plane
 	instance.Status.Conditions.MarkTrue(glancev1.CinderCondition, glancev1.CinderReadyMessage)
-
-	// Generate service config
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv, memcached)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ServiceConfigReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.ServiceConfigReadyErrorMessage,
-			err.Error()))
-		r.Log.Info("Glance config is not Ready, requeueing...")
-		return glance.ResultRequeue, nil
-	}
-
-	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
 	//
 	// TLS input validation
 	//
 	// Validate the CA cert secret if provided
 	if instance.Spec.TLS.CaBundleSecretName != "" {
-		hash, ctrlResult, err := tls.ValidateCACertSecret(
+		hash, err := tls.ValidateCACertSecret(
 			ctx,
 			helper.GetClient(),
 			types.NamespacedName{
@@ -703,22 +698,21 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 			},
 		)
 		if err != nil {
+			if k8s_errors.IsNotFound(err) {
+				instance.Status.Conditions.Set(condition.FalseCondition(
+					condition.TLSInputReadyCondition,
+					condition.RequestedReason,
+					condition.SeverityInfo,
+					fmt.Sprintf(condition.TLSInputReadyWaitingMessage, instance.Spec.TLS.CaBundleSecretName)))
+				return ctrl.Result{}, nil
+			}
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.TLSInputReadyCondition,
 				condition.ErrorReason,
 				condition.SeverityWarning,
 				condition.TLSInputErrorMessage,
 				err.Error()))
-			return ctrlResult, err
-		} else if (ctrlResult != ctrl.Result{}) {
-			// Marking the condition as Unknown because we are not returining
-			// an err, but comparing the ctrlResult: this represents an in
-			// progress operation rather than something that failed
-			instance.Status.Conditions.MarkUnknown(
-				condition.TLSInputReadyCondition,
-				condition.RequestedReason,
-				condition.InputReadyWaitingMessage)
-			return ctrlResult, nil
+			return ctrl.Result{}, err
 		}
 		if hash != "" {
 			configVars[tls.CABundleKey] = env.SetValue(hash)
@@ -726,49 +720,28 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 	}
 
 	// Validate API service certs secrets
-	certsHash, ctrlResult, err := instance.Spec.TLS.API.ValidateCertSecrets(ctx, helper, instance.Namespace)
+	certsHash, err := instance.Spec.TLS.API.ValidateCertSecrets(ctx, helper, instance.Namespace)
 	if err != nil {
+		if k8s_errors.IsNotFound(err) {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.TLSInputReadyCondition,
+				condition.RequestedReason,
+				condition.SeverityInfo,
+				fmt.Sprintf(condition.TLSInputReadyWaitingMessage, err.Error())))
+			return ctrl.Result{}, nil
+		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.TLSInputReadyCondition,
 			condition.ErrorReason,
 			condition.SeverityWarning,
 			condition.TLSInputErrorMessage,
 			err.Error()))
-		return ctrlResult, err
-	} else if (ctrlResult != ctrl.Result{}) {
-		// Marking the condition as Unknown because we are not returining
-		// an err, but comparing the ctrlResult: this represents an in
-		// progress operation rather than something that failed
-		instance.Status.Conditions.MarkUnknown(
-			condition.TLSInputReadyCondition,
-			condition.RequestedReason,
-			condition.InputReadyWaitingMessage)
-		return ctrlResult, nil
+		return ctrl.Result{}, err
 	}
 	configVars[tls.TLSHashName] = env.SetValue(certsHash)
 	// all cert input checks out so report InputReady
 	instance.Status.Conditions.MarkTrue(condition.TLSInputReadyCondition, condition.InputReadyMessage)
 
-	//
-	// create hash over all the different input resources to identify if any those changed
-	// and a restart/recreate is required.
-	//
-	inputHash, hashChanged, err := r.createHashOfInputHashes(ctx, instance, configVars)
-	if err != nil {
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ServiceConfigReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.ServiceConfigReadyErrorMessage,
-			err.Error()))
-		return ctrl.Result{}, err
-	}
-	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
-	// Create Secrets - end
-
-	//
-	// TODO check when/if Init, Update, or Upgrade should/could be skipped
-	//
 	var serviceAnnotations map[string]string
 	// networks to attach to
 	serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.NetworkAttachments, helper)
@@ -791,9 +764,49 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		return ctrlResult, nil
 	}
 
+	// Generate service config
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv, memcached)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ServiceConfigReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.ServiceConfigReadyErrorMessage,
+			err.Error()))
+		r.Log.Info("Glance config is not Ready, requeueing...")
+		return glance.ResultRequeue, nil
+	}
+
+	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
 	//
 	// normal reconcile tasks
 	//
+
+	//
+	// create hash over all the different input resources to identify if any those changed
+	// and a restart/recreate is required.
+	//
+	inputHash, _, err := r.createHashOfInputHashes(instance, configVars)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.ServiceConfigReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.ServiceConfigReadyErrorMessage,
+			err.Error()))
+		return ctrl.Result{}, err
+	}
+	// At this point the config is generated and the inputHash is computed
+	// we can mark the ServiceConfigReady as True and rollout the new pods
+	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
+
+	// This is currently required because cleaner and pruner cronJobs
+	// mount the same pvc to clean data present in /var/lib/glance/image-cache
+	// TODO (fpantano) reference a Glance spec/proposal to move to a different
+	// approach
+	if len(instance.Spec.ImageCache.Size) > 0 {
+		privileged = true
+	}
 
 	// Define a new StatefuleSet object
 	deplDef, err := glanceapi.StatefulSet(instance,
@@ -801,7 +814,6 @@ func (r *GlanceAPIReconciler) reconcileNormal(ctx context.Context, instance *gla
 		GetServiceLabels(instance),
 		serviceAnnotations,
 		privileged,
-		imageConv,
 	)
 	if err != nil {
 		return ctrlResult, err
@@ -999,15 +1011,26 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		return err
 	}
 
+	endpointID, err := r.getEndpointID(ctx, instance)
+	if err != nil {
+		return err
+	}
+
 	databaseAccount := db.GetAccount()
 	dbSecret := db.GetSecret()
 
 	glanceEndpoints := glanceapi.GetGlanceEndpoints(instance.Spec.APIType)
+	endptName := instance.Name
+	if instance.Spec.APIType != glancev1.APISingle {
+		endptName = fmt.Sprintf("%s-api", instance.Name)
+	}
 	httpdVhostConfig := map[string]interface{}{}
 	for endpt := range glanceEndpoints {
 		endptConfig := map[string]interface{}{}
 		endptConfig["ServerName"] = fmt.Sprintf("glance-%s.%s.svc", endpt.String(), instance.Namespace)
+		endptConfig["ServerAlias"] = fmt.Sprintf("%s.%s.svc", endptName, instance.Namespace)
 		endptConfig["TLS"] = false // default TLS to false, and set it bellow to true if enabled
+		endptConfig["TimeOut"] = instance.Spec.APITimeout
 		if instance.Spec.TLS.API.Enabled(endpt) {
 			endptConfig["TLS"] = true
 			endptConfig["SSLCertificateFile"] = fmt.Sprintf("/etc/pki/tls/certs/%s.crt", endpt.String())
@@ -1033,6 +1056,12 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		"QuotaEnabled": instance.Spec.Quota,
 		"LogFile":      fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
 		"VHosts":       httpdVhostConfig,
+	}
+
+	// Only set EndpointID parameter when the Endpoint has been created and the
+	// associated ID is set in the keystoneapi CR
+	if len(endpointID) > 0 {
+		templateParameters["EndpointID"] = endpointID
 	}
 
 	// Configure the internal GlanceAPI to provide image location data, and the
@@ -1073,7 +1102,6 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 //
 // returns the hash, whether the hash changed (as a bool) and any error
 func (r *GlanceAPIReconciler) createHashOfInputHashes(
-	ctx context.Context,
 	instance *glancev1.GlanceAPI,
 	envVars map[string]env.Setter,
 ) (string, bool, error) {
@@ -1138,7 +1166,8 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 		// the registered endpoints with the new URL.
 		err = keystonev1.DeleteKeystoneEndpointWithName(ctx, helper, instance.Name, instance.Namespace)
 		if err != nil {
-			return glance.ResultRequeue, fmt.Errorf("Endpoint %s not found", instance.Name)
+			r.Log.Info(fmt.Sprintf("Endpoint %s not found", instance.Name))
+			return glance.ResultRequeue, nil
 		}
 		return ctrlResult, nil
 	}
@@ -1317,10 +1346,39 @@ func (r *GlanceAPIReconciler) deleteJob(
 	return ctrlResult, err
 }
 
+// getEndpointID - returns the endpointID associated to a keystone Endpoint
+func (r *GlanceAPIReconciler) getEndpointID(
+	ctx context.Context,
+	instance *glancev1.GlanceAPI,
+) (string, error) {
+	ep := &keystonev1.KeystoneEndpoint{}
+	epID := ""
+	epType := endpoint.EndpointInternal
+	// in case of split, the external API will point to its own keystone Endpoint
+	// instead of looking for a different API that might not exist or have issues
+	// we can't control here
+	if instance.Spec.APIType == glancev1.APIExternal {
+		epType = endpoint.EndpointPublic
+	}
+	err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}, ep)
+	if err != nil {
+		if k8s_errors.IsNotFound(err) {
+			// Just log the keystoneEndpoint CR does not exist so we have evidence
+			// in the operator output: it's not necessarily an error that should
+			// trigger a reconciliation loop
+			r.Log.Info(fmt.Sprintf("EndpointID not found for glanceAPI %s", instance.Name))
+		}
+		return epID, nil
+	}
+	if ep.Status.EndpointIDs != nil {
+		epID = ep.Status.EndpointIDs[string(epType)]
+	}
+	return epID, err
+}
+
 // glanceAPIRefresh - delete a StateFulSet when a configuration for a Forbidden
 // parameter happens: it might be required if we add / remove a backend (including
-// ceph) where imageConversion is enabled and a dedicated PVC is created using
-// statefulsets volume templates
+// ceph)
 func (r *GlanceAPIReconciler) glanceAPIRefresh(
 	ctx context.Context,
 	h *helper.Helper,

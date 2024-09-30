@@ -10,7 +10,6 @@ spec:
     template:
       databaseInstance: openstack
       serviceUser: glance
-      containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
       customServiceConfig: |
         [DEFAULT]
         enabled_backends = default_backend:rbd
@@ -27,23 +26,21 @@ spec:
           preserveJobs: false
           replicas: 1
       secret: osp-secret
-      storageClass: ""
-      storageRequest: 1G
-      imageCacheSize: 10G
-  extraMounts:
-    - name: v1
-      region: r1
-      extraVol:
-        - propagation:
-          - Glance
-          extraVolType: Ceph
-          volumes:
-          - name: ceph
-            projected:
-              sources:
-              - secret:
-                  name: ceph-client-conf
-          mounts:
-          - name: ceph
-            mountPath: "/etc/ceph"
-            readOnly: true
+      storage:
+        storageClass: ""
+        storageRequest: 1G
+      imageCache:
+        size: 2G
+      extraMounts:
+        - name: v1
+          region: r1
+          extraVol:
+            - extraVolType: Ceph
+              volumes:
+              - name: ceph
+                secret:
+                  secretName: ceph-conf-files
+              mounts:
+              - name: ceph
+                mountPath: "/etc/ceph"
+                readOnly: true

@@ -324,7 +324,7 @@ Where:
 ## How to test
 
 Assuming a given `GlanceAPI` instance has been scaled up, it is possible to
-perform a `per-staged` test and verify that `Pods` are able to see each other
+perform a `pre-staged` test and verify that `Pods` are able to see each other
 (or resolve them by `hostname`) and the request is properly `proxied` to the
 replica that owns the data in its staging directory.
 
@@ -364,7 +364,7 @@ to the node/pod/replica that owns the data.
 
 ```bash
 UUID=$(openstack image show $IMAGE_NAME -c id -f value)
-glance --os-image-url $replica image-import --import-method glance-direct $ID
+glance --os-image-url $replica image-import --import-method glance-direct $UUID
 ```
 - **IMAGE_NAME**: the name of the image box that will be backed by the imported
   data

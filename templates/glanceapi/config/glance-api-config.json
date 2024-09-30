@@ -4,20 +4,20 @@
       {
         "source": "/var/lib/config-data/default/00-config.conf",
         "dest": "/etc/glance/glance.conf.d/00-config.conf",
-        "owner": "glance",
+        "owner": "glance:glance",
         "perm": "0600"
       },
       {
         "source": "/var/lib/config-data/default/02-config.conf",
         "dest": "/etc/glance/glance.conf.d/02-config.conf",
-        "owner": "glance",
+        "owner": "glance:glance",
         "perm": "0600",
         "optional": true
       },
       {
         "source": "/var/lib/config-data/default/03-config.conf",
         "dest": "/etc/glance/glance.conf.d/03-config.conf",
-        "owner": "glance",
+        "owner": "glance:glance",
         "perm": "0640",
         "optional": true
       },
@@ -57,22 +57,6 @@
         "perm": "0755"
       },
       {
-        "source": "/var/lib/config-data/tls/certs/*",
-        "dest": "/etc/pki/tls/certs/",
-        "owner": "root",
-        "perm": "0640",
-        "optional": true,
-        "merge": true
-      },
-      {
-        "source": "/var/lib/config-data/tls/private/*",
-        "dest": "/etc/pki/tls/private/",
-        "owner": "root",
-        "perm": "0600",
-        "optional": true,
-        "merge": true
-      },
-      {
         "source": "/usr/local/bin/container-scripts/kolla_extend_start",
         "dest": "/usr/local/bin/kolla_extend_start",
         "owner": "root:root",
@@ -82,6 +66,16 @@
     "permissions": [
         {
             "path": "/var/log/glance",
+            "owner": "glance:glance",
+            "recurse": true
+        },
+        {
+            "path": "/var/lib/glance",
+            "owner": "glance:glance",
+            "recurse": true
+        },
+        {
+            "path": "/etc/glance/glance.conf.d",
             "owner": "glance:glance",
             "recurse": true
         }

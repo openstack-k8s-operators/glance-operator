@@ -54,10 +54,9 @@ spec:
       - args:
         - --single-child
         - --
-        - /usr/bin/tail
-        - -n+1
-        - -F
-        - /var/log/glance/glance-default-single.log
+        - /bin/sh
+        - -c
+        - /usr/bin/tail -n+1 -F /var/log/glance/glance-default-single.log 2>/dev/null
         volumeMounts:
         - mountPath: /var/log/glance
           name: logs
@@ -67,20 +66,15 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/sbin/httpd -DFOREGROUND
+        - /usr/local/bin/kolla_start
         volumeMounts:
-         - mountPath: /etc/httpd/conf/httpd.conf
+         - mountPath: /var/lib/config-data/default
            name: config-data
            readOnly: true
-           subPath: httpd.conf
-         - mountPath: /etc/httpd/conf.d/10-glance.conf
+         - mountPath: /var/lib/kolla/config_files/config.json
            name: config-data
            readOnly: true
-           subPath: 10-glance-httpd.conf
-         - mountPath: /etc/httpd/conf.d/ssl.conf
-           name: config-data
-           readOnly: true
-           subPath: ssl.conf
+           subPath: glance-httpd-config.json
          - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
            name: combined-ca-bundle
            readOnly: true
@@ -107,7 +101,7 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+        - /usr/local/bin/kolla_start
         volumeMounts:
          - mountPath: /var/lib/config-data/default
            name: config-data
@@ -168,7 +162,7 @@ kind: TestAssert
 namespaced: true
 commands:
   - script: |
-      template='{{index .status.apiEndpoint "default-internal"}}{{":"}}{{index .status.apiEndpoint "default-public"}}{{"\n"}}'
+      template='{{ index .status.apiEndpoint "default-internal" }}{{ ":" }}{{ index .status.apiEndpoint "default-public" }}'
       regex="https:\/\/glance-default-internal.$NAMESPACE.*:https:\/\/glance-default-public.$NAMESPACE.*"
       apiEndpoints=$(oc get -n $NAMESPACE Glance glance -o go-template="$template")
       matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")

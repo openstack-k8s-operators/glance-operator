@@ -41,11 +41,9 @@ func DBPurgeJob(
 	instance *glancev1.Glance,
 	cronSpec CronJobSpec,
 ) *batchv1.CronJob {
-	runAsUser := int64(0)
 	var config0644AccessMode int32 = 0644
-	var cronCommand string
 
-	cronCommand = fmt.Sprintf(
+	cronCommand := fmt.Sprintf(
 		"%s --config-dir /etc/glance/glance.conf.d db purge %d",
 		cronSpec.Command,
 		instance.Spec.DBPurge.Age,
@@ -77,7 +75,7 @@ func DBPurgeJob(
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					DefaultMode: &config0644AccessMode,
-					SecretName:  ServiceName + "-config-data",
+					SecretName:  instance.Name + "-config-data",
 				},
 			},
 		},
@@ -131,11 +129,9 @@ func DBPurgeJob(
 									Command: []string{
 										"/bin/bash",
 									},
-									Args:         args,
-									VolumeMounts: cronJobVolumeMounts,
-									SecurityContext: &corev1.SecurityContext{
-										RunAsUser: &runAsUser,
-									},
+									Args:            args,
+									VolumeMounts:    cronJobVolumeMounts,
+									SecurityContext: BaseSecurityContext(),
 								},
 							},
 							Volumes:            cronJobVolume,

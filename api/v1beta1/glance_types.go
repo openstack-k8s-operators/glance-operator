@@ -35,7 +35,7 @@ const (
 	APIEdge = "edge"
 )
 
-// GlanceSpec defines the desired state of Glance
+// GlanceSpecCore defines the desired state of Glance
 type GlanceSpecCore struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=glance
@@ -89,13 +89,8 @@ type GlanceSpecCore struct {
 	// /etc/<service>/<service>.conf.d directory as a custom config file.
 	CustomServiceConfigSecrets []string `json:"customServiceConfigSecrets,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	// StorageClass
-	StorageClass string `json:"storageClass,omitempty"`
-
-	// +kubebuilder:validation:Required
-	// StorageRequest
-	StorageRequest string `json:"storageRequest"`
+	// Storage -
+	Storage Storage `json:"storage,omitempty"`
 
 	// +kubebuilder:validation:Required
 	// +kubebuilder:default={}
@@ -125,6 +120,12 @@ type GlanceSpecCore struct {
 	// +kubebuilder:validation:Optional
 	// DBPurge parameters -
 	DBPurge DBPurge `json:"dbPurge,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=60
+	// +kubebuilder:validation:Minimum=1
+	// Default APITimeout for HAProxy and Apache, defaults to 60 seconds
+	APITimeout int `json:"apiTimeout"`
 }
 
 // GlanceSpec defines the desired state of Glance

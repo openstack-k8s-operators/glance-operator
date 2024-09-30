@@ -2,19 +2,7 @@ resources:
 - ../backends/base/openstack
 
 patches:
-- target:
-    kind: OpenStackControlPlane
-  patch: |-
-    - op: replace
-      path: /spec/glance/template/customServiceConfig
-      value: |
-        [DEFAULT]
-        enabled_backends = default_backend:file
-        [image_format]
-        disk_formats=raw,iso
-        [glance_store]
-        default_backend = default_backend
-        [default_backend]
-        filesystem_store_datadir = /var/lib/glance/images/
+- path: disk_format.yaml
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

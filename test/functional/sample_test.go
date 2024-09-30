@@ -19,8 +19,8 @@ import (
 	"os"
 	"path/filepath"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
+	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -70,12 +70,6 @@ var _ = Describe("Samples", func() {
 	When("glance_v1beta1_glance.yaml sample is applied", func() {
 		It("Glance Sample is created - Empty", func() {
 			name := CreateGlanceFromSample("glance_v1beta1_glance.yaml", glanceTest.Instance)
-			GetGlance(name)
-		})
-	})
-	When("glance_v1beta1_glance_quota.yaml sample is applied", func() {
-		It("Glance Sample is created - Quota", func() {
-			name := CreateGlanceFromSample("quotas/glance_v1beta1_glance_quota.yaml", glanceTest.Instance)
 			GetGlance(name)
 		})
 	})

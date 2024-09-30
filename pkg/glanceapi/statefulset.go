@@ -27,20 +27,19 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 
+	"sort"
+
 	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
-	"sort"
 )
 
 const (
-	// GlanceAPIServiceCommand -
-	GlanceAPIServiceCommand = "/usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start"
-	// GlanceAPIHttpdCommand -
-	GlanceAPIHttpdCommand = "/usr/sbin/httpd -DFOREGROUND"
+	// GlanceServiceCommand -
+	GlanceServiceCommand = "/usr/local/bin/kolla_start"
 )
 
 // StatefulSet func
@@ -50,22 +49,20 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
-	imageConv bool,
 ) (*appsv1.StatefulSet, error) {
-	runAsUser := int64(0)
-	var config0644AccessMode int32 = 0644
-
+	userID := glance.GlanceUID
 	startupProbe := &corev1.Probe{
 		FailureThreshold: 6,
 		PeriodSeconds:    10,
 	}
 	livenessProbe := &corev1.Probe{
-		PeriodSeconds:       3,
-		InitialDelaySeconds: 3,
+		TimeoutSeconds:      30,
+		PeriodSeconds:       30,
+		InitialDelaySeconds: 5,
 	}
 	readinessProbe := &corev1.Probe{
-		TimeoutSeconds:      5,
-		PeriodSeconds:       5,
+		TimeoutSeconds:      30,
+		PeriodSeconds:       30,
 		InitialDelaySeconds: 5,
 	}
 
@@ -74,9 +71,11 @@ func StatefulSet(
 	//
 
 	port := int32(glance.GlancePublicPort)
+	glanceURIScheme := corev1.URISchemeHTTP
 	tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
 
-	if instance.Spec.APIType == glancev1.APIInternal {
+	if instance.Spec.APIType == glancev1.APIInternal ||
+		instance.Spec.APIType == glancev1.APIEdge {
 		port = int32(glance.GlanceInternalPort)
 		tlsEnabled = instance.Spec.TLS.API.Enabled(service.EndpointInternal)
 	}
@@ -93,6 +92,7 @@ func StatefulSet(
 	if tlsEnabled {
 		livenessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
 		readinessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
+		glanceURIScheme = corev1.URISchemeHTTPS
 	}
 	startupProbe.Exec = &corev1.ExecAction{
 		Command: []string{
@@ -104,50 +104,13 @@ func StatefulSet(
 	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
 	envVars["GLANCE_DOMAIN"] = env.SetValue(instance.Status.Domain)
+	envVars["URISCHEME"] = env.SetValue(string(glanceURIScheme))
 
-	apiVolumes := []corev1.Volume{
-		{
-			Name: "config-data-custom",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
-					SecretName:  instance.Name + "-config-data",
-				},
-			},
-		},
-	}
-	// Append LogVolume to the apiVolumes: this will be used to stream
-	// logging
-	apiVolumes = append(apiVolumes, glance.GetLogVolume()...)
-	apiVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "glance-api-config.json",
-			ReadOnly:  true,
-		},
-	}
-
-	// Append LogVolume to the apiVolumes: this will be used to stream logging
-	apiVolumeMounts = append(apiVolumeMounts, glance.GetLogVolumeMount()...)
-
-	// Append scripts
-	apiVolumes = append(apiVolumes, glance.GetScriptVolume()...)
-	apiVolumeMounts = append(apiVolumeMounts, glance.GetScriptVolumeMount()...)
-
-	// If cache is provided, we expect the main glance_controller to request a
-	// PVC that should be used for that purpose (according to ImageCacheSize)
-	if len(instance.Spec.ImageCache.Size) > 0 {
-		apiVolumeMounts = append(apiVolumeMounts, glance.GetCacheVolumeMount()...)
-	}
-	// If Ceph has been set as a backend for this GlanceAPI, build and append
-	// an imageConv PVC
-	if imageConv && instance.Spec.APIType == glancev1.APIExternal {
-		apiVolumeMounts = append(apiVolumeMounts, glance.GetImageConvVolumeMount()...)
-	}
+	apiVolumes := glance.GetAPIVolumes(instance.Name)
+	apiVolumeMounts := glance.GetAPIVolumeMount(instance.Spec.ImageCache.Size)
 
 	extraVolPropagation := append(glance.GlanceAPIPropagation,
-		storage.PropagationType(glance.GetGlanceAPIName(instance.Name)))
+		storage.PropagationType(instance.APIName()))
 
 	httpdVolumeMount := glance.GetHttpdVolumeMount()
 
@@ -196,6 +159,8 @@ func StatefulSet(
 	if instance.Spec.APIType != glancev1.APISingle {
 		stsName = fmt.Sprintf("%s-api", instance.Name)
 	}
+
+	LogFile := string(glance.GlanceLogPath + instance.Name + ".log")
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      stsName,
@@ -214,6 +179,9 @@ func StatefulSet(
 					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
+					SecurityContext: &corev1.PodSecurityContext{
+						FSGroup: &userID,
+					},
 					ServiceAccountName: instance.Spec.ServiceAccount,
 					// When using Cinder we run as privileged, but also some
 					// commands need to be run on the host using nsenter (eg:
@@ -229,21 +197,18 @@ func StatefulSet(
 							Args: []string{
 								"--single-child",
 								"--",
-								"/usr/bin/tail",
-								"-n+1",
-								"-F",
-								string(glance.GlanceLogPath + instance.Name + ".log"),
+								"/bin/sh",
+								"-c",
+								"/usr/bin/tail -n+1 -F " + LogFile + " 2>/dev/null",
 							},
-							Image: instance.Spec.ContainerImage,
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser: &runAsUser,
-							},
-							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts:   glance.GetLogVolumeMount(),
-							Resources:      instance.Spec.Resources,
-							StartupProbe:   startupProbe,
-							ReadinessProbe: readinessProbe,
-							LivenessProbe:  livenessProbe,
+							Image:           instance.Spec.ContainerImage,
+							SecurityContext: glance.BaseSecurityContext(),
+							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts:    glance.GetLogVolumeMount(),
+							Resources:       instance.Spec.Resources,
+							StartupProbe:    startupProbe,
+							ReadinessProbe:  readinessProbe,
+							LivenessProbe:   livenessProbe,
 						},
 						{
 							Name: glance.ServiceName + "-httpd",
@@ -255,18 +220,16 @@ func StatefulSet(
 								"--",
 								"/bin/bash",
 								"-c",
-								string(GlanceAPIHttpdCommand),
+								string(GlanceServiceCommand),
 							},
-							Image: instance.Spec.ContainerImage,
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser: &runAsUser,
-							},
-							Env:            env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts:   httpdVolumeMount,
-							Resources:      instance.Spec.Resources,
-							StartupProbe:   startupProbe,
-							ReadinessProbe: readinessProbe,
-							LivenessProbe:  livenessProbe,
+							Image:           instance.Spec.ContainerImage,
+							SecurityContext: glance.HttpdSecurityContext(),
+							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							VolumeMounts:    httpdVolumeMount,
+							Resources:       instance.Spec.Resources,
+							StartupProbe:    startupProbe,
+							ReadinessProbe:  readinessProbe,
+							LivenessProbe:   livenessProbe,
 						},
 						{
 							Name: glance.ServiceName + "-api",
@@ -278,17 +241,15 @@ func StatefulSet(
 								"--",
 								"/bin/bash",
 								"-c",
-								string(GlanceAPIServiceCommand),
+								string(GlanceServiceCommand),
 							},
-							Image: instance.Spec.ContainerImage,
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser:  &runAsUser,
-								Privileged: &privileged,
-							},
-							Env: env.MergeEnvs([]corev1.EnvVar{}, envVars),
+							Image:           instance.Spec.ContainerImage,
+							SecurityContext: glance.APISecurityContext(userID, privileged),
+							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts: append(glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
 								privileged,
+								instance.Spec.Storage.External,
 								instance.Spec.ExtraMounts,
 								extraVolPropagation),
 								apiVolumeMounts...,
@@ -303,26 +264,21 @@ func StatefulSet(
 			},
 		},
 	}
-	localPvc, err := glance.GetPvc(instance, labels, glance.PvcLocal)
-	if err != nil {
-		return statefulset, err
-	}
-	statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
+	var err error
+	if !instance.Spec.Storage.External {
+		localPvc, err := glance.GetPvc(instance, labels, glance.PvcLocal)
+		if err != nil {
+			return statefulset, err
+		}
+		statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
 
-	if len(instance.Spec.ImageCache.Size) > 0 {
-		cachePvc, err := glance.GetPvc(instance, labels, glance.PvcCache)
-		if err != nil {
-			return statefulset, err
+		if len(instance.Spec.ImageCache.Size) > 0 {
+			cachePvc, err := glance.GetPvc(instance, labels, glance.PvcCache)
+			if err != nil {
+				return statefulset, err
+			}
+			statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, cachePvc)
 		}
-		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, cachePvc)
-	}
-	// If Ceph is defined as a backend, each Pod should have its own imageConv RWO PVC
-	if imageConv && instance.Spec.APIType == glancev1.APIExternal {
-		imgConvPvc, err := glance.GetPvc(instance, labels, glance.PvcImageConv)
-		if err != nil {
-			return statefulset, err
-		}
-		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, imgConvPvc)
 	}
 
 	statefulset.Spec.Template.Spec.Volumes = append(glance.GetVolumes(

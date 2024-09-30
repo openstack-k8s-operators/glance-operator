@@ -19,10 +19,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
-
-	"time"
+	"k8s.io/apimachinery/pkg/types"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
@@ -39,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // fields to index to reconcile when change
@@ -66,6 +67,41 @@ type conditionUpdater interface {
 	MarkTrue(t condition.Type, messageFormat string, messageArgs ...interface{})
 }
 
+// verifyServiceSecret - ensures that the Secret object exists and the expected
+// fields are in the Secret. It also sets a hash of the values of the expected
+// fields passed as input.
+func verifyServiceSecret(
+	ctx context.Context,
+	secretName types.NamespacedName,
+	expectedFields []string,
+	reader client.Reader,
+	conditionUpdater conditionUpdater,
+	requeueTimeout time.Duration,
+	envVars *map[string]env.Setter,
+) (ctrl.Result, error) {
+
+	hash, res, err := secret.VerifySecret(ctx, secretName, expectedFields, reader, requeueTimeout)
+	if err != nil {
+		conditionUpdater.Set(condition.FalseCondition(
+			condition.InputReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.InputReadyErrorMessage,
+			err.Error()))
+		return res, err
+	} else if (res != ctrl.Result{}) {
+		log.FromContext(ctx).Info(fmt.Sprintf("OpenStack secret %s not found", secretName))
+		conditionUpdater.Set(condition.FalseCondition(
+			condition.InputReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.InputReadyWaitingMessage))
+		return res, nil
+	}
+	(*envVars)[secretName.Name] = env.SetValue(hash)
+	return ctrl.Result{}, nil
+}
+
 // ensureNAD - common function called in the glance controllers that GetNAD based
 // on the string[] passed as input and produces the required Annotation for the
 // glanceAPI component
@@ -84,13 +120,14 @@ func ensureNAD(
 		_, err = nad.GetNADWithName(ctx, helper, netAtt, helper.GetBeforeObject().GetNamespace())
 		if err != nil {
 			if k8s_errors.IsNotFound(err) {
+				helper.GetLogger().Info(fmt.Sprintf("network-attachment-definition %s not found", netAtt))
 				conditionUpdater.Set(condition.FalseCondition(
 					condition.NetworkAttachmentsReadyCondition,
 					condition.RequestedReason,
 					condition.SeverityInfo,
 					condition.NetworkAttachmentsReadyWaitingMessage,
 					netAtt))
-				return serviceAnnotations, ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("network-attachment-definition %s not found", netAtt)
+				return serviceAnnotations, glance.ResultRequeue, nil
 			}
 			conditionUpdater.Set(condition.FalseCondition(
 				condition.NetworkAttachmentsReadyCondition,
@@ -136,7 +173,7 @@ func GenerateConfigsGeneric(
 	// TODO: Scripts have no reason to be secrets, should move to configmap
 	if scripts {
 		cms = append(cms, util.Template{
-			Name:         fmt.Sprintf("%s-scripts", instance.GetName()),
+			Name:         glance.ServiceName + "-scripts",
 			Namespace:    instance.GetNamespace(),
 			Type:         util.TemplateTypeScripts,
 			InstanceType: instance.GetObjectKind().GroupVersionKind().Kind,
@@ -152,7 +189,7 @@ func GetHeadlessService(
 	helper *helper.Helper,
 	instance *glancev1.GlanceAPI,
 	serviceLabels map[string]string,
-) (ctrl.Result, error) {
+) (ctrl.Result, string, error) {
 
 	endpointName := instance.Name
 	// The endpointName for headless services **must** match with:
@@ -186,7 +223,7 @@ func GetHeadlessService(
 			condition.SeverityWarning,
 			condition.ExposeServiceReadyErrorMessage,
 			err.Error()))
-		return ctrl.Result{}, err
+		return ctrl.Result{}, endpointName, err
 	}
 
 	svc.AddAnnotation(map[string]string{
@@ -209,17 +246,17 @@ func GetHeadlessService(
 			condition.ExposeServiceReadyErrorMessage,
 			err.Error()))
 
-		return ctrlResult, err
+		return ctrlResult, endpointName, err
 	} else if (ctrlResult != ctrl.Result{}) {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ExposeServiceReadyCondition,
 			condition.RequestedReason,
 			condition.SeverityInfo,
 			condition.ExposeServiceReadyRunningMessage))
-		return ctrlResult, nil
+		return ctrlResult, endpointName, nil
 	}
 
-	return ctrlResult, nil
+	return ctrlResult, endpointName, nil
 }
 
 // GetPvcListWithLabel -
@@ -251,7 +288,7 @@ func GetServiceLabels(
 	return map[string]string{
 		common.AppSelector:       glance.ServiceName,
 		common.ComponentSelector: glance.Component,
-		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, glance.GetGlanceAPIName(instance.Name), instance.Spec.APIType),
+		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
 		common.OwnerSelector:     instance.Name,
 	}
 }

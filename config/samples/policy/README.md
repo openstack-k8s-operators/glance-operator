@@ -3,7 +3,8 @@
 This directory includes an example of `policy.yaml` that can be injected to the
 `GlanceAPI` service and overrides the default behavior. As the example shows,
 a `policy.yaml` can be added to the Pod via `extraMounts`, which is valid
-even when the volume is provided via the `OpenStackControlPlane` CR.
+both locally and when the volume is provided via the global `OpenStackControlPlane`
+CR.
 
 ## Create the ConfigMap where policy.yaml is stored
 
@@ -15,6 +16,9 @@ When the file is ready, create a `ConfigMap` with the following command:
 ```
 oc -n <namespace> create configmap glance-policy --from-file=path/to/policy.yaml
 ```
+
+This step can be skipped in the example provided, as the ConfigMap is automatically
+created with the OpenStackControlPlane CR.
 
 ## Enable the oslo setting via customServiceConfig
 
@@ -53,6 +57,13 @@ and the mountpoint should match the `customServiceConfig` override definition:
               mountPath: /etc/glance/policy.d
               readOnly: true
 ...
+```
+
+It is possible to create the `glance-policy` configMap along with the `OpenStackControlPlane` CR.
+To deploy the `policy.yaml` sample provided, run the following command:
+
+```bash
+oc -n <namespace> kustomize --load-restrictor LoadRestrictionsNone ../policy | oc apply -f -
 ```
 
 ## Test Glance policies

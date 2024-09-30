@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gophercloud/gophercloud"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -50,7 +51,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	common_rbac "github.com/openstack-k8s-operators/lib-common/modules/common/rbac"
-	oko_secret "github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	"github.com/openstack-k8s-operators/lib-common/modules/openstack"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
@@ -71,23 +71,23 @@ type GlanceReconciler struct {
 
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glances,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=glance.openstack.org,resources=glances/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=glance.openstack.org,resources=glances/finalizers,verbs=update
+//+kubebuilder:rbac:groups=glance.openstack.org,resources=glances/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update
+// +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;create;update;delete;watch;patch
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbdatabases,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbaccounts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbaccounts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbaccounts/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups=memcached.openstack.org,resources=memcacheds,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneservices,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=k8s.cni.cncf.io,resources=network-attachment-definitions,verbs=get;list;watch
 // service account, role, rolebinding
-// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update
-// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles,verbs=get;list;watch;create;update
-// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=rolebindings,verbs=get;list;watch;create;update
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=rolebindings,verbs=get;list;watch;create;update;patch
 // glance service account permissions that are needed to grant permission to the above
 // +kubebuilder:rbac:groups="security.openshift.io",resourceNames=anyuid;privileged,resources=securitycontextconstraints,verbs=use
 // +kubebuilder:rbac:groups="",resources=pods,verbs=create;delete;get;list;patch;update;watch
@@ -214,7 +214,7 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	memcachedFn := func(ctx context.Context, o client.Object) []reconcile.Request {
+	memcachedFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
 
 		// get all Glance CRs
@@ -269,7 +269,7 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *GlanceReconciler) findObjectsForSrc(ctx context.Context, src client.Object) []reconcile.Request {
 	requests := []reconcile.Request{}
 
-	l := log.FromContext(context.Background()).WithName("Controllers").WithName("Glance")
+	l := log.FromContext(ctx).WithName("Controllers").WithName("Glance")
 
 	for _, field := range glanceWatchFields {
 		crList := &glancev1.GlanceList{}
@@ -277,7 +277,7 @@ func (r *GlanceReconciler) findObjectsForSrc(ctx context.Context, src client.Obj
 			FieldSelector: fields.OneTermEqualSelector(field, src.GetName()),
 			Namespace:     src.GetNamespace(),
 		}
-		err := r.List(context.TODO(), crList, listOps)
+		err := r.List(ctx, crList, listOps)
 		if err != nil {
 			return []reconcile.Request{}
 		}
@@ -348,7 +348,7 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	_, err = keystonev1.GetKeystoneAPI(ctx, helper, instance.Namespace, map[string]string{})
 
 	if err == nil && instance.IsQuotaEnabled() {
-		err = r.registeredLimitsDelete(ctx, helper, instance, instance.GetQuotaLimits())
+		err = r.registeredLimitsDelete(ctx, helper, instance)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -404,13 +404,6 @@ func (r *GlanceReconciler) reconcileInit(
 	//
 	// create Keystone service and users - https://docs.openstack.org/Glance/latest/install/install-rdo.html#configure-user-and-endpoints
 	//
-	_, _, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
-	if err != nil {
-		if k8s_errors.IsNotFound(err) {
-			return glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
-		}
-		return ctrl.Result{}, err
-	}
 
 	ksSvcSpec := keystonev1.KeystoneServiceSpec{
 		ServiceType:        glance.ServiceType,
@@ -563,25 +556,21 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
 	//
-	ospSecret, hash, err := oko_secret.GetSecret(ctx, helper, instance.Spec.Secret, instance.Namespace)
-	if err != nil {
-		if k8s_errors.IsNotFound(err) {
-			instance.Status.Conditions.Set(condition.FalseCondition(
-				condition.InputReadyCondition,
-				condition.RequestedReason,
-				condition.SeverityInfo,
-				condition.InputReadyWaitingMessage))
-			return glance.ResultRequeue, fmt.Errorf("OpenStack secret %s not found", instance.Spec.Secret)
-		}
-		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.InputReadyCondition,
-			condition.ErrorReason,
-			condition.SeverityWarning,
-			condition.InputReadyErrorMessage,
-			err.Error()))
-		return ctrl.Result{}, err
+	ctrlResult, err := verifyServiceSecret(
+		ctx,
+		types.NamespacedName{Namespace: instance.Namespace, Name: instance.Spec.Secret},
+		[]string{
+			instance.Spec.PasswordSelectors.Service,
+		},
+		helper.GetClient(),
+		&instance.Status.Conditions,
+		glance.NormalDuration,
+		&configVars,
+	)
+	if (err != nil || ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
 	}
-	configVars[ospSecret.Name] = env.SetValue(hash)
+
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
 
@@ -607,7 +596,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 
 	//
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels, db, memcached)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars, serviceLabels, db)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -652,7 +641,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	}
 
 	// remove finalizers from unused MariaDBAccount records
-	err = mariadbv1.DeleteUnusedMariaDBAccountFinalizers(ctx, helper, instance.Name, instance.Spec.DatabaseAccount, instance.Namespace)
+	err = mariadbv1.DeleteUnusedMariaDBAccountFinalizers(ctx, helper, glance.DatabaseName, instance.Spec.DatabaseAccount, instance.Namespace)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -854,8 +843,16 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	}
 
 	// Inherit the values required for PVC creation from the top-level CR
-	apiSpec.GlanceAPITemplate.StorageRequest = instance.Spec.StorageRequest
-	apiSpec.GlanceAPITemplate.StorageClass = instance.Spec.StorageClass
+	if apiSpec.GlanceAPITemplate.Storage.StorageRequest == "" {
+		apiSpec.GlanceAPITemplate.Storage.StorageRequest = instance.Spec.Storage.StorageRequest
+	}
+	if apiSpec.GlanceAPITemplate.Storage.StorageClass == "" {
+		apiSpec.GlanceAPITemplate.Storage.StorageClass = instance.Spec.Storage.StorageClass
+	}
+	if !apiSpec.GlanceAPITemplate.Storage.External {
+		apiSpec.GlanceAPITemplate.Storage.External = instance.Spec.Storage.External
+	}
+
 	apiSpec.MemcachedInstance = memcached.Name
 	// Make sure to inject the ContainerImage passed by the OpenStackVersions
 	// resource to all the underlying instances and rollout a new StatefulSet
@@ -868,6 +865,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	if instance.Spec.KeystoneEndpoint == apiName {
 		apiAnnotations[glance.KeystoneEndpoint] = "true"
 	}
+	// Add the API name to the GlanceAPI instance as a label
+	serviceLabels[glancev1.APINameLabel] = apiName
 	glanceStatefulset := &glancev1.GlanceAPI{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        fmt.Sprintf("%s-%s-%s", instance.Name, apiName, apiType),
@@ -876,6 +875,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 			Namespace:   instance.Namespace,
 		},
 	}
+	defer delete(serviceLabels, glancev1.APINameLabel)
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, glanceStatefulset, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
@@ -922,7 +922,6 @@ func (r *GlanceReconciler) generateServiceConfig(
 	envVars *map[string]env.Setter,
 	serviceLabels map[string]string,
 	db *mariadbv1.Database,
-	memcached *memcachedv1.Memcached,
 ) error {
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), serviceLabels)
 
@@ -984,7 +983,8 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 	if err != nil {
 		return err
 	}
-	o, _, err := glancev1.GetAdminServiceClient(ctx, h, keystoneAPI)
+	scope := &gophercloud.AuthScope{System: true}
+	o, _, err := keystonev1.GetScopedAdminServiceClient(ctx, h, keystoneAPI, scope)
 	if err != nil {
 		return err
 	}
@@ -1047,7 +1047,6 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 	ctx context.Context,
 	h *helper.Helper,
 	instance *glancev1.Glance,
-	quota map[string]int,
 ) error {
 	// get admin
 	var err error
@@ -1055,7 +1054,8 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 	if err != nil {
 		return err
 	}
-	o, _, err := glancev1.GetAdminServiceClient(ctx, h, keystoneAPI)
+	scope := &gophercloud.AuthScope{System: true}
+	o, _, err := keystonev1.GetScopedAdminServiceClient(ctx, h, keystoneAPI, scope)
 	if err != nil {
 		return err
 	}
@@ -1089,7 +1089,7 @@ func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glanc
 		if glance.GetOwningGlanceName(&glanceAPI) != instance.Name {
 			continue
 		}
-		apiName := glance.GetGlanceAPIName(glanceAPI.Name)
+		apiName := glanceAPI.APIName()
 		// Simply return if the apiName doesn't match the existing pattern, log but do not
 		// raise an error
 		if apiName == "" {
@@ -1214,7 +1214,7 @@ func (r *GlanceReconciler) checkGlanceAPIsGeneration(
 	listOpts := []client.ListOption{
 		client.InNamespace(instance.Namespace),
 	}
-	if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
+	if err := r.Client.List(ctx, glances, listOpts...); err != nil {
 		r.Log.Error(err, "Unable to retrieve Glance CRs %w")
 		return false, err
 	}

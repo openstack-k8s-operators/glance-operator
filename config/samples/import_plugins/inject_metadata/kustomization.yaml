@@ -1,7 +1,8 @@
 resources:
-- ../../layout/base
+- ../../backends/base/openstack
 
 patches:
-- path: ./inject_metadata.yaml
+- path: inject_metadata.yaml
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

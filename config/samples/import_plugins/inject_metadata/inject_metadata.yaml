@@ -1,13 +1,32 @@
 # Inject inject_metadata config
-apiVersion: glance.openstack.org/v1beta1
-kind: Glance
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
 metadata:
-  name: glance
+  name: openstack
 spec:
-  serviceUser: glance
-  customServiceConfig: |
-    [image_import_opts]
-    image_import_plugins = [inject_image_metadata]
-    [inject_metadata_properties]
-    ignore_user_roles = admin,user1
-    inject = "property1":"value1","property2":"value2"
+  glance:
+    template:
+      databaseInstance: openstack
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:swift
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        swift_store_create_container_on_put = True
+        swift_store_auth_version = 3
+        swift_store_auth_address = {{ .KeystoneInternalURL }}
+        swift_store_endpoint_type = internalURL
+        swift_store_user = service:glance
+        swift_store_key = {{ .ServicePassword }}
+        [image_import_opts]
+        image_import_plugins = [inject_image_metadata]
+        [inject_metadata_properties]
+        ignore_user_roles = admin,user1
+        inject = "property1":"value1","property2":"value2"
+      glanceAPIs:
+        default:
+          replicas: 1
+      secret: osp-secret
+      storage:
+        storageRequest: 1G
