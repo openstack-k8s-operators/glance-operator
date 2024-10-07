@@ -278,7 +278,7 @@ spec:
     rbd_store_ceph_conf = /etc/ceph/ceph.conf
     store_description = "RBD backend"
     rbd_store_pool = images
-    rbd_store_user = openstackcustomServiceConfig: |
+    rbd_store_user = openstack
   databaseInstance: openstack
   databaseUser: glance
   keystoneEndpoint: central
@@ -337,10 +337,40 @@ spec:
 In the example above, all the `GlanceAPI` instances share the same configuration,
 which is inherited by the main `customServiceConfig`, while`extraMounts` are
 added to connect each instance to a different Ceph cluster.
-For each instance it's possible to configure the `layout` (split vs single)
-according to a given backend, but note that `webhooks` prevent any update to the
-defined layout.
+For each instance, you can configure the layout parameter (either split or
+single) based on the specific backend requirements. However, keep in mind that
+webhooks will prevent any modifications to the layout after it's been set.
 
+It's also possible to deploy multiple glanceAPI services within the same
+availability zone (AZ) to handle different workloads. Here's an example
+configuration:
+
+```
+  keystoneEndpoint: api0
+  glanceAPIs:
+    api0:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:rbd
+      replicas: 1
+      type: split
+    api1:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:swift
+      replicas: 1
+      type: split
+```
+
+In this setup:
+
+* api0 is registered in the Keystone catalog and used as the default endpoint
+  for CLI operations.
+* api1, while not the default, remains an active API that can still be utilized
+  for image uploads by specifying the `--os-image-url` parameter.
+
+Switching the Keystone catalog's active API is straightforward and can be done
+by updating the `keystoneEndpoint` parameter.
 
 ## Manage KeystoneEndpoint
 
@@ -618,6 +648,7 @@ api2
 
 num_pvc = [(3 + 3) * 3] * 1 = 18
 storage_size = 3 * [(30 + 20) * 3] = 450G
+```
 
 We can conclude that **150G** is required for each API: given we have 3 APIs the
 total number is **450G**.
