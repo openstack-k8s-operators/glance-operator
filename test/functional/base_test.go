@@ -47,6 +47,14 @@ func GetGlanceAPI(name types.NamespacedName) *glancev1.GlanceAPI {
 	return instance
 }
 
+func GetCronJob(name types.NamespacedName) *batchv1.CronJob {
+	cron := &batchv1.CronJob{}
+	Eventually(func(g Gomega) {
+		g.Expect(k8sClient.Get(ctx, name, cron)).Should(Succeed())
+	}, timeout, interval).Should(Succeed())
+	return cron
+}
+
 func GlanceConditionGetter(name types.NamespacedName) condition.Conditions {
 	instance := GetGlance(name)
 	return instance.Status.Conditions
