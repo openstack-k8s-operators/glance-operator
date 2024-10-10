@@ -1,0 +1,7 @@
+resources:
+- ../base
+
+patches:
+- path: glance_v1beta1_glance.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
