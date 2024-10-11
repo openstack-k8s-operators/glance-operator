@@ -1154,7 +1154,8 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 	// If the parent controller didn't set the annotation, the current glanceAPIs
 	// shouldn't register the endpoints in keystone
 	if len(instance.ObjectMeta.Annotations) == 0 ||
-		instance.ObjectMeta.Annotations[glance.KeystoneEndpoint] != "true" {
+		instance.ObjectMeta.Annotations[glance.KeystoneEndpoint] != "true" ||
+		*instance.Spec.Replicas == 0 {
 		// Mark the KeystoneEndpointReadyCondition as True because there's nothing
 		// to do here
 		instance.Status.Conditions.MarkTrue(
