@@ -19,6 +19,8 @@ spec:
   glanceAPIs:
     default:
       replicas: 1
+      imageCache:
+        size: 2G
   storage:
     storageClass: local-storage
     storageRequest: 10G
