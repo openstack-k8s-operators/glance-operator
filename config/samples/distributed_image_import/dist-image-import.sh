@@ -71,6 +71,10 @@ $glance --os-image-url "http://${REPLICA}""1.$DOMAIN:9292" image-import --import
 $glance image-list
 status=$($glance image-show "$ID" | awk '/status/{print $4}')
 printf "Image Status: %s\n" "$status"
+
+# Stage 5 - Clean up images
+openstack image list -c ID -f value | xargs -n 1 openstack image delete
+
 if [[ $status == "active" ]]; then
     exit 0
 fi

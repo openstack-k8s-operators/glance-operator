@@ -21,6 +21,8 @@
 #
 #    export PASSWORD=12345678
 
+set -x
+
 TIME=3
 CACHE_TIME=6
 DOMAIN=${DOMAIN:-"glance-default-single.openstack.svc"}
@@ -29,7 +31,6 @@ IMAGE_NAME="myimage"
 KEYSTONE=$(awk '/auth_url/ {print $2}' "/etc/openstack/clouds.yaml")
 ADMIN_PWD=${1:-12345678}
 ADMIN_USER=${ADMIN_USER:-"admin"}
-DEBUG=0
 
 # this method uses distributed image import and relies on the glance cli
 glance="glance --os-auth-url ${KEYSTONE} \
@@ -42,7 +43,7 @@ glance="glance --os-auth-url ${KEYSTONE} \
 exec 0<&-
 
 # Build a dodgy image
-echo This is a dodgy image > "${IMAGE_NAME}"
+echo This is a dodgy image > $HOME/"${IMAGE_NAME}"
 
 # Stage 0 - Delete any pre-existing image
 openstack image list -c ID -f value | xargs -n 1 openstack image delete
@@ -67,6 +68,7 @@ $glance --verbose image-create \
     --container-format bare \
     --name "${IMAGE_NAME}" \
     --file myimage
+sleep "$TIME"
 ID=$($glance image-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
 echo "Image ID: $ID"
 sleep "$TIME"
