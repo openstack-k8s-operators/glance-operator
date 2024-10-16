@@ -5,6 +5,8 @@ github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/dprince/lib-common/modules/storage v0.0.0-20241016011132-e3abf73cc644 h1:umzismrJy8S9aJ3dgKG4k29tznudNkyGWlVSW64FKG4=
+github.com/dprince/lib-common/modules/storage v0.0.0-20241016011132-e3abf73cc644/go.mod h1:cGynoLGY9NfyIeWXI3zZ+hgZdHF3SUi8ht5ygZ8CmhI=
 github.com/emicklei/go-restful/v3 v3.11.2 h1:1onLa9DcsMYO9P+CXaL0dStDqQ2EHHXLiz+BtnqkLAU=
 github.com/emicklei/go-restful/v3 v3.11.2/go.mod h1:6n3XBCmQQb25CM2LCACGz8ukIrRry+4bhvbpWn3mrbc=
 github.com/evanphx/json-patch v5.6.0+incompatible h1:jBYDEEiFBPxA0v50tFdvOzQQTCvpL6mnFh5mB2/l16U=
@@ -76,8 +78,6 @@ github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094 h1:J1wuGhVxpsHykZBa6
 github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094/go.mod h1:CxgbWAlvu2iQB0UmKTtRu1YfepRg1/vJ64n2DlIEVz4=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.4.1-0.20241007071524-66e6544525a3 h1:uPyxfs2VRWpaaDfPZJfGZbUci1EYfTjiQF4krjrE88A=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.4.1-0.20241007071524-66e6544525a3/go.mod h1:EKfyFMU2brJYqR4M2Hwfo5ZLBQxAJXAYfHjpdqX6N5g=
-github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20241007071524-66e6544525a3 h1:FJxpNfYdjyLMb1djDeGK/fzBHnfOySTCM2BwkZ+2paA=
-github.com/openstack-k8s-operators/lib-common/modules/storage v0.4.1-0.20241007071524-66e6544525a3/go.mod h1:cGynoLGY9NfyIeWXI3zZ+hgZdHF3SUi8ht5ygZ8CmhI=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
