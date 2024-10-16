@@ -1,0 +1,17 @@
+# Inject inject_metadata config
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  serviceUser: glance
+  databaseInstance: openstack
+  databaseAccount: glance
+  keystoneEndpoint: default
+  customServiceConfig: |
+    [image_format]
+    disk_formats=raw,iso
+  glanceAPIs:
+    default:
+      type: single
+      replicas: 1
