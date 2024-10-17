@@ -2,4 +2,8 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
   - script: |
-      oc kustomize ../../../../config/samples/layout/single | oc apply -n $NAMESPACE -f -
+      oc kustomize ../../../../config/samples/layout/split | oc apply -n $NAMESPACE -f -
+  - script: |
+      oc patch Glance -n $NAMESPACE glance --type='json' -p='[{"op": "replace", "path": "/spec/glanceAPIs/default/replicas", "value":2}]'
+  - script: |
+      oc -n $NAMESPACE kustomize --load-restrictor LoadRestrictionsNone ../../../../config/samples/openstackclient | oc -n $NAMESPACE apply -f -
