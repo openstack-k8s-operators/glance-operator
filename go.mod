@@ -6,7 +6,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.14.1
-	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.4
+	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.5
 	github.com/onsi/ginkgo/v2 v2.20.1
 	github.com/onsi/gomega v1.34.1
 	github.com/openstack-k8s-operators/cinder-operator/api v0.4.1-0.20241016131023-405a20c57587
