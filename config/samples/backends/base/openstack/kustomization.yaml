@@ -6,12 +6,6 @@ patches:
       kind: OpenStackControlPlane
       name: .*
     patch: |-
-      - op: remove
-        path: /spec/glance/template/glanceAPIs/default/type
-  - target:
-      kind: OpenStackControlPlane
-      name: .*
-    patch: |-
       - op: replace
         path: /metadata/name
         value: openstack
