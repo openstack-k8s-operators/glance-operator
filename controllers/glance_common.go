@@ -218,10 +218,10 @@ func GetHeadlessService(
 	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ExposeServiceReadyCondition,
+			condition.CreateServiceReadyCondition,
 			condition.ErrorReason,
 			condition.SeverityWarning,
-			condition.ExposeServiceReadyErrorMessage,
+			condition.CreateServiceReadyErrorMessage,
 			err.Error()))
 		return ctrl.Result{}, endpointName, err
 	}
@@ -240,19 +240,19 @@ func GetHeadlessService(
 	ctrlResult, err := svc.CreateOrPatch(ctx, helper)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ExposeServiceReadyCondition,
+			condition.CreateServiceReadyCondition,
 			condition.ErrorReason,
 			condition.SeverityWarning,
-			condition.ExposeServiceReadyErrorMessage,
+			condition.CreateServiceReadyErrorMessage,
 			err.Error()))
 
 		return ctrlResult, endpointName, err
 	} else if (ctrlResult != ctrl.Result{}) {
 		instance.Status.Conditions.Set(condition.FalseCondition(
-			condition.ExposeServiceReadyCondition,
+			condition.CreateServiceReadyCondition,
 			condition.RequestedReason,
 			condition.SeverityInfo,
-			condition.ExposeServiceReadyRunningMessage))
+			condition.CreateServiceReadyRunningMessage))
 		return ctrlResult, endpointName, nil
 	}
 
