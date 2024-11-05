@@ -926,15 +926,15 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 				return ctrlResult, err
 			}
 		}
-		// Cleanup any existing (but not used) ImageCache cronJob
-		if ctrlResult, err := r.deleteImageCacheJob(
-			ctx,
-			helper,
-			instance,
-			GetServiceLabels(instance),
-		); err != nil {
-			return ctrlResult, err
-		}
+	}
+	// Cleanup existing (but not required anymore) ImageCache cronJob
+	if ctrlResult, err := r.cleanupImageCacheJob(
+		ctx,
+		helper,
+		instance,
+		GetServiceLabels(instance),
+	); err != nil {
+		return ctrlResult, err
 	}
 
 	// If we reach this point, we can mark the CronJobReadyCondition as True
@@ -1121,17 +1121,40 @@ func (r *GlanceAPIReconciler) createHashOfInputHashes(
 }
 
 // createHashOfBackendConfig - It creates an Hash of the current "enabledBackend"
-// string, and it's set in the .Status.Hash of the current GlanceAPI.
-// If a backend is added or removed, we're able to attach a new PVC for an existing
-// API by recreating the StateFulSet through the glanceAPIRefresh function. This
-// function helps to figure out if the glanceAPIRefresh should be triggered or not
+// string, combined with the storage interface configuration (both PVCs and imageCache).
+// The resulting hash is set in the .Status.Hash of the GlanceAPI object.
+// If a backend is added or removed, we're able to plug or unplug a PVC for an
+// existing API by recreating the StateFulSet through the glanceAPIRefresh function.
+// The hash update results in a glanceAPIRefresh trigger.
 func (r *GlanceAPIReconciler) createHashOfBackendConfig(
 	instance *glancev1.GlanceAPI,
 	backends []string,
 ) (string, bool, error) {
 	var hashMap map[string]string
 	changed := false
-	hash, err := util.ObjectHash(backends)
+	// Compute enabled_backend hash
+	backendHash, err := util.ObjectHash(backends)
+	if err != nil {
+		return backendHash, changed, err
+	}
+	// Compute storage interface settings hash
+	storageHash, err := util.ObjectHash(instance.Spec.Storage)
+	if err != nil {
+		return storageHash, changed, err
+	}
+	// Compute Image Cache settings hash (using only the Size parameter as we
+	// don't need to check the cronJobs settings)
+	cacheHash, err := util.ObjectHash(instance.Spec.ImageCache.Size)
+	if err != nil {
+		return cacheHash, changed, err
+	}
+	// The final Hash (stored in instance.Status.Hash) is the concatenation
+	// between backendHash (retrieved by customServiceConfig), storageHash
+	// (coming from instance.Spec.Storage interface), and cacheHash (based on
+	// instance.Spec.ImageCache.Size).
+	// The combination of the three represents the "Storage" configuration
+	// of the current GlanceAPI
+	hash, err := util.ObjectHash((backendHash + storageHash + cacheHash))
 	if err != nil {
 		return hash, changed, err
 	}
@@ -1278,9 +1301,9 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 	return ctrlResult, err
 }
 
-// deleteImageCacheJob - delete the ImageCache cronJobs associated to a given
+// cleanupImageCacheJob - delete the ImageCache cronJobs associated to a given
 // GlanceAPI
-func (r *GlanceAPIReconciler) deleteImageCacheJob(
+func (r *GlanceAPIReconciler) cleanupImageCacheJob(
 	ctx context.Context,
 	h *helper.Helper,
 	instance *glancev1.GlanceAPI,
@@ -1303,7 +1326,7 @@ func (r *GlanceAPIReconciler) deleteImageCacheJob(
 			if err := r.Client.Get(ctx, types.NamespacedName{
 				Name:      strings.TrimPrefix(pvcName, "glance-cache-"),
 				Namespace: instance.Namespace,
-			}, &pod); err != nil && k8s_errors.IsNotFound(err) {
+			}, &pod); err != nil && k8s_errors.IsNotFound(err) || instance.Spec.ImageCache.Size == "" {
 				// if we have no pod Running with the associated cache pvc,
 				// we can delete the imageCache cronJob if still exists
 				if ctrlResult, err = r.deleteJob(ctx, instance, pvcName); err != nil {
@@ -1385,7 +1408,11 @@ func (r *GlanceAPIReconciler) glanceAPIRefresh(
 	h *helper.Helper,
 	instance *glancev1.GlanceAPI,
 ) error {
-	sts, err := statefulset.GetStatefulSetWithName(ctx, h, fmt.Sprintf("%s-api", instance.Name), instance.Namespace)
+	stsName := instance.Name
+	if instance.Spec.APIType != glancev1.APISingle {
+		stsName = fmt.Sprintf("%s-api", instance.Name)
+	}
+	sts, err := statefulset.GetStatefulSetWithName(ctx, h, stsName, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
 			// Request object not found

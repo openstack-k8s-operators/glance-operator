@@ -537,10 +537,10 @@ When the `External` model is adopted, if `Ceph` is used as a backend and an
 storage that is tied to the staging area, and the conversion operation that
 uses the `os_glance_staging_store` directory (within the `Pod`) interacts with
 the `RWX` `NFS` backend provided via `extraMounts`.
-With this scenario, no image-cache PVC can be requested and mounted to a
-subPath, because it should be the human administrator responsibility to plan
-for persistence via ExtraMounts (where mounts are realized using SubPath to
-avoid directory overlapping).
+With this scenario, an image-cache PVC can still be requested and mounted to
+a subPath, unless the human administrator would like to manage it externally
+via ExtraMounts (where mounts are realized using SubPath to avoid directory
+overlapping).
 
 ### PVC
 
