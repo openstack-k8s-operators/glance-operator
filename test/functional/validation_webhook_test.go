@@ -20,10 +20,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
+	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var _ = Describe("Glance validation", func() {
@@ -49,8 +49,7 @@ var _ = Describe("Glance validation", func() {
 		var statusError *k8s_errors.StatusError
 		Expect(errors.As(err, &statusError)).To(BeTrue())
 		Expect(statusError.ErrStatus.Message).To(
-			ContainSubstring(
-				"KeystoneEndpoint is assigned to an invalid glanceAPI instance"),
+			ContainSubstring(glancev1.KeystoneEndpointErrorMessage),
 		)
 	})
 
@@ -99,8 +98,7 @@ var _ = Describe("Glance validation", func() {
 		// Webhooks catch that no backend is set before even realize that an
 		// invalid endpoint has been set
 		Expect(statusError.ErrStatus.Message).To(
-			ContainSubstring(
-				"Invalid backend configuration detected"),
+			ContainSubstring(glancev1.InvalidBackendErrorMessageSplit),
 		)
 	})
 
@@ -151,8 +149,7 @@ var _ = Describe("Glance validation", func() {
 		// We shouldn't fail again for the backend, but because the endpoint is
 		// not valid
 		Expect(statusError.ErrStatus.Message).To(
-			ContainSubstring(
-				"KeystoneEndpoint is assigned to an invalid glanceAPI instance"),
+			ContainSubstring(glancev1.KeystoneEndpointErrorMessage),
 		)
 	})
 
