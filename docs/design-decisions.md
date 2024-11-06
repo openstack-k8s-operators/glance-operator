@@ -372,7 +372,7 @@ In this setup:
 Switching the Keystone catalog's active API is straightforward and can be done
 by updating the `keystoneEndpoint` parameter.
 
-## Manage KeystoneEndpoint
+### Manage KeystoneEndpoint
 
 Even though multiple instances can be deployed and be reachable through the generated
 k8s `Services`, only one of them can be registered in the keystone catalog at a given
@@ -440,6 +440,212 @@ instance that should be registered in Keystone.
 An update to the `keystoneEndpoint` parameter results in a reconciliation execution
 that switches the two affected instances (the one registered in keystone and the
 one proposed by the new update).
+
+### Add a new GlanceAPI as day2 operation
+
+Adding an additional `GlanceAPI` to `OpenStack` serves various purposes beyond
+just supporting multiple workloads. For instance, to maintain the lifecycle of
+a `GlanceAPI` and its backend services, switching between a split layout and a
+single layout is generally not feasible.
+Consider a scenario where maintenance requires switching from a backend with a
+split layout (e.g., `Ceph`, `Swift`, `Cinder`, `S3`) to one that uses a single
+layout (e.g., `File`, `NFS`). The glance-operator webhooks prevent updates to
+the layout, as such changes impact critical configuration elements like the
+number of PersistentVolumeClaims (`PVCs`), their size, the image cache setup,
+and other components. For further details, refer to the [storage requirements
+documentation](https://github.com/openstack-k8s-operators/glance-operator/blob/main/docs/design-decisions.md#storage-requirements-pvcs-usage-and-available-models).
+Adding a new `GlanceAPI` assumes an `OpenStackControlPlane` is already
+configured and can be done with the following steps:
+
+1. Create a `glance-api.yaml` spec file.
+In this example, there are two `GlanceAPI` instances in the
+`OpenStackControlPlane`: the existing API uses `Swift` as its backend, while
+the new API uses `File` with a single layout and one replica.
+
+```
+spec:
+  glance:
+    template:
+      databaseInstance: openstack
+      keystoneEndpoint: default
+      glanceAPIs:
+        default:
+          customServiceConfig: |
+            [DEFAULT]
+            enabled_backends = default_backend:swift
+            [glance_store]
+            default_backend = default_backend
+            [default_backend]
+            swift_store_create_container_on_put = True
+            swift_store_auth_version = 3
+            swift_store_auth_address = {{ .KeystoneInternalURL }}
+            swift_store_endpoint_type = internalURL
+            swift_store_user = service:glance
+            swift_store_key = {{ .ServicePassword }}
+          preserveJobs: false
+          replicas: 3
+        default1:
+          type: single
+          replicas: 1
+      storage:
+        storageRequest: 10G
+```
+
+**Note:**
+Retrieve the initial `Glance` spec from an existing control plane using the
+following command:
+```
+$ oc get oscp openstack-galera-network-isolation -o yaml | yq '.spec.glance'
+```
+Clean up the output to include only relevant details for updating the
+`OpenStackControlPlane`.
+
+2. Apply the new spec file:
+
+```
+$ oc -n $NAMESPACE patch openstackcontrolplane $(oc get oscp -o custom-columns=NAME:.metadata.name --no-headers)  --type=merge --patch-file=glance_spec.yaml
+```
+
+3. Verify the new `GlanceAPI` deployment:
+
+```
+oc -n $NAMESPACE get pods -l service=glance
+```
+
+- Replace `$NAMESPACE` with the actual namespace where the `OpenStackControlPlane` is deployed.
+
+### Additional Notes
+
+You can perform sequential updates to patch `customServiceConfig` or adjust `keystoneEndpoint` if you want a new `API` to serve as the main `OpenStack CLI` entry point.
+
+### Alternative deployment
+
+For simpler requirements, skip Steps 1 and 2 and deploy an additional API instance directly with:
+
+```
+$ oc -n $NAMESPACE patch openstackcontrolplane $(oc get oscp -o custom-columns=NAME:.metadata.name --no-headers) --type=merge -p='{"spec": {"glance": {"template": {"keystoneEndpoint":"default1", "glanceAPIs": {"default1": {"type": "single", "networkAttachments":["storage"]}}}}}}'
+```
+
+This command adds the following structure to the control plane:
+
+```
+spec:
+  glance:
+    template:
+      keystoneEndpoint: default
+      glanceAPIs:
+        default1:
+          type: single
+          replicas: 1
+```
+
+### Decommissioning a GlanceAPI
+
+Decommissioning a GlanceAPI requires patching the `OpenStackControlPlane` and
+perform at least two actions:
+
+1. Delete the `GlanceAPI` CR and the kubernetes associated objects (`Pods`, `StatefulSets`)
+2. Update the `keystoneEndpoint` to point to an active `API`
+
+
+**Note:**
+You cannot delete a `GlanceAPI` if it is the only API in the
+`OpenStackControlPlane`, nor can you point `keystoneEndpoint` to a non-existent
+API under the glanceAPIs section.
+
+Removing an existing `GlanceAPI` can be achieved with the following procedure:
+
+1. Verify that more that one `GlanceAPI` is deployed in the `OpenStackControlPlane`:
+
+```
+oc -n $NAMESPACE get oscp  $(oc get oscp -o custom-columns=NAME:.metadata.name --no-headers) -o jsonpath='{.spec.glance.template.glanceAPIs}' | jq
+```
+
+```
+{
+  "default": {
+    "apiTimeout": 60,
+    "imageCache": {
+      "cleanerScheduler": "*/30 * * * *",
+      "prunerScheduler": "1 0 * * *",
+      "size": ""
+    },
+    "networkAttachments": [
+      "storage"
+    ],
+    "override": {},
+    "replicas": 1,
+    "resources": {},
+    "storage": {},
+    "tls": {
+      "api": {
+        "internal": {},
+        "public": {}
+      }
+    },
+    "type": "split"
+  },
+  "default1": {
+    "apiTimeout": 60,
+    "imageCache": {
+      "cleanerScheduler": "*/30 * * * *",
+      "prunerScheduler": "1 0 * * *",
+      "size": ""
+    },
+    "override": {},
+    "replicas": 1,
+    "resources": {},
+    "storage": {},
+    "tls": {
+      "api": {
+        "internal": {},
+        "public": {}
+      }
+    },
+    "type": "split"
+  }
+}
+```
+
+2. Identify the current `keystone` catalog `GlanceAPI`:
+
+```
+$ oc -n $NAMESPACE get oscp $(oc get oscp -o custom-columns=NAME:.metadata.name --no-headers) -o jsonpath='{.spec.glance.template.keystoneEndpoint}'
+
+default
+```
+
+3. (Optional): Update the Keystone endpoint. If the API to be removed is
+   currently associated with the keystone catalog, switch the `KeystoneEndpoint`
+   to another API:
+
+```
+$ oc -n $NAMESPACE patch openstackcontrolplane $(oc get oscp -o custom-columns=NAME:.metadata.name --no-headers) --type=merge -p='{"spec": {"glance": {"template": {"keystoneEndpoint":"default1"}}}}'
+```
+
+4. Verify the new API has an associated keystone endpoint:
+
+```
+$ oc exec -it openstackclient bash -- openstack endpoint list | grep image
+| a32dfa92fafd40588f3fef699744511f | regionOne | glance       | image        | True    | internal  | https://glance-default1-internal.openstack.svc:9292                   |
+| c4804456ee37464ea48e5258e7f29d7a | regionOne | glance       | image        | True    | public    | https://glance-default1-public-openstack.apps-crc.testing             |
+```
+
+5. Remove the `GlanceAPI` called `default`:
+
+```
+$ oc -n $NAMESPACE patch openstackcontrolplane $(oc get oscp -o custom-columns=NAME:.metadata.name --no-headers) --type=json -p="[{'op': 'remove', 'path': '/spec/glance/template/glanceAPIs/default'}]"
+```
+
+and observe the Pods and the associated resources are deleted.
+
+
+**Note:**
+The above process does not delete any **PersistentVolumeClaims (PVCs)** associated
+with the decommissioned API. This is by design, allowing re-adding the API with
+previous settings without data loss.
+
+- Replace `$NAMESPACE` with the actual namespace where the `OpenStackControlPlane` is deployed.
 
 ## How Conditions are managed
 
