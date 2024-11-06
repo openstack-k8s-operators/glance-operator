@@ -187,27 +187,27 @@ func isFileBackend(customServiceConfig string, topLevel bool) bool {
 }
 
 // Check if the File is used in combination with a wrong layout
-func (r *GlanceSpecCore) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel bool) bool {
+func (r *GlanceSpecCore) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel bool) (bool, string) {
 	var rep int32 = 0
 
 	// Do not take assumptions about the backend when replicas: 0, because it
 	// means the human operator has not made any choice or has no backend
 	// available yet.
 	if *glanceAPI.Replicas == rep {
-		return false
+		return false, ""
 	}
 	// For the current glanceAPI instance, detect an invalid configuration
 	// made by "type: split && backend: file": raise an issue if this config
 	// is found.
 	if glanceAPI.Type == "split" && isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
-		return true
+		return true, InvalidBackendErrorMessageSplit
 	}
 	// Do not allow to deploy a glanceAPI with "type: single" and a backend
 	// different than File (Cinder, Swift, Ceph): we must split in that case
 	if glanceAPI.Type == APISingle && !isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
-		return true
+		return true, InvalidBackendErrorMessageSingle
 	}
-	return false
+	return false, ""
 }
 
 var _ webhook.Validator = &Glance{}
@@ -275,9 +275,8 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path) field.ErrorList {
 		path := basePath.Child("glanceAPIs").Key(key)
 
 		// fail if an invalid configuration/layout is detected
-		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
-			allErrs = append(allErrs, field.Invalid(
-				path, key, "Invalid backend configuration detected"))
+		if ok, err := r.isInvalidBackend(glanceAPI, topLevelFileBackend); ok {
+			allErrs = append(allErrs, field.Invalid(path, key, err))
 		}
 
 		// validate the service override key is valid
@@ -291,7 +290,7 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path) field.ErrorList {
 	if !r.isValidKeystoneEP() {
 		path := basePath.Child("keystoneEndpoint")
 		allErrs = append(allErrs, field.Invalid(
-			path, r.KeystoneEndpoint, "KeystoneEndpoint is assigned to an invalid glanceAPI instance"))
+			path, r.KeystoneEndpoint, KeystoneEndpointErrorMessage))
 	}
 
 	return allErrs
@@ -364,19 +363,19 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 		if _, found := old.GlanceAPIs[key]; !found {
 			// Fail if an invalid configuration/layout is detected for the current
 			// // glanceAPI instance
-			if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
-				allErrs = append(allErrs, field.Invalid(path, key, "New API - Invalid backend configuration detected"))
+			if ok, err := r.isInvalidBackend(glanceAPI, topLevelFileBackend); ok {
+				allErrs = append(allErrs, field.Invalid(path, key, err))
 			}
 			continue
 		}
 		// The current glanceAPI exists and the layout is different
 		if glanceAPI.Type != old.GlanceAPIs[key].Type {
-			allErrs = append(allErrs, field.Invalid(path, key, "GlanceAPI deployment layout can't be updated"))
+			allErrs = append(allErrs, field.Invalid(path, key, GlanceLayoutUpdateErrorMessage))
 		}
 		// Fail if an invalid configuration/layout is detected for the current
 		// glanceAPI instance
-		if r.isInvalidBackend(glanceAPI, topLevelFileBackend) {
-			allErrs = append(allErrs, field.Invalid(path, key, "Invalid backend configuration detected"))
+		if ok, err := r.isInvalidBackend(glanceAPI, topLevelFileBackend); ok {
+			allErrs = append(allErrs, field.Invalid(path, key, err))
 		}
 		// validate the service override key is valid
 		allErrs = append(allErrs, service.ValidateRoutedOverrides(
@@ -390,7 +389,7 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 	if !r.isValidKeystoneEP() {
 		path := basePath.Child("keystoneEndpoint")
 		allErrs = append(allErrs, field.Invalid(
-			path, r.KeystoneEndpoint, "KeystoneEndpoint is assigned to an invalid glanceAPI instance"))
+			path, r.KeystoneEndpoint, KeystoneEndpointErrorMessage))
 	}
 
 	return allErrs
