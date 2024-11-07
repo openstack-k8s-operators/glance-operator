@@ -47,7 +47,14 @@ func GetVolumes(
 
 	for _, exv := range extraVol {
 		for _, vol := range exv.Propagate(svc) {
-			vm = append(vm, vol.Volumes...)
+			for _, v := range vol.Volumes {
+				volumeSource, _ := v.ToCoreVolumeSource()
+				convertedVolume := corev1.Volume{
+					Name:         v.Name,
+					VolumeSource: *volumeSource,
+				}
+				vm = append(vm, convertedVolume)
+			}
 		}
 	}
 	secretConfig, _ := GetConfigSecretVolumes(secretNames)
