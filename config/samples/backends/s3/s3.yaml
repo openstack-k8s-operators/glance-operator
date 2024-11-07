@@ -1,0 +1,23 @@
+# Sample using s3 as a glance backend
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        debug=true
+        enabled_backends = default_backend:s3
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        s3_store_create_bucket_on_put = True
+        s3_store_bucket_url_format = "path"
+      databaseInstance: openstack
+      glanceAPIs:
+        default:
+          customServiceConfigSecrets:
+            - s3glance
+          replicas: 1
