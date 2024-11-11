@@ -271,14 +271,15 @@ func StatefulSet(
 			return statefulset, err
 		}
 		statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
-
-		if len(instance.Spec.ImageCache.Size) > 0 {
-			cachePvc, err := glance.GetPvc(instance, labels, glance.PvcCache)
-			if err != nil {
-				return statefulset, err
-			}
-			statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, cachePvc)
+	}
+	// Staging and Cache are realized through separate interfaces
+	// (TODO) Allow to externally manage image-cache
+	if len(instance.Spec.ImageCache.Size) > 0 {
+		cachePvc, err := glance.GetPvc(instance, labels, glance.PvcCache)
+		if err != nil {
+			return statefulset, err
 		}
+		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, cachePvc)
 	}
 
 	statefulset.Spec.Template.Spec.Volumes = append(glance.GetVolumes(
