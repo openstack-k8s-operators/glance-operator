@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -116,8 +117,9 @@ func ensureNAD(
 	var err error
 	// Iterate over the []networkattachment, get the corresponding NAD and create
 	// the required annotation
+	nadList := []networkv1.NetworkAttachmentDefinition{}
 	for _, netAtt := range nAttach {
-		_, err = nad.GetNADWithName(ctx, helper, netAtt, helper.GetBeforeObject().GetNamespace())
+		nad, err := nad.GetNADWithName(ctx, helper, netAtt, helper.GetBeforeObject().GetNamespace())
 		if err != nil {
 			if k8s_errors.IsNotFound(err) {
 				helper.GetLogger().Info(fmt.Sprintf("network-attachment-definition %s not found", netAtt))
@@ -137,9 +139,13 @@ func ensureNAD(
 				err.Error()))
 			return serviceAnnotations, ctrl.Result{}, err
 		}
+
+		if nad != nil {
+			nadList = append(nadList, *nad)
+		}
 	}
 	// Create NetworkAnnotations
-	serviceAnnotations, err = nad.CreateNetworksAnnotation(helper.GetBeforeObject().GetNamespace(), nAttach)
+	serviceAnnotations, err = nad.EnsureNetworksAnnotation(nadList)
 	if err != nil {
 		return serviceAnnotations, ctrl.Result{}, fmt.Errorf("failed create network annotation from %s: %w",
 			nAttach, err)
