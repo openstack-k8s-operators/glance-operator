@@ -591,6 +591,93 @@ var _ = Describe("Glance controller", func() {
 		})
 	})
 
+	When("Glance CR instance is built with Affinity", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			affinityOverride := map[string]interface{}{
+				"podAntiAffinity": map[string]interface{}{
+					"preferredDuringSchedulingIgnoredDuringExecution": []map[string]interface{}{
+						{
+							"podAffinityTerm": map[string]interface{}{
+								"labelSelector": map[string]interface{}{
+									"matchExpressions": []interface{}{
+										map[string]interface{}{
+											"key":      "app",
+											"operator": "In",
+											"values": []string{
+												glanceTest.GlanceService.Name,
+											},
+										},
+									},
+								},
+								"topologyKey": "kubernetes.io/hostname",
+							},
+							"weight": 70,
+						},
+					},
+				},
+			}
+
+			rawSpec := map[string]interface{}{
+				"storage": map[string]interface{}{
+					"storageRequest": glanceTest.GlancePVCSize,
+				},
+				"storageRequest":      glanceTest.GlancePVCSize,
+				"secret":              SecretName,
+				"databaseInstance":    "openstack",
+				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+				"keystoneEndpoint":    "default",
+				"customServiceConfig": GlanceDummyBackend,
+				"glanceAPIs": map[string]interface{}{
+					"default": map[string]interface{}{
+						"containerImage":     glancev1.GlanceAPIContainerImage,
+						"networkAttachments": []string{"internalapi"},
+						"override": map[string]interface{}{
+							"affinity": affinityOverride,
+						},
+					},
+				},
+			}
+
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+		})
+
+		It("Check the resulting GlanceAPI have the right affinity set generated sub-CRs", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+
+			// Retrieve the generated resources and the two internal/external
+			// instances that are split behind the scenes
+			glance := GetGlance(glanceTest.Instance)
+			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+			externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+
+			// Verify the affinity has been propagate to the underlying GlanceAPI
+			for _, glanceAPI := range glance.Spec.GlanceAPIs {
+				Expect(internalAPI.Spec.Override.APIAffinity).To(Equal(glanceAPI.Override.APIAffinity))
+				Expect(externalAPI.Spec.Override.APIAffinity).To(Equal(glanceAPI.Override.APIAffinity))
+			}
+		})
+	})
+
 	// Run MariaDBAccount suite tests.  these are pre-packaged ginkgo tests
 	// that exercise standard account create / update patterns that should be
 	// common to all controllers that ensure MariaDBAccount CRs.

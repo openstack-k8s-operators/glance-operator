@@ -12,6 +12,17 @@ spec:
     debug = true
   glanceAPIs:
     default:
+      overrides:
+        affinity:
+          spec:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: security
+                  operator: In
+                  values:
+                  - S1
+              topologyKey: failure-domain.beta.kubernetes.io/zone
       type: single
       preserveJobs: false
       replicas: 1

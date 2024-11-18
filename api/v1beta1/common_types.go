@@ -22,6 +22,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -142,6 +143,12 @@ type APIOverrideSpec struct {
 	// Override configuration for the Service created to serve traffic to the cluster.
 	// The key must be the endpoint type (public, internal)
 	Service map[service.Endpoint]service.RoutedOverrideSpec `json:"service,omitempty"`
+
+	// Template is the object that describes the pod that will be created if
+	// insufficient replicas are detected.
+	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#pod-template
+	// +optional
+	APIAffinity affinity.AffinityOverrideSpec `json:"affinity,omitempty"`
 }
 
 // SetupDefaults - initializes any CRD field defaults based on environment variables (the defaulting mechanism itself is implemented via webhooks)

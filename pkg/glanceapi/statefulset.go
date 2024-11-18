@@ -49,6 +49,7 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
+	affinityOverride *affinity.AffinityOverrideSpec,
 ) (*appsv1.StatefulSet, error) {
 	userID := glance.GlanceUID
 	startupProbe := &corev1.Probe{
@@ -299,6 +300,7 @@ func StatefulSet(
 			glance.ServiceName,
 		},
 		corev1.LabelHostname,
+		affinityOverride,
 	)
 	if instance.Spec.NodeSelector != nil {
 		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector

@@ -815,6 +815,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		GetServiceLabels(instance),
 		serviceAnnotations,
 		privileged,
+		&instance.Spec.Override.APIAffinity,
 	)
 	if err != nil {
 		return ctrlResult, err
