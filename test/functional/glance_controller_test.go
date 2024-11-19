@@ -318,6 +318,159 @@ var _ = Describe("Glance controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
+	When("GlanceCR is created with nodeSelector", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			spec := GetGlanceDefaultSpec()
+			spec["nodeSelector"] = map[string]interface{}{
+				"foo": "bar",
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, spec))
+			// Get Default GlanceAPI
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
+		})
+		It("sets nodeSelector in resource specs", func() {
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+
+			}, timeout, interval).Should(Succeed())
+		})
+		It("updates nodeSelector in resource specs when changed", func() {
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				newNodeSelector := map[string]string{
+					"foo2": "bar2",
+				}
+				glance.Spec.NodeSelector = &newNodeSelector
+				g.Expect(k8sClient.Update(ctx, glance)).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo2": "bar2"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo2": "bar2"}))
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo2": "bar2"}))
+
+			}, timeout, interval).Should(Succeed())
+		})
+		It("removes nodeSelector from resource specs when cleared", func() {
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				emptyNodeSelector := map[string]string{}
+				glance.Spec.NodeSelector = &emptyNodeSelector
+				g.Expect(k8sClient.Update(ctx, glance)).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(BeNil())
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(BeNil())
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(BeNil())
+
+			}, timeout, interval).Should(Succeed())
+		})
+		It("removes nodeSelector from resource specs when nilled", func() {
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				glance.Spec.NodeSelector = nil
+				g.Expect(k8sClient.Update(ctx, glance)).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(BeNil())
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(BeNil())
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(BeNil())
+
+			}, timeout, interval).Should(Succeed())
+		})
+		It("allows nodeSelector GlanceAPI override", func() {
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				apiNodeSelector := map[string]string{
+					"foo": "api",
+				}
+				glanceAPI := glance.Spec.GlanceAPIs["default"]
+				glanceAPI.NodeSelector = &apiNodeSelector
+				glance.Spec.GlanceAPIs["default"] = glanceAPI
+				g.Expect(k8sClient.Update(ctx, glance)).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "api"}))
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+			}, timeout, interval).Should(Succeed())
+		})
+		It("allows nodeSelector GlanceAPI override to empty", func() {
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				apiNodeSelector := map[string]string{}
+				glanceAPI := glance.Spec.GlanceAPIs["default"]
+				glanceAPI.NodeSelector = &apiNodeSelector
+				glance.Spec.GlanceAPIs["default"] = glanceAPI
+				g.Expect(k8sClient.Update(ctx, glance)).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetJob(glanceTest.GlanceDBSync).Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+				g.Expect(th.GetStatefulSet(glanceTest.GlanceSingle).Spec.Template.Spec.NodeSelector).To(BeNil())
+				g.Expect(GetCronJob(glanceTest.DBPurgeCronJob).Spec.JobTemplate.Spec.Template.Spec.NodeSelector).To(Equal(map[string]string{"foo": "bar"}))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
 	When("Glance CR is deleted", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
