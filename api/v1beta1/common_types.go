@@ -57,10 +57,6 @@ type GlanceAPITemplate struct {
 	ContainerImage string `json:"containerImage"`
 
 	// +kubebuilder:validation:Optional
-	// NodeSelector to target subset of worker nodes running this service
-	NodeSelector *map[string]string `json:"nodeSelector,omitempty"`
-
-	// +kubebuilder:validation:Optional
 	// CustomServiceConfig - customize the service config using this parameter to change service defaults,
 	// or overwrite rendered information using raw OpenStack config format. The content gets added to
 	// to /etc/<service>/<service>.conf.d directory as custom.conf file.
@@ -106,6 +102,24 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Minimum=1
 	// APITimeout for HAProxy and Apache defaults to GlanceSpecCore APITimeout
 	APITimeout int `json:"apiTimeout,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Topology - The struct that contains the Topology related information to
+	// provide hints to k8s scheduler
+	Topology `json:",inline"`
+}
+
+// Topology defines the information exposed in the API to provide hints to k8s
+// scheduler
+type Topology struct {
+	// +kubebuilder:validation:Optional
+	// NodeSelector to target subset of worker nodes running this service
+	NodeSelector *map[string]string `json:"nodeSelector,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// APITopologySpreadConstraint exposes topologySpreadConstraint that are applied
+	// to the StatefulSet
+	TopologySpreadConstraint *[]corev1.TopologySpreadConstraint `json:"topologySpreadConstraint,omitempty"`
 }
 
 // Storage -

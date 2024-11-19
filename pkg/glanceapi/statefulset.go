@@ -304,5 +304,8 @@ func StatefulSet(
 		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector
 	}
 
+	if instance.Spec.TopologySpreadConstraint != nil {
+		statefulset.Spec.Template.Spec.TopologySpreadConstraints = *instance.Spec.TopologySpreadConstraint
+	}
 	return statefulset, err
 }

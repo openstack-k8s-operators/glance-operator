@@ -32,7 +32,7 @@ const (
 	// GlanceAPIReadyCondition Status=True condition which indicates if the GlanceAPI is configured and operational
 	GlanceAPIReadyCondition condition.Type = "GlanceAPIReady"
 	// CinderCondition
-	CinderCondition= "CinderReady"
+	CinderCondition = "CinderReady"
 	// GlanceLayoutUpdateErrorMessage
 	GlanceLayoutUpdateErrorMessage = "The GlanceAPI layout (type) cannot be modified. To proceed, please add a new API with the desired layout and then decommission the previous API"
 	// KeystoneEndpointErrorMessage

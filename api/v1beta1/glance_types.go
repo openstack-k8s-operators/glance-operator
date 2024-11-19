@@ -69,10 +69,6 @@ type GlanceSpecCore struct {
 	PasswordSelectors PasswordSelector `json:"passwordSelectors"`
 
 	// +kubebuilder:validation:Optional
-	// NodeSelector to target subset of worker nodes running this service
-	NodeSelector *map[string]string `json:"nodeSelector,omitempty"`
-
-	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// PreserveJobs - do not delete jobs after they finished e.g. to check logs
 	PreserveJobs bool `json:"preserveJobs"`
@@ -126,6 +122,11 @@ type GlanceSpecCore struct {
 	// +kubebuilder:validation:Minimum=1
 	// Default APITimeout for HAProxy and Apache, defaults to 60 seconds
 	APITimeout int `json:"apiTimeout"`
+
+	// +kubebuilder:validation:Optional
+	// Topology - The struct that contains the Topology related information to
+	// provide hints to k8s scheduler
+	Topology `json:",inline"`
 }
 
 // GlanceSpec defines the desired state of Glance
