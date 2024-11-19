@@ -49,7 +49,7 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
-	affinityOverride *affinity.AffinityOverrideSpec,
+	affinityOverride *affinity.Overrides,
 ) (*appsv1.StatefulSet, error) {
 	userID := glance.GlanceUID
 	startupProbe := &corev1.Probe{
@@ -291,20 +291,24 @@ func StatefulSet(
 		extraVolPropagation),
 		apiVolumes...)
 
-	// If possible two pods of the same service should not
-	// run on the same worker node. If this is not possible
-	// the get still created on the same worker node.
-	statefulset.Spec.Template.Spec.Affinity = affinity.DistributePods(
-		common.AppSelector,
-		[]string{
-			glance.ServiceName,
-		},
-		corev1.LabelHostname,
-		affinityOverride,
-	)
 	if instance.Spec.NodeSelector != nil {
 		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector
 	}
+
+	// If possible two pods of the same service should not
+	// run on the same worker node. If this is not possible
+	// the get still created on the same worker node.
+	statefulset.Spec.Template.Spec.Affinity, err = affinity.DistributePods(
+		affinity.Rules{
+			SelectorKey: common.AppSelector,
+			SelectorValues: []string{
+				glance.ServiceName,
+			},
+			TopologyKey: corev1.LabelHostname,
+			Weight:      affinity.DefaultPreferredWeight,
+		},
+		affinityOverride,
+	)
 
 	return statefulset, err
 }

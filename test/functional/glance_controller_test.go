@@ -28,6 +28,7 @@ import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
@@ -597,25 +598,24 @@ var _ = Describe("Glance controller", func() {
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 
 			affinityOverride := map[string]interface{}{
-				"podAntiAffinity": map[string]interface{}{
-					"preferredDuringSchedulingIgnoredDuringExecution": []map[string]interface{}{
-						{
-							"podAffinityTerm": map[string]interface{}{
-								"labelSelector": map[string]interface{}{
-									"matchExpressions": []interface{}{
-										map[string]interface{}{
-											"key":      "app",
-											"operator": "In",
-											"values": []string{
-												glanceTest.GlanceService.Name,
-											},
-										},
-									},
-								},
-								"topologyKey": "kubernetes.io/hostname",
-							},
-							"weight": 70,
+				"antiAffinity": map[string]interface{}{
+					"preferred": map[string]interface{}{
+						"weight":      100,
+						"selectorKey": "glance",
+						"selectorValues": []string{
+							glanceTest.Instance.Name,
 						},
+						"topologyKey": corev1.LabelHostname,
+					},
+				},
+				"affinity": map[string]interface{}{
+					"preferred": map[string]interface{}{
+						"weight":      100,
+						"selectorKey": "foo",
+						"selectorValues": []string{
+							glanceTest.Instance.Name,
+						},
+						"topologyKey": corev1.LabelTopologyZone,
 					},
 				},
 			}
@@ -624,7 +624,6 @@ var _ = Describe("Glance controller", func() {
 				"storage": map[string]interface{}{
 					"storageRequest": glanceTest.GlancePVCSize,
 				},
-				"storageRequest":      glanceTest.GlancePVCSize,
 				"secret":              SecretName,
 				"databaseInstance":    "openstack",
 				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
@@ -635,7 +634,7 @@ var _ = Describe("Glance controller", func() {
 						"containerImage":     glancev1.GlanceAPIContainerImage,
 						"networkAttachments": []string{"internalapi"},
 						"override": map[string]interface{}{
-							"affinity": affinityOverride,
+							"scheduling": affinityOverride,
 						},
 					},
 				},
@@ -675,6 +674,62 @@ var _ = Describe("Glance controller", func() {
 				Expect(internalAPI.Spec.Override.APIAffinity).To(Equal(glanceAPI.Override.APIAffinity))
 				Expect(externalAPI.Spec.Override.APIAffinity).To(Equal(glanceAPI.Override.APIAffinity))
 			}
+		})
+	})
+
+	When("Glance CR instance is built with an empty Affinity override", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			rawSpec := map[string]interface{}{
+				"storage": map[string]interface{}{
+					"storageRequest": glanceTest.GlancePVCSize,
+				},
+				"secret":              SecretName,
+				"databaseInstance":    "openstack",
+				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+				"keystoneEndpoint":    "default",
+				"customServiceConfig": GlanceDummyBackend,
+				"glanceAPIs": map[string]interface{}{
+					"default": map[string]interface{}{
+						"containerImage":     glancev1.GlanceAPIContainerImage,
+						"networkAttachments": []string{"internalapi"},
+					},
+				},
+			}
+
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+		})
+
+		It("Check the resulting GlanceAPI have the right affinity set generated sub-CRs", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+
+			// Retrieve the generated resources and the two internal/external
+			// instances that are split behind the scenes
+			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+			externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+
+			// Verify the affinity is not set
+			Expect(internalAPI.Spec.Override.APIAffinity).To(Equal(affinity.Overrides{Affinity: nil, AntiAffinity: nil}))
+			Expect(externalAPI.Spec.Override.APIAffinity).To(Equal(affinity.Overrides{Affinity: nil, AntiAffinity: nil}))
 		})
 	})
 
