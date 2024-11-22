@@ -17,6 +17,7 @@ package glanceapi
 
 import (
 	"fmt"
+
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	batchv1 "k8s.io/api/batch/v1"
@@ -125,8 +126,8 @@ func ImageCacheJob(
 	}
 	// We need to schedule the cronJob to the same Node where a given glanceAPI
 	// is schedule: this allow to mount the same RWO volume
-	if instance.Spec.NodeSelector != nil && len(instance.Spec.NodeSelector) > 0 {
-		cronjob.Spec.JobTemplate.Spec.Template.Spec.NodeSelector = instance.Spec.NodeSelector
+	if instance.Spec.NodeSelector != nil {
+		cronjob.Spec.JobTemplate.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector
 	}
 	return cronjob
 }
