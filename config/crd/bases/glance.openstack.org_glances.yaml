@@ -696,6 +696,13 @@ spec:
                         caBundleSecretName:
                           type: string
                       type: object
+                    topologyRef:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      type: object
                     type:
                       default: split
                       enum:
@@ -775,6 +782,13 @@ spec:
                   storageClass:
                     type: string
                   storageRequest:
+                    type: string
+                type: object
+              topologyRef:
+                properties:
+                  name:
+                    type: string
+                  namespace:
                     type: string
                 type: object
             required:
