@@ -73,6 +73,11 @@ type GlanceSpecCore struct {
 	NodeSelector *map[string]string `json:"nodeSelector,omitempty"`
 
 	// +kubebuilder:validation:Optional
+	// Topology to apply the Policy defined by the associated CR referenced by
+	// name
+	Topology *TopologyRef `json:"topologyRef,omitempty"`
+
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// PreserveJobs - do not delete jobs after they finished e.g. to check logs
 	PreserveJobs bool `json:"preserveJobs"`

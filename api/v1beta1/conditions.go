@@ -43,4 +43,13 @@ const (
 	InvalidBackendErrorMessageSplit = "The GlanceAPI layout type: split cannot be used in combination with File and NFS backend"
 	// InvalidBackendErrorMessageSingle
 	InvalidBackendErrorMessageSingle = "The GlanceAPI layout type: single can only be used in combination with File and NFS backend"
+
+	// TopologyConfigReadyInitMessage
+	TopologyConfigReadyInitMessage = "Topology config create not started"
+	// TopologyConfigReadyMessage
+	TopologyConfigReadyMessage = "Topology config create completed"
+	// TopologyConfigReadyErrorMessage
+	TopologyConfigReadyErrorMessage = "Topology config create error occurred %s"
+	// TopologyConfigReadyCondition Status=True condition which indicates a CR exists and is referenced by the Glance
+	TopologyConfigReadyCondition condition.Type = "TopologyConfigReady"
 )

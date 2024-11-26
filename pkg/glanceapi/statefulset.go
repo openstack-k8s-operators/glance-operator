@@ -20,6 +20,7 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
@@ -49,6 +50,7 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
+	topologyOverride *topologyv1.Topology,
 ) (*appsv1.StatefulSet, error) {
 	userID := glance.GlanceUID
 	startupProbe := &corev1.Probe{
@@ -165,6 +167,7 @@ func StatefulSet(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      stsName,
 			Namespace: instance.Namespace,
+			Labels:    labels,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			ServiceName: stsName,
@@ -290,19 +293,40 @@ func StatefulSet(
 		extraVolPropagation),
 		apiVolumes...)
 
+	if instance.Spec.NodeSelector != nil {
+		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector
+	}
+
+	// initialize an Affinity Object
+	aff := &affinity.OverrideSpec{
+		PodAffinity:     nil,
+		PodAntiAffinity: nil,
+		NodeAffinity:    nil,
+	}
+
+	// initialize a Topology Object
+	tplg := []corev1.TopologySpreadConstraint{}
+
+	if topologyOverride != nil {
+		ts := topologyOverride.Spec
+		if ts.TopologySpreadConstraint == nil {
+			ts.TopologySpreadConstraint = &tplg
+		} else {
+			statefulset.Spec.Template.Spec.TopologySpreadConstraints = *topologyOverride.Spec.TopologySpreadConstraint
+		}
+		aff = topologyOverride.Spec.APIAffinity
+	}
+
 	// If possible two pods of the same service should not
 	// run on the same worker node. If this is not possible
 	// the get still created on the same worker node.
-	statefulset.Spec.Template.Spec.Affinity = affinity.DistributePods(
+	statefulset.Spec.Template.Spec.Affinity, err = affinity.DistributePods(
 		common.AppSelector,
 		[]string{
 			glance.ServiceName,
 		},
 		corev1.LabelHostname,
+		aff,
 	)
-	if instance.Spec.NodeSelector != nil {
-		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector
-	}
-
 	return statefulset, err
 }

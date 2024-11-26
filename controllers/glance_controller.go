@@ -866,6 +866,13 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	if instance.Spec.KeystoneEndpoint == apiName {
 		apiAnnotations[glance.KeystoneEndpoint] = "true"
 	}
+
+	// If topology is not present in the underlying GlanceAPI,
+	// inherit from the top-level CR
+	if apiSpec.GlanceAPITemplate.Topology == nil {
+		apiSpec.GlanceAPITemplate.Topology = instance.Spec.Topology
+	}
+
 	// Add the API name to the GlanceAPI instance as a label
 	serviceLabels[glancev1.APINameLabel] = apiName
 	glanceStatefulset := &glancev1.GlanceAPI{
