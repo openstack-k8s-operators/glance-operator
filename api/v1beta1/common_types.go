@@ -61,6 +61,11 @@ type GlanceAPITemplate struct {
 	NodeSelector *map[string]string `json:"nodeSelector,omitempty"`
 
 	// +kubebuilder:validation:Optional
+	// Topology to apply the Policy defined by the associated CR referenced by
+	// name
+	Topology *TopologyRef `json:"topologyRef,omitempty"`
+
+	// +kubebuilder:validation:Optional
 	// CustomServiceConfig - customize the service config using this parameter to change service defaults,
 	// or overwrite rendered information using raw OpenStack config format. The content gets added to
 	// to /etc/<service>/<service>.conf.d directory as custom.conf file.
@@ -106,6 +111,15 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Minimum=1
 	// APITimeout for HAProxy and Apache defaults to GlanceSpecCore APITimeout
 	APITimeout int `json:"apiTimeout,omitempty"`
+}
+
+// TopologyRef -
+type TopologyRef struct {
+	// +kubebuilder:validation:Optional
+	// Name -
+	Name string `json:"name"`
+	// Namespace -
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // Storage -

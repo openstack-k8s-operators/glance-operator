@@ -12,6 +12,8 @@ github.com/evanphx/json-patch v5.7.0+incompatible h1:vgGkfT/9f8zE6tvSCe74nfpAVDQ
 github.com/evanphx/json-patch v5.7.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch/v5 v5.9.0 h1:kcBlZQbplgElYIlo/n1hJbls2z/1awpXxpRi0/FOJfg=
 github.com/evanphx/json-patch/v5 v5.9.0/go.mod h1:VNkHZ/282BpEyt/tObQO8s5CMPmYYq14uClGH4abBuQ=
+github.com/fmount/infra-operator/apis v0.0.0-20241206174027-50c23c924fe8 h1:2XjP1b7IjEKwWf/ItugGKCfqFzPoyrLz2Lgh8xWnWZk=
+github.com/fmount/infra-operator/apis v0.0.0-20241206174027-50c23c924fe8/go.mod h1:45GCQTvY41txq3sS5hWjZxYFv3AWYSwfa2ghk0qNcd0=
 github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nosvA=
 github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
 github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=
@@ -80,8 +82,6 @@ github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094 h1:J1wuGhVxpsHykZBa6
 github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094/go.mod h1:CxgbWAlvu2iQB0UmKTtRu1YfepRg1/vJ64n2DlIEVz4=
 github.com/openstack-k8s-operators/cinder-operator/api v0.5.1-0.20241129103654-95d11aacd353 h1:HJuuASmkgXEG+c5IwPruNKj+7y53P9SgD6CPgHwIis8=
 github.com/openstack-k8s-operators/cinder-operator/api v0.5.1-0.20241129103654-95d11aacd353/go.mod h1:3NvCHOoCyzcZm046XctbsU/Dx+en3l8jG3nHhZyWOAA=
-github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20241128131522-70981ed1ed1a h1:A0ryzkskW8hYi0OSBIrpKnSsI80+s934tvw8HhjSlZQ=
-github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20241128131522-70981ed1ed1a/go.mod h1:6x5zgJJBjrOhsTtNALYrM2ecUH92kIoZbZ6w1fKHPfs=
 github.com/openstack-k8s-operators/keystone-operator/api v0.5.1-0.20241128130137-80d688a88c19 h1:H5apEipo6Tq8ewOKy3KRUxPKfs/7VwhfctoJoZefjQ8=
 github.com/openstack-k8s-operators/keystone-operator/api v0.5.1-0.20241128130137-80d688a88c19/go.mod h1:AZhHY6dZzGyG9iVOf1poD7pTS9c7ZG/f99Fg+GdFVEk=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20241114091812-6dc9fd0961dc h1:Ufa/q/nC9wmKblvsc0kJppsXHOJoY4fbUamb3ItWCOk=
