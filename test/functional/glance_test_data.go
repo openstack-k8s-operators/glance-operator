@@ -45,6 +45,10 @@ const (
 	MemcachedInstance = "memcached"
 	// AccountName - name of the MariaDBAccount CR
 	AccountName = glance.DatabaseName
+	// GlanceCephExtraMountsPath -
+	GlanceCephExtraMountsPath = "/etc/ceph"
+	// GlanceCephExtraMountsSecretName -
+	GlanceCephExtraMountsSecretName = "ceph"
 )
 
 // GlanceTestData is the data structure used to provide input data to envTest
