@@ -394,6 +394,7 @@ $(GINKGO): $(LOCALBIN)
 	test -s $(LOCALBIN)/ginkgo || GOBIN=$(LOCALBIN) go install github.com/onsi/ginkgo/v2/ginkgo
 
 CRD_SCHEMA_CHECKER_VERSION ?= release-4.16
+BRANCH ?= main
 
 PHONY: crd-schema-check
 crd-schema-check: manifests
