@@ -106,6 +106,12 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Minimum=1
 	// APITimeout for HAProxy and Apache defaults to GlanceSpecCore APITimeout
 	APITimeout int `json:"apiTimeout,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=3
+	// +kubebuilder:validation:Minimum=1
+	// Workers - Number of processes running GlanceAPI(s)
+	Workers *int32 `json:"workers"`
 }
 
 // Storage -

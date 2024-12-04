@@ -712,6 +712,11 @@ spec:
                 - single
                 - edge
                 type: string
+              workers:
+                default: 3
+                format: int32
+                minimum: 1
+                type: integer
             required:
             - containerImage
             - databaseHostname

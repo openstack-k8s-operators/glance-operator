@@ -1057,6 +1057,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		"QuotaEnabled": instance.Spec.Quota,
 		"LogFile":      fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
 		"VHosts":       httpdVhostConfig,
+		"Workers":      instance.Spec.Workers,
 	}
 
 	// Only set EndpointID parameter when the Endpoint has been created and the
