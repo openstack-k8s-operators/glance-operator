@@ -107,7 +107,6 @@ type GlanceSpecCore struct {
 	Quotas QuotaLimits `json:"quotas,omitempty"`
 
 	// ImageCache -
-	// +kubebuilder:default={}
 	ImageCache ImageCache `json:"imageCache"`
 
 	// +kubebuilder:validation:Required
