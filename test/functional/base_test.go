@@ -311,3 +311,37 @@ func GetDummyBackend() string {
 	dummyBackend := "enabled_backends=backend1:rbd"
 	return fmt.Sprintf("%s\n%s", section, dummyBackend)
 }
+
+// GetExtraMounts - Utility function that simulates extraMounts pointing
+// to a Ceph secret
+func GetExtraMounts() []map[string]interface{} {
+	return []map[string]interface{}{
+		{
+			"name":   glanceTest.Instance.Name,
+			"region": "az0",
+			"extraVol": []map[string]interface{}{
+				{
+					"extraVolType": GlanceCephExtraMountsSecretName,
+					"propagation": []string{
+						"GlanceAPI",
+					},
+					"volumes": []map[string]interface{}{
+						{
+							"name": GlanceCephExtraMountsSecretName,
+							"secret": map[string]interface{}{
+								"secretName": GlanceCephExtraMountsSecretName,
+							},
+						},
+					},
+					"mounts": []map[string]interface{}{
+						{
+							"name":      GlanceCephExtraMountsSecretName,
+							"mountPath": GlanceCephExtraMountsPath,
+							"readOnly":  true,
+						},
+					},
+				},
+			},
+		},
+	}
+}
