@@ -31,6 +31,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ptr "k8s.io/utils/ptr"
@@ -587,6 +588,69 @@ var _ = Describe("Glance controller", func() {
 			for _, glanceAPI := range glance.Spec.GlanceAPIs {
 				Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glanceAPI.NetworkAttachments))
 				Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glanceAPI.NetworkAttachments))
+			}
+		})
+	})
+
+	When("Glance CR instance is built with ExtraMounts", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			rawSpec := map[string]interface{}{
+				"storage": map[string]interface{}{
+					"storageRequest": glanceTest.GlancePVCSize,
+				},
+				"storageRequest":      glanceTest.GlancePVCSize,
+				"secret":              SecretName,
+				"databaseInstance":    glanceTest.GlanceDatabaseName.Name,
+				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+				"customServiceConfig": GlanceDummyBackend,
+				"extraMounts":         GetExtraMounts(),
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+		})
+		It("Check the extraMounts of the resulting StatefulSets", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			// Retrieve the generated resources and the two internal/external
+			// instances that are split behind the scenes
+			ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
+			ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+
+			for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
+				// Check the resulting deployment fields
+				Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(5))
+				Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
+				// Get the glance-api container
+				container := ss.Spec.Template.Spec.Containers[2]
+				// Fail if glance-api doesn't have the right number of VolumeMounts
+				// entries
+				Expect(container.VolumeMounts).To(HaveLen(7))
+				// Inspect VolumeMounts and make sure we have the Ceph MountPath
+				// provided through extraMounts
+				for _, vm := range container.VolumeMounts {
+					if vm.Name == "ceph" {
+						Expect(vm.MountPath).To(
+							ContainSubstring(GlanceCephExtraMountsPath))
+					}
+				}
 			}
 		})
 	})
