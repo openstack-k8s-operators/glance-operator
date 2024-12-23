@@ -218,7 +218,15 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
 
+	// When a Topology CR is referenced, fail if a different Namespace is
+	// referenced because is not supported
+	if err := ValidateTopologyNamespace(r.Spec.Topology, *basePath, r.Namespace); err != nil {
+		allErrs = append(allErrs, err)
+	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
+		if err := ValidateTopologyNamespace(glanceAPI.Topology, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
+			allErrs = append(allErrs, err)
+		}
 		// Validate glanceapi name is valid
 		// GlanceAPI name is <glance name>-<api name>-<api type>
 		// The glanceAPI controller creates StatefulSet for glanceapi to run.
@@ -307,7 +315,15 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
 
+	// When a Topology CR is referenced, fail if a different Namespace is
+	// referenced because is not supported
+	if err := ValidateTopologyNamespace(r.Spec.Topology, *basePath, r.Namespace); err != nil {
+		allErrs = append(allErrs, err)
+	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
+		if err := ValidateTopologyNamespace(glanceAPI.Topology, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
+			allErrs = append(allErrs, err)
+		}
 		// Validate glanceapi name is valid
 		// GlanceAPI name is <glance name>-<api name>-<api type>
 		// The glanceAPI controller creates StatefulSet for glanceapi to run.
@@ -440,4 +456,16 @@ func GetCrMaxLengthCorrection(name string, apiType string) int {
 	// crMaxLengthCorrection = defaultCrMaxLengthCorrection + len(<glance name>) + "-" + "-" + len(<api type>)
 
 	return (defaultCrMaxLengthCorrection + len(name) + len(apiType) + 2)
+}
+
+// ValidateTopologyNamespace - returns a field.Error when Glance / GlanceAPI
+// references a Topoology deployed on a different namespace
+func ValidateTopologyNamespace(topology *TopologyRef, basePath field.Path, ns string) (*field.Error) {
+	if topology != nil {
+		if topology.Namespace != "" &&  topology.Namespace != ns {
+				topologyNamespace := basePath.Child("topology").Key("namespace")
+				return field.Invalid(topologyNamespace, "namespace", "Customizing namespace field is not supported")
+		}
+	}
+	return nil
 }
