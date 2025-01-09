@@ -759,6 +759,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              lastAppliedTopology:
+                type: string
               networkAttachments:
                 additionalProperties:
                   items:

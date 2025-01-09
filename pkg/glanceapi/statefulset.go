@@ -76,6 +76,16 @@ func StatefulSet(
 	glanceURIScheme := corev1.URISchemeHTTP
 	tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
 
+	// initialize an Affinity Object
+	aff := &affinity.OverrideSpec{
+		PodAffinity:     nil,
+		PodAntiAffinity: nil,
+		NodeAffinity:    nil,
+	}
+
+	// initialize a Topology Object
+	tplg := []corev1.TopologySpreadConstraint{}
+
 	if instance.Spec.APIType == glancev1.APIInternal ||
 		instance.Spec.APIType == glancev1.APIEdge {
 		port = int32(glance.GlanceInternalPort)
@@ -296,16 +306,6 @@ func StatefulSet(
 	if instance.Spec.NodeSelector != nil {
 		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector
 	}
-
-	// initialize an Affinity Object
-	aff := &affinity.OverrideSpec{
-		PodAffinity:     nil,
-		PodAntiAffinity: nil,
-		NodeAffinity:    nil,
-	}
-
-	// initialize a Topology Object
-	tplg := []corev1.TopologySpreadConstraint{}
 
 	if topologyOverride != nil {
 		ts := topologyOverride.Spec
