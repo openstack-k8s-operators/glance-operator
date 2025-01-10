@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -34,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -162,7 +160,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		condition.UnknownCondition(condition.CreateServiceReadyCondition, condition.InitReason, condition.CreateServiceReadyInitMessage),
 		condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 		condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
-		condition.UnknownCondition(glancev1.TopologyConfigReadyCondition, condition.InitReason, glancev1.TopologyConfigReadyInitMessage),
+		condition.UnknownCondition(condition.TopologyReadyCondition, condition.InitReason, condition.TopologyReadyInitMessage),
 		condition.UnknownCondition(condition.DeploymentReadyCondition, condition.InitReason, condition.DeploymentReadyInitMessage),
 		condition.UnknownCondition(condition.TLSInputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 		// right now we have no dedicated KeystoneEndpointReadyInitMessage
@@ -242,6 +240,18 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return nil
 		}
 		return []string{*cr.Spec.TLS.API.Public.SecretName}
+	}); err != nil {
+		return err
+	}
+
+	// index topologyField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, topologyField, func(rawObj client.Object) []string {
+		// Extract the topology name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.Topology == nil {
+			return nil
+		}
+		return []string{cr.Spec.Topology.Name}
 	}); err != nil {
 		return err
 	}
@@ -336,44 +346,6 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 		return nil
 	}
-	tpFn := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldObj := e.ObjectOld.(*topologyv1.Topology)
-			newObj := e.ObjectNew.(*topologyv1.Topology)
-			// Compare spec
-			return !equality.Semantic.DeepEqual(oldObj.Spec, newObj.Spec)
-		},
-	}
-
-	topologyFn := func(_ context.Context, o client.Object) []reconcile.Request {
-		result := []reconcile.Request{}
-		// get all GlanceAPIs CRs
-		glanceAPIs := &glancev1.GlanceAPIList{}
-		listOpts := []client.ListOption{
-			client.InNamespace(o.GetNamespace()),
-		}
-		if err := r.Client.List(context.Background(), glanceAPIs, listOpts...); err != nil {
-			r.Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
-			return nil
-		}
-
-		for _, cr := range glanceAPIs.Items {
-			if cr.Spec.Topology != nil {
-				if o.GetName() == cr.Spec.Topology.Name {
-					name := client.ObjectKey{
-						Namespace: o.GetNamespace(),
-						Name:      cr.Name,
-					}
-					r.Log.Info(fmt.Sprintf("Topology %s is used by GlanceAPI CR %s", o.GetName(), cr.Name))
-					result = append(result, reconcile.Request{NamespacedName: name})
-				}
-			}
-		}
-		if len(result) > 0 {
-			return result
-		}
-		return nil
-	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.GlanceAPI{}).
@@ -393,8 +365,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&memcachedv1.Memcached{},
 			handler.EnqueueRequestsFromMapFunc(memcachedFn)).
 		Watches(&topologyv1.Topology{},
-			handler.EnqueueRequestsFromMapFunc(topologyFn),
-			builder.WithPredicates(tpFn)).
+			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
@@ -857,7 +829,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// When the Topology CR reference is updated and the current GlanceAPI
 	// switches to a new Topology, remove the finalizer from the previous
 	// Topology
-	if instance.Status.LastAppliedTopology != "" {
+	if instance.Spec.Topology == nil ||
+		(instance.Spec.Topology.Name != instance.Status.LastAppliedTopology) {
 		_, err = r.ensureDeletedTopology(ctx, instance, helper)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -867,10 +840,10 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		topology, err = r.ensureGlanceAPITopology(ctx, helper, instance)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
-				glancev1.TopologyConfigReadyCondition,
+				condition.TopologyReadyCondition,
 				condition.ErrorReason,
 				condition.SeverityWarning,
-				glancev1.TopologyConfigReadyErrorMessage,
+				condition.TopologyReadyErrorMessage,
 				err.Error()))
 			r.Log.Info("Glance config is waiting for Topology requirements, requeueing...")
 			return ctrl.Result{}, err
@@ -883,7 +856,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// At this point Glance has a Topology CR (or not in case it's not referenced in the
 	// top-level CR), and we can mark the TopologyReady condition as True (and rollout the
 	// new pods)
-	instance.Status.Conditions.MarkTrue(glancev1.TopologyConfigReadyCondition, glancev1.TopologyConfigReadyMessage)
+	instance.Status.Conditions.MarkTrue(condition.TopologyReadyCondition, condition.TopologyReadyMessage)
 
 	// This is currently required because cleaner and pruner cronJobs
 	// mount the same pvc to clean data present in /var/lib/glance/image-cache
@@ -1564,19 +1537,21 @@ func (r *GlanceAPIReconciler) ensureDeletedTopology(
 ) (ctrl.Result, error) {
 	ns := instance.Namespace
 
-	// no Topology is currently passed to the GlanceAPI, and it was not used
-	// before
-	if instance.Spec.Topology == nil && instance.Status.LastAppliedTopology == "" {
+	// no Topology is passed to the GlanceAPI, and it was not used before
+	if instance.Status.LastAppliedTopology == "" {
 		return ctrl.Result{}, nil
 	}
+
+	// Topology is referenced in the .Spec, check the namespace
 	if instance.Spec.Topology != nil {
-		// Check namespace and set name
+		// Check namespace
 		if instance.Spec.Topology.Namespace != "" {
 			ns = instance.Spec.Topology.Namespace
 		}
 	}
 
 	name := instance.Status.LastAppliedTopology
+
 	// Remove the finalizer from the Topology CR
 	topology, _, err := topologyv1.GetTopologyByName(
 		ctx,
@@ -1585,19 +1560,16 @@ func (r *GlanceAPIReconciler) ensureDeletedTopology(
 		ns,
 	)
 
-	if k8s_errors.IsNotFound(err) {
-		return ctrl.Result{}, nil
-	}
 	if err != nil && !k8s_errors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
-	if err == nil {
+	if !k8s_errors.IsNotFound(err) {
 		if controllerutil.RemoveFinalizer(topology, fmt.Sprintf("%s-%s", h.GetFinalizer(), instance.APIName())) {
 			err = r.Update(ctx, topology)
 			if err != nil && !k8s_errors.IsNotFound(err) {
 				return ctrl.Result{}, err
 			}
-			util.LogForObject(h, "Removed finalizer from Topology", instance)
+			util.LogForObject(h, "Removed finalizer from Topology", topology)
 		}
 	}
 	return ctrl.Result{}, err

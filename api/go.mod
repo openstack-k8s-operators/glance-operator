@@ -4,7 +4,8 @@ go 1.21
 
 require (
 	github.com/google/go-cmp v0.6.0
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20241216113837-d172b3ac0f4e
+	github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250120135015-2a1b8e167212
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250120114122-4bcef17ff6fa
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20241216113837-d172b3ac0f4e
 	k8s.io/api v0.29.12
 	k8s.io/apimachinery v0.29.12
@@ -16,7 +17,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.0 // indirect
-	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
@@ -70,7 +70,3 @@ require (
 // mschuppert: map to latest commit from release-4.16 tag
 // must consistent within modules and service operators
 replace github.com/openshift/api => github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094 //allow-merging
-
-replace github.com/openstack-k8s-operators/infra-operator/apis => github.com/fmount/infra-operator/apis v0.0.0-20250109124018-4262fdefc70b //allow-merging
-
-replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/fmount/lib-common/modules/common v0.0.0-20241217100632-a2c8ea43c395 //allow-merging

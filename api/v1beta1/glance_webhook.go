@@ -30,6 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 
 	common_webhook "github.com/openstack-k8s-operators/lib-common/modules/common/webhook"
 )
@@ -220,12 +221,16 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 
 	// When a Topology CR is referenced, fail if a different Namespace is
 	// referenced because is not supported
-	if err := ValidateTopologyNamespace(r.Spec.Topology, *basePath, r.Namespace); err != nil {
-		allErrs = append(allErrs, err)
+	if r.Spec.Topology != nil {
+		if err := topologyv1.ValidateTopologyNamespace(r.Spec.Topology.Namespace, *basePath, r.Namespace); err != nil {
+			allErrs = append(allErrs, err)
+		}
 	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
-		if err := ValidateTopologyNamespace(glanceAPI.Topology, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
-			allErrs = append(allErrs, err)
+		if glanceAPI.Topology != nil {
+			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.Topology.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
+				allErrs = append(allErrs, err)
+			}
 		}
 		// Validate glanceapi name is valid
 		// GlanceAPI name is <glance name>-<api name>-<api type>
@@ -317,12 +322,16 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 
 	// When a Topology CR is referenced, fail if a different Namespace is
 	// referenced because is not supported
-	if err := ValidateTopologyNamespace(r.Spec.Topology, *basePath, r.Namespace); err != nil {
-		allErrs = append(allErrs, err)
+	if r.Spec.Topology != nil {
+		if err := topologyv1.ValidateTopologyNamespace(r.Spec.Topology.Namespace, *basePath, r.Namespace); err != nil {
+			allErrs = append(allErrs, err)
+		}
 	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
-		if err := ValidateTopologyNamespace(glanceAPI.Topology, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
-			allErrs = append(allErrs, err)
+		if glanceAPI.Topology != nil {
+			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.Topology.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
+				allErrs = append(allErrs, err)
+			}
 		}
 		// Validate glanceapi name is valid
 		// GlanceAPI name is <glance name>-<api name>-<api type>
@@ -456,16 +465,4 @@ func GetCrMaxLengthCorrection(name string, apiType string) int {
 	// crMaxLengthCorrection = defaultCrMaxLengthCorrection + len(<glance name>) + "-" + "-" + len(<api type>)
 
 	return (defaultCrMaxLengthCorrection + len(name) + len(apiType) + 2)
-}
-
-// ValidateTopologyNamespace - returns a field.Error when Glance / GlanceAPI
-// references a Topoology deployed on a different namespace
-func ValidateTopologyNamespace(topology *TopologyRef, basePath field.Path, ns string) (*field.Error) {
-	if topology != nil {
-		if topology.Namespace != "" &&  topology.Namespace != ns {
-				topologyNamespace := basePath.Child("topology").Key("namespace")
-				return field.Invalid(topologyNamespace, "namespace", "Customizing namespace field is not supported")
-		}
-	}
-	return nil
 }

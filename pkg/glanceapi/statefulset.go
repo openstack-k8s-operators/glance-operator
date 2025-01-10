@@ -50,7 +50,7 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
-	topologyOverride *topologyv1.Topology,
+	topology *topologyv1.Topology,
 ) (*appsv1.StatefulSet, error) {
 	userID := glance.GlanceUID
 	startupProbe := &corev1.Probe{
@@ -75,13 +75,6 @@ func StatefulSet(
 	port := int32(glance.GlancePublicPort)
 	glanceURIScheme := corev1.URISchemeHTTP
 	tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
-
-	// initialize an Affinity Object
-	aff := &affinity.OverrideSpec{
-		PodAffinity:     nil,
-		PodAntiAffinity: nil,
-		NodeAffinity:    nil,
-	}
 
 	// initialize a Topology Object
 	tplg := []corev1.TopologySpreadConstraint{}
@@ -307,26 +300,28 @@ func StatefulSet(
 		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector
 	}
 
-	if topologyOverride != nil {
-		ts := topologyOverride.Spec
-		if ts.TopologySpreadConstraint == nil {
-			ts.TopologySpreadConstraint = &tplg
+	if topology != nil {
+		ts := topology.Spec
+		if ts.TopologySpreadConstraints == nil {
+			ts.TopologySpreadConstraints = &tplg
 		} else {
-			statefulset.Spec.Template.Spec.TopologySpreadConstraints = *topologyOverride.Spec.TopologySpreadConstraint
+			statefulset.Spec.Template.Spec.TopologySpreadConstraints = *topology.Spec.TopologySpreadConstraints
 		}
-		aff = topologyOverride.Spec.APIAffinity
+		if ts.Affinity != nil {
+			statefulset.Spec.Template.Spec.Affinity = ts.Affinity
+		}
+	} else {
+		// If possible two pods of the same service should not
+		// run on the same worker node. If this is not possible
+		// the get still created on the same worker node.
+		statefulset.Spec.Template.Spec.Affinity = affinity.DistributePods(
+			common.AppSelector,
+			[]string{
+				glance.ServiceName,
+			},
+			corev1.LabelHostname,
+		)
 	}
 
-	// If possible two pods of the same service should not
-	// run on the same worker node. If this is not possible
-	// the get still created on the same worker node.
-	statefulset.Spec.Template.Spec.Affinity, err = affinity.DistributePods(
-		common.AppSelector,
-		[]string{
-			glance.ServiceName,
-		},
-		corev1.LabelHostname,
-		aff,
-	)
 	return statefulset, err
 }
