@@ -125,6 +125,10 @@ type GlanceSpecCore struct {
 	// +kubebuilder:validation:Minimum=1
 	// Default APITimeout for HAProxy and Apache, defaults to 60 seconds
 	APITimeout int `json:"apiTimeout"`
+
+	// +kubebuilder:validation:Optional
+	// HttpdCustomization - customize the httpd service of all GlanceAPIs
+	HttpdCustomization HttpdCustomization `json:"httpdCustomization,omitempty"`
 }
 
 // GlanceSpec defines the desired state of Glance

@@ -838,6 +838,10 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		apiSpec.GlanceAPITemplate.NodeSelector = instance.Spec.NodeSelector
 	}
 
+	if apiSpec.GlanceAPITemplate.HttpdCustomization.CustomConfigSecret == nil {
+		apiSpec.GlanceAPITemplate.HttpdCustomization.CustomConfigSecret = instance.Spec.HttpdCustomization.CustomConfigSecret
+	}
+
 	// Inherit the ImageCacheSize from the top level if not specified
 	if apiSpec.ImageCache.Size == "" {
 		apiSpec.ImageCache.Size = instance.Spec.ImageCache.Size
@@ -967,7 +971,7 @@ func (r *GlanceReconciler) generateServiceConfig(
 	}
 
 	// Generate both default 00-config.conf and -scripts
-	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, true)
+	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, true, map[string]string{})
 }
 
 // ensureRegisteredLimits - create registered limits in keystone that will be

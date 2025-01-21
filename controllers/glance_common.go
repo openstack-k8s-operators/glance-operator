@@ -23,6 +23,7 @@ import (
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/types"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
@@ -45,10 +46,11 @@ import (
 
 // fields to index to reconcile when change
 const (
-	passwordSecretField     = ".spec.secret"
-	caBundleSecretNameField = ".spec.tls.caBundleSecretName"
-	tlsAPIInternalField     = ".spec.tls.api.internal.secretName"
-	tlsAPIPublicField       = ".spec.tls.api.public.secretName"
+	passwordSecretField                 = ".spec.secret"
+	caBundleSecretNameField             = ".spec.tls.caBundleSecretName"
+	tlsAPIInternalField                 = ".spec.tls.api.internal.secretName"
+	tlsAPIPublicField                   = ".spec.tls.api.public.secretName"
+	httpdCustomServiceConfigSecretField = ".spec.httpdCustomization.customServiceConfigSecret"
 )
 
 var (
@@ -60,6 +62,7 @@ var (
 		caBundleSecretNameField,
 		tlsAPIInternalField,
 		tlsAPIPublicField,
+		httpdCustomServiceConfigSecretField,
 	}
 )
 
@@ -162,18 +165,27 @@ func GenerateConfigsGeneric(
 	customData map[string]string,
 	cmLabels map[string]string,
 	scripts bool,
+	customTemplates map[string]string,
 ) error {
+
+	// Marshal the templateParameters map to YAML
+	yamlData, err := yaml.Marshal(templateParameters)
+	if err != nil {
+		return fmt.Errorf("Error marshalling to YAML: %w", err)
+	}
+	customData[common.TemplateParameters] = string(yamlData)
 
 	cms := []util.Template{
 		// Templates where the GlanceAPI config is stored
 		{
-			Name:          fmt.Sprintf("%s-config-data", instance.GetName()),
-			Namespace:     instance.GetNamespace(),
-			Type:          util.TemplateTypeConfig,
-			InstanceType:  instance.GetObjectKind().GroupVersionKind().Kind,
-			ConfigOptions: templateParameters,
-			CustomData:    customData,
-			Labels:        cmLabels,
+			Name:           fmt.Sprintf("%s-config-data", instance.GetName()),
+			Namespace:      instance.GetNamespace(),
+			Type:           util.TemplateTypeConfig,
+			InstanceType:   instance.GetObjectKind().GroupVersionKind().Kind,
+			ConfigOptions:  templateParameters,
+			CustomData:     customData,
+			StringTemplate: customTemplates,
+			Labels:         cmLabels,
 		},
 	}
 	// TODO: Scripts have no reason to be secrets, should move to configmap
