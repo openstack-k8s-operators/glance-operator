@@ -22,6 +22,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/topology"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -61,9 +62,9 @@ type GlanceAPITemplate struct {
 	NodeSelector *map[string]string `json:"nodeSelector,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// Topology to apply the Policy defined by the associated CR referenced by
-	// name
-	Topology *TopologyRef `json:"topologyRef,omitempty"`
+	// TopologyRef to apply the Topology defined by the associated CR referenced
+	// by name
+	TopologyRef *topology.TopoRef `json:"topologyRef,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// CustomServiceConfig - customize the service config using this parameter to change service defaults,
@@ -111,21 +112,6 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Minimum=1
 	// APITimeout for HAProxy and Apache defaults to GlanceSpecCore APITimeout
 	APITimeout int `json:"apiTimeout,omitempty"`
-}
-
-// TopologyRef -
-type TopologyRef struct {
-	// +kubebuilder:validation:Optional
-	// Name - The Topology CR name that Glance references
-	Name string `json:"name"`
-
-	// +kubebuilder:validation:Optional
-	// Namespace - The Namespace to fetch the Topology CR referenced
-	// NOTE: Namespace currently points by default to the same namespace where
-	// Glance is deployed. Customizing the namespace is not supported and
-	// webhooks prevent editing this field to a value different from the
-	// current project
-	Namespace string `json:"namespace,omitempty"`
 }
 
 // Storage -

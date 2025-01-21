@@ -219,16 +219,16 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
 
-	// When a Topology CR is referenced, fail if a different Namespace is
+	// When a TopologyRef CR is referenced, fail if a different Namespace is
 	// referenced because is not supported
-	if r.Spec.Topology != nil {
-		if err := topologyv1.ValidateTopologyNamespace(r.Spec.Topology.Namespace, *basePath, r.Namespace); err != nil {
+	if r.Spec.TopologyRef != nil {
+		if err := topologyv1.ValidateTopologyNamespace(r.Spec.TopologyRef.Namespace, *basePath, r.Namespace); err != nil {
 			allErrs = append(allErrs, err)
 		}
 	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
-		if glanceAPI.Topology != nil {
-			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.Topology.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
+		if glanceAPI.TopologyRef != nil {
+			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
 				allErrs = append(allErrs, err)
 			}
 		}
@@ -320,16 +320,16 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
 
-	// When a Topology CR is referenced, fail if a different Namespace is
+	// When a TopologyRef CR is referenced, fail if a different Namespace is
 	// referenced because is not supported
-	if r.Spec.Topology != nil {
-		if err := topologyv1.ValidateTopologyNamespace(r.Spec.Topology.Namespace, *basePath, r.Namespace); err != nil {
+	if r.Spec.TopologyRef != nil {
+		if err := topologyv1.ValidateTopologyNamespace(r.Spec.TopologyRef.Namespace, *basePath, r.Namespace); err != nil {
 			allErrs = append(allErrs, err)
 		}
 	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
-		if glanceAPI.Topology != nil {
-			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.Topology.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
+		if glanceAPI.TopologyRef != nil {
+			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
 				allErrs = append(allErrs, err)
 			}
 		}

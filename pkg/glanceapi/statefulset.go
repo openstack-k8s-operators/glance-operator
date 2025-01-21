@@ -76,9 +76,6 @@ func StatefulSet(
 	glanceURIScheme := corev1.URISchemeHTTP
 	tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
 
-	// initialize a Topology Object
-	tplg := []corev1.TopologySpreadConstraint{}
-
 	if instance.Spec.APIType == glancev1.APIInternal ||
 		instance.Spec.APIType == glancev1.APIEdge {
 		port = int32(glance.GlanceInternalPort)
@@ -301,12 +298,13 @@ func StatefulSet(
 	}
 
 	if topology != nil {
+		// Get the Topology .Spec
 		ts := topology.Spec
-		if ts.TopologySpreadConstraints == nil {
-			ts.TopologySpreadConstraints = &tplg
-		} else {
+		// Process TopologySpreadConstraints if defined in the referenced Topology
+		if ts.TopologySpreadConstraints != nil {
 			statefulset.Spec.Template.Spec.TopologySpreadConstraints = *topology.Spec.TopologySpreadConstraints
 		}
+		// Process Affinity if defined in the referenced Topology
 		if ts.Affinity != nil {
 			statefulset.Spec.Template.Spec.Affinity = ts.Affinity
 		}
