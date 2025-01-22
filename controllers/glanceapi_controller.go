@@ -570,6 +570,9 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			err.Error())
 		return ctrlResult, err
 	}
+	if (ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
+	}
 	r.Log.Info(fmt.Sprintf("Reconciled Service '%s' init successfully", instance.Name))
 	return ctrl.Result{}, nil
 }
@@ -600,7 +603,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		&configVars,
 	)
 	if (err != nil || ctrlResult != ctrl.Result{}) {
-		return ctrlResult, nil
+		return ctrlResult, err
 	}
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
@@ -661,16 +664,27 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		case backendToken[1] == "cinder":
 			cinder := &cinderv1.Cinder{}
 			err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: glance.CinderName}, cinder)
-			if err != nil && !k8s_errors.IsNotFound(err) {
-				// Request object not found, GlanceAPI can't be executed with this config
-				r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
-				instance.Status.Conditions.Set(condition.FalseCondition(
+			if err != nil {
+				if k8s_errors.IsNotFound(err) {
+					// Request object not found, GlanceAPI can't be executed with this config
+					r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
+					instance.Status.Conditions.Set(condition.FalseCondition(
+						glancev1.CinderCondition,
+						condition.RequestedReason,
+						condition.SeverityInfo,
+						glancev1.CinderInitMessage),
+					)
+					return glance.ResultRequeue, nil
+				}
+
+				instance.Status.Conditions.MarkFalse(
 					glancev1.CinderCondition,
 					condition.RequestedReason,
-					condition.SeverityInfo,
-					glancev1.CinderInitMessage),
+					condition.SeverityError,
+					glancev1.CinderReadyErrorMessage,
+					err.Error(),
 				)
-				return glance.ResultRequeue, nil
+				return ctrl.Result{}, err
 			}
 			// Cinder CR is found, we can unblock glance deployment because
 			// it represents a valid backend.
@@ -755,6 +769,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 			err,
 		)
 		return ctrlResult, err
+	} else if (ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
 	}
 
 	// Handle service init
@@ -928,13 +944,15 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		}
 	}
 	// Cleanup existing (but not required anymore) ImageCache cronJob
-	if ctrlResult, err := r.cleanupImageCacheJob(
+	if ctrlResult, err = r.cleanupImageCacheJob(
 		ctx,
 		helper,
 		instance,
 		GetServiceLabels(instance),
 	); err != nil {
 		return ctrlResult, err
+	} else if (ctrlResult != ctrl.Result{}) {
+		return ctrlResult, nil
 	}
 
 	// If we reach this point, we can mark the CronJobReadyCondition as True
@@ -1232,10 +1250,7 @@ func (r *GlanceAPIReconciler) ensureDeletedEndpoints(
 	// It might happen that the resource is not found because it does not match
 	// with the one exposing the keystone endpoints. If the keystoneendpoints
 	// CR does not exist it doesn't mean there's an issue, hence we don't have
-	// to do nothing, just return without an error
-	if k8s_errors.IsNotFound(err) {
-		return ctrl.Result{}, nil
-	}
+	// to do nothing, just return without an error (below)
 	if err != nil && !k8s_errors.IsNotFound(err) {
 		return ctrl.Result{}, err
 	}
@@ -1248,7 +1263,7 @@ func (r *GlanceAPIReconciler) ensureDeletedEndpoints(
 			util.LogForObject(h, "Removed finalizer from our KeystoneEndpoint", instance)
 		}
 	}
-	return ctrl.Result{}, err
+	return ctrl.Result{}, nil
 }
 
 func (r *GlanceAPIReconciler) ensureImageCacheJob(
@@ -1260,8 +1275,7 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 	cjType glance.CronJobType,
 ) (ctrl.Result, error) {
 
-	var err error
-	var ctrlResult ctrl.Result
+	var overallCtrlResult ctrl.Result
 
 	command := glance.GlanceCacheCleaner
 	schedule := instance.Spec.ImageCache.CleanerScheduler
@@ -1295,10 +1309,17 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 			ctrlResult, err := imageCacheCronJob.CreateOrPatch(ctx, h)
 			if err != nil {
 				return ctrlResult, err
+			} else if (ctrlResult != ctrl.Result{}) {
+				// If we get a non-empty ctrlResult here, we'll save it
+				// to return to the caller for their consideration.  If
+				// more than one non-empty ctrlResult is encountered in
+				// the course of the encompassing loop, we'll just pick
+				// the last one
+				overallCtrlResult = ctrlResult
 			}
 		}
 	}
-	return ctrlResult, err
+	return overallCtrlResult, nil
 }
 
 // cleanupImageCacheJob - delete the ImageCache cronJobs associated to a given
@@ -1309,8 +1330,8 @@ func (r *GlanceAPIReconciler) cleanupImageCacheJob(
 	instance *glancev1.GlanceAPI,
 	serviceLabels map[string]string,
 ) (ctrl.Result, error) {
-	var err error
-	var ctrlResult ctrl.Result
+	var overallCtrlResult ctrl.Result
+
 	// Get the PVCs using labelSelector (only the PVCs associated to the current
 	// GlanceAPI are retrieved)
 	cachePVCs, _ := GetPvcListWithLabel(ctx, h, instance.Namespace, serviceLabels)
@@ -1329,13 +1350,21 @@ func (r *GlanceAPIReconciler) cleanupImageCacheJob(
 			}, &pod); err != nil && k8s_errors.IsNotFound(err) || instance.Spec.ImageCache.Size == "" {
 				// if we have no pod Running with the associated cache pvc,
 				// we can delete the imageCache cronJob if still exists
-				if ctrlResult, err = r.deleteJob(ctx, instance, pvcName); err != nil {
-					return ctrl.Result{}, nil
+				ctrlResult, err := r.deleteJob(ctx, instance, pvcName)
+				if err != nil && !k8s_errors.IsNotFound(err) {
+					return ctrlResult, err
+				} else if (ctrlResult != ctrl.Result{}) {
+					// If we get a non-empty ctrlResult here, we'll save it
+					// to return to the caller for their consideration.  If
+					// more than one non-empty ctrlResult is encountered in
+					// the course of the encompassing loop, we'll just pick
+					// the last one
+					overallCtrlResult = ctrlResult
 				}
 			}
 		}
 	}
-	return ctrlResult, err
+	return overallCtrlResult, nil
 }
 
 // deleteJob - delete an imageCache cronJob no longer used
@@ -1345,7 +1374,6 @@ func (r *GlanceAPIReconciler) deleteJob(
 	pvcName string,
 ) (ctrl.Result, error) {
 	var err error
-	var ctrlResult ctrl.Result
 	var cronJob batchv1.CronJob
 	// For each imageCache we have both cleaner and pruner cronJobs to check and
 	// cleanup if the conditions are met
@@ -1363,11 +1391,11 @@ func (r *GlanceAPIReconciler) deleteJob(
 			continue
 		}
 		// A cronJob is found and the delete is called
-		if err = r.Delete(ctx, &cronJob, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil {
-			return ctrlResult, err
+		if err = r.Delete(ctx, &cronJob, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !k8s_errors.IsNotFound(err) {
+			return ctrl.Result{}, err
 		}
 	}
-	return ctrlResult, err
+	return ctrl.Result{}, nil
 }
 
 // getEndpointID - returns the endpointID associated to a keystone Endpoint
@@ -1397,7 +1425,7 @@ func (r *GlanceAPIReconciler) getEndpointID(
 	if ep.Status.EndpointIDs != nil {
 		epID = ep.Status.EndpointIDs[string(epType)]
 	}
-	return epID, err
+	return epID, nil
 }
 
 // glanceAPIRefresh - delete a StateFulSet when a configuration for a Forbidden
@@ -1419,6 +1447,7 @@ func (r *GlanceAPIReconciler) glanceAPIRefresh(
 			r.Log.Info(fmt.Sprintf("GlanceAPI %s-api: Statefulset not found.", instance.Name))
 			return nil
 		}
+		return err
 	}
 	err = r.Client.Delete(ctx, sts)
 	if err != nil && !k8s_errors.IsNotFound(err) {
