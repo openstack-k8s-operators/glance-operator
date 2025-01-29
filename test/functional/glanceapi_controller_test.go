@@ -18,6 +18,7 @@ package functional
 
 import (
 	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
 
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
@@ -987,6 +988,58 @@ var _ = Describe("Glanceapi controller", func() {
 				condition.KeystoneEndpointReadyCondition,
 				corev1.ConditionTrue,
 			)
+		})
+	})
+
+	When("GlanceAPI instance overrides a Topology", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			// Build the topology Spec
+			topologySpec := GetSampleTopologySpec()
+			// Create Test Topologies
+			for _, t := range glanceTest.GlanceAPITopologies {
+				CreateTopology(t, topologySpec)
+			}
+
+			rawSpec := CreateGlanceAPIWithTopologySpec()
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+		})
+
+		It("Checks the Topology has been applied to the resulting StatefulSets", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+			Expect(internalAPI.Status.LastAppliedTopology).ShouldNot(BeNil())
+			Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+
+			// Check the statefulSet has a default TopologySpreadConstraints and no Affinity
+			// TopologySpreadConstraints is part of the sample Topology used to test Glance,
+			// and is referenced using the Topology CR passed to the GlanceAPI
+			ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
+			ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+			for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
+				// Check the resulting deployment fields
+				Expect(ss.Spec.Template.Spec.Affinity).To(BeNil())
+				Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).ToNot(BeNil())
+			}
 		})
 	})
 })

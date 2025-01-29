@@ -253,4 +253,31 @@ var _ = Describe("Glance validation", func() {
 				"Invalid value: \"foo_bar\": a lowercase RFC 1123 label must consist of lower case alphanumeric characters"),
 		)
 	})
+
+	It("rejects a wrong TopologyRef on a different namespace", func() {
+		spec := GetDefaultGlanceSpec()
+		// Reference a top-level topology
+		spec["topologyRef"] = map[string]interface{}{
+			"name":      glanceTest.GlanceAPITopologies[0].Name,
+			"namespace": "foo",
+		}
+		raw := map[string]interface{}{
+			"apiVersion": "glance.openstack.org/v1beta1",
+			"kind":       "Glance",
+			"metadata": map[string]interface{}{
+				"name":      glanceTest.Instance.Name,
+				"namespace": glanceTest.Instance.Namespace,
+			},
+			"spec": spec,
+		}
+
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			th.Ctx, th.K8sClient, unstructuredObj, func() error { return nil })
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(
+			ContainSubstring(
+				"Invalid value: \"namespace\": Customizing namespace field is not supported"),
+		)
+	})
 })

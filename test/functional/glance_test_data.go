@@ -90,6 +90,7 @@ type GlanceTestData struct {
 	GlanceMemcached             types.NamespacedName
 	KeystoneService             types.NamespacedName
 	DBPurgeCronJob              types.NamespacedName
+	GlanceAPITopologies         []types.NamespacedName
 }
 
 // GetGlanceTestData is a function that initialize the GlanceTestData
@@ -205,7 +206,6 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      CABundleSecretName,
 		},
-
 		InternalCertSecret: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      InternalCertSecretName,
@@ -214,7 +214,6 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      PublicCertSecretName,
 		},
-
 		GlanceMemcached: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      MemcachedInstance,
@@ -227,6 +226,16 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		DBPurgeCronJob: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-db-purge", glanceName.Name),
+		},
+		GlanceAPITopologies: []types.NamespacedName{
+			{
+				Namespace: glanceName.Namespace,
+				Name:      fmt.Sprintf("glance-%s-topology", glanceName.Name),
+			},
+			{
+				Namespace: glanceName.Namespace,
+				Name:      fmt.Sprintf("glance-%s-topology-alt", glanceName.Name),
+			},
 		},
 	}
 }
