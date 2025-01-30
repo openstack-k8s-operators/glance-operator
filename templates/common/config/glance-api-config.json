@@ -61,6 +61,13 @@
         "dest": "/usr/local/bin/kolla_extend_start",
         "owner": "root:root",
         "perm": "0755"
+      },
+      {
+        "source": "/var/lib/config-data/default/httpd_custom_*",
+        "dest": "/etc/httpd/conf/",
+        "owner": "apache",
+        "perm": "0444",
+        "optional": true
       }
     ],
     "permissions": [

@@ -559,6 +559,11 @@ spec:
                       items:
                         type: string
                       type: array
+                    httpdCustomization:
+                      properties:
+                        customConfigSecret:
+                          type: string
+                      type: object
                     imageCache:
                       properties:
                         cleanerScheduler:
@@ -707,6 +712,11 @@ spec:
                   - containerImage
                   type: object
                 default: {}
+                type: object
+              httpdCustomization:
+                properties:
+                  customConfigSecret:
+                    type: string
                 type: object
               imageCache:
                 properties:

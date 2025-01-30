@@ -655,6 +655,57 @@ var _ = Describe("Glance controller", func() {
 		})
 	})
 
+	When("Glance is created with HttpdCustomization.CustomConfigSecret", func() {
+		var customServiceConfigSecretName types.NamespacedName
+
+		BeforeEach(func() {
+			customServiceConfigSecretName = types.NamespacedName{Name: "foo", Namespace: glanceTest.Instance.Namespace}
+			customConfig := []byte(`CustomParam "foo"
+CustomKeystonePublicURL "{{ .KeystonePublicURL }}"`)
+			th.CreateSecret(
+				customServiceConfigSecretName,
+				map[string][]byte{
+					"bar.conf": customConfig,
+				},
+			)
+
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			spec := GetGlanceDefaultSpec()
+			spec["httpdCustomization"] = map[string]interface{}{
+				"customConfigSecret": customServiceConfigSecretName.Name,
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, spec))
+			// Get Default GlanceAPI
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
+		})
+
+		It("it sets the HttpdCustomization.CustomConfigSecret on the GlanceAPIs", func() {
+			Eventually(func(g Gomega) {
+				glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
+				g.Expect(glanceAPI.Spec.HttpdCustomization.CustomConfigSecret).ToNot(BeNil())
+				g.Expect(*glanceAPI.Spec.HttpdCustomization.CustomConfigSecret).To(Equal(customServiceConfigSecretName.Name))
+			}, timeout, interval).Should(Succeed())
+
+		})
+	})
+
 	// Run MariaDBAccount suite tests.  these are pre-packaged ginkgo tests
 	// that exercise standard account create / update patterns that should be
 	// common to all controllers that ensure MariaDBAccount CRs.

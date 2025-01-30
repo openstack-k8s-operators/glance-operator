@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 
 	//revive:disable-next-line:dot-imports
@@ -29,6 +30,7 @@ import (
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	ptr "k8s.io/utils/ptr"
 )
 
@@ -987,6 +989,149 @@ var _ = Describe("Glanceapi controller", func() {
 				condition.KeystoneEndpointReadyCondition,
 				corev1.ConditionTrue,
 			)
+		})
+	})
+
+	When("A single GlanceAPI is created with HttpdCustomization.CustomConfigSecret", func() {
+		BeforeEach(func() {
+			customServiceConfigSecretName := types.NamespacedName{Name: "foo", Namespace: namespace}
+			customConfig := []byte(`CustomParam "foo"
+CustomKeystonePublicURL "{{ .KeystonePublicURL }}"`)
+			th.CreateSecret(
+				customServiceConfigSecretName,
+				map[string][]byte{
+					"bar.conf": customConfig,
+				},
+			)
+
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCABundleSecret(glanceTest.CABundleSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.InternalCertSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
+			spec := GetTLSGlanceAPISpec(GlanceAPITypeSingle)
+			spec["httpdCustomization"] = map[string]interface{}{
+				"customConfigSecret": customServiceConfigSecretName.Name,
+			}
+			glance := CreateGlanceAPI(glanceTest.GlanceSingle, spec)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceSingle.Namespace))
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
+			DeferCleanup(th.DeleteInstance, glance)
+		})
+		It("it renders the custom template and adds it to the default-single-config-data secret", func() {
+			scrt := th.GetSecret(glanceTest.GlanceSingleConfigMapData)
+			Expect(scrt).ShouldNot(BeNil())
+			Expect(scrt.Data).Should(HaveKey(common.TemplateParameters))
+			configData := string(scrt.Data[common.TemplateParameters])
+			keystonePublicURL := "http://keystone-public-openstack.testing"
+			Expect(configData).Should(ContainSubstring(fmt.Sprintf("KeystonePublicURL: %s", keystonePublicURL)))
+
+			for _, cfg := range []string{"httpd_custom_internal_bar.conf", "httpd_custom_public_bar.conf"} {
+				Expect(scrt.Data).Should(HaveKey(cfg))
+				configData := string(scrt.Data[cfg])
+				Expect(configData).Should(ContainSubstring("CustomParam \"foo\""))
+				Expect(configData).Should(ContainSubstring(fmt.Sprintf("CustomKeystonePublicURL \"%s\"", keystonePublicURL)))
+			}
+		})
+	})
+
+	When("A split GlanceAPI is created with HttpdCustomization.CustomConfigSecret", func() {
+		BeforeEach(func() {
+			customServiceConfigSecretName := types.NamespacedName{Name: "foo", Namespace: namespace}
+			customConfig := []byte(`CustomParam "foo"
+CustomKeystonePublicURL "{{ .KeystonePublicURL }}"`)
+			th.CreateSecret(
+				customServiceConfigSecretName,
+				map[string][]byte{
+					"bar.conf": customConfig,
+				},
+			)
+
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+			mariadb.SimulateMariaDBTLSDatabaseCompleted(glanceTest.GlanceDatabaseName)
+
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCABundleSecret(glanceTest.CABundleSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.InternalCertSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+
+			spec := GetTLSGlanceAPISpec(GlanceAPITypeInternal)
+			spec["httpdCustomization"] = map[string]interface{}{
+				"customConfigSecret": customServiceConfigSecretName.Name,
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, GetTLSGlanceAPISpec(GlanceAPITypeExternal)))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+			th.ExpectCondition(
+				glanceTest.GlanceExternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+		It("it renders the custom template and adds it to the config-data secret of the GlanceInternal instance", func() {
+			scrt := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+			Expect(scrt).ShouldNot(BeNil())
+			Expect(scrt.Data).Should(HaveKey(common.TemplateParameters))
+			configData := string(scrt.Data[common.TemplateParameters])
+			keystonePublicURL := "http://keystone-public-openstack.testing"
+			Expect(configData).Should(ContainSubstring(fmt.Sprintf("KeystonePublicURL: %s", keystonePublicURL)))
+
+			Expect(scrt.Data).Should(HaveKey("httpd_custom_internal_bar.conf"))
+			cfg := string(scrt.Data["httpd_custom_internal_bar.conf"])
+			Expect(cfg).Should(ContainSubstring("CustomParam \"foo\""))
+			Expect(cfg).Should(ContainSubstring(fmt.Sprintf("CustomKeystonePublicURL \"%s\"", keystonePublicURL)))
+		})
+
+		It("it has NOT renderd the custom template and added it to the config-data secret of the GlanceExternal instance", func() {
+			scrt := th.GetSecret(glanceTest.GlanceExternalConfigMapData)
+			Expect(scrt).ShouldNot(BeNil())
+			Expect(scrt.Data).Should(HaveKey(common.TemplateParameters))
+			configData := string(scrt.Data[common.TemplateParameters])
+			keystonePublicURL := "http://keystone-public-openstack.testing"
+			Expect(configData).Should(ContainSubstring(fmt.Sprintf("KeystonePublicURL: %s", keystonePublicURL)))
+
+			Expect(scrt.Data).Should(Not(HaveKey("httpd_custom_internal_bar.conf")))
 		})
 	})
 })

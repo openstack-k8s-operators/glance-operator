@@ -79,6 +79,7 @@ type GlanceTestData struct {
 	GlanceService               types.NamespacedName
 	GlanceConfigMapData         types.NamespacedName
 	GlanceInternalConfigMapData types.NamespacedName
+	GlanceExternalConfigMapData types.NamespacedName
 	GlanceSingleConfigMapData   types.NamespacedName
 	GlanceConfigMapScripts      types.NamespacedName
 	InternalAPINAD              types.NamespacedName
@@ -163,7 +164,11 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		},
 		GlanceInternalConfigMapData: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "internal-config-data"),
+			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "default-internal-config-data"),
+		},
+		GlanceExternalConfigMapData: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "default-external-config-data"),
 		},
 		GlanceSingleConfigMapData: types.NamespacedName{
 			Namespace: glanceName.Namespace,

@@ -241,6 +241,18 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
+	// index httpdOverrideSecretField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, httpdCustomServiceConfigSecretField, func(rawObj client.Object) []string {
+		// Extract the secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.HttpdCustomization.CustomConfigSecret == nil {
+			return nil
+		}
+		return []string{*cr.Spec.HttpdCustomization.CustomConfigSecret}
+	}); err != nil {
+		return err
+	}
+
 	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
 	svcSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		var namespace string = o.GetNamespace()
@@ -1011,6 +1023,14 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	}
 	customData[glance.CustomServiceConfigSecretsFileName] = customSecrets
 
+	httpdOverrideSecret := &corev1.Secret{}
+	if instance.Spec.HttpdCustomization.CustomConfigSecret != nil && *instance.Spec.HttpdCustomization.CustomConfigSecret != "" {
+		httpdOverrideSecret, _, err = secret.GetSecret(ctx, h, *instance.Spec.HttpdCustomization.CustomConfigSecret, instance.Namespace)
+		if err != nil {
+			return err
+		}
+	}
+
 	keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
 	// KeystoneAPI not available we should not aggregate the error and continue
 	if err != nil {
@@ -1043,6 +1063,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	if instance.Spec.APIType != glancev1.APISingle {
 		endptName = fmt.Sprintf("%s-api", instance.Name)
 	}
+	customTemplates := map[string]string{}
 	httpdVhostConfig := map[string]interface{}{}
 	for endpt := range glanceEndpoints {
 		endptConfig := map[string]interface{}{}
@@ -1054,6 +1075,16 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 			endptConfig["TLS"] = true
 			endptConfig["SSLCertificateFile"] = fmt.Sprintf("/etc/pki/tls/certs/%s.crt", endpt.String())
 			endptConfig["SSLCertificateKeyFile"] = fmt.Sprintf("/etc/pki/tls/private/%s.key", endpt.String())
+		}
+
+		endptConfig["Override"] = false
+		if len(httpdOverrideSecret.Data) > 0 {
+			endptConfig["Override"] = true
+			for key, data := range httpdOverrideSecret.Data {
+				if len(data) > 0 {
+					customTemplates["httpd_custom_"+endpt.String()+"_"+key] = string(data)
+				}
+			}
 		}
 		httpdVhostConfig[endpt.String()] = endptConfig
 	}
@@ -1113,7 +1144,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	// 00-default.conf will be regenerated as we have a ln -s of the
 	// templates/glance/config directory
 	// Do not generate -scripts as they are inherited from the top-level CR
-	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, false)
+	return GenerateConfigsGeneric(ctx, h, instance, envVars, templateParameters, customData, labels, false, customTemplates)
 }
 
 // createHashOfInputHashes - creates a hash of hashes which gets added to the resources which requires a restart
