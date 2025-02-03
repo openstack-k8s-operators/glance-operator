@@ -22,6 +22,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/topology"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -59,6 +60,11 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Optional
 	// NodeSelector to target subset of worker nodes running this service
 	NodeSelector *map[string]string `json:"nodeSelector,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// TopologyRef to apply the Topology defined by the associated CR referenced
+	// by name
+	TopologyRef *topology.TopoRef `json:"topologyRef,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// CustomServiceConfig - customize the service config using this parameter to change service defaults,
