@@ -5,11 +5,12 @@ import (
 
 	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetGlanceEndpoints - returns the glance endpoints map based on the apiType of the glance-api
@@ -48,21 +49,15 @@ func GetGlanceAPIPodAffinity(instance *glancev1.GlanceAPI) *corev1.Affinity {
 	// The PodAffinity is used to co-locate a glanceAPI Pod and an associated
 	// imageCache cronJob. This allows to mount the RWO PVC and successfully
 	// run pruner and cleaner tools against the mountpoint
+	labelSelector := labels.GetSingleLabelSelector(
+		glance.GlanceAPIName,
+		fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
+	)
 	return &corev1.Affinity{
 		PodAffinity: &corev1.PodAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
 				{
-					LabelSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      glance.GlanceAPIName,
-								Operator: metav1.LabelSelectorOpIn,
-								Values: []string{
-									fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
-								},
-							},
-						},
-					},
+					LabelSelector: &labelSelector,
 					// usually corev1.LabelHostname "kubernetes.io/hostname"
 					// https://github.com/kubernetes/api/blob/master/core/v1/well_known_labels.go#L20
 					TopologyKey: corev1.LabelHostname,

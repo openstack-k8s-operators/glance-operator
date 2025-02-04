@@ -372,6 +372,13 @@ func GetExtraMounts() []map[string]interface{} {
 
 // GetSampleTopologySpec - A sample (and opinionated) Topology Spec used to
 // test GlanceAPI
+// Note this is just an example that should not be used in production for
+// multiple reasons:
+// 1. It relies on `service=glance` instead of spreading per GlanceAPI
+// 2. It uses ScheduleAnyway as strategy, which is something we might
+// want to avoid by default
+// 3. Usually a topologySpreadConstraints is used to take care about
+// multi AZ, which is not applicable in this context
 func GetSampleTopologySpec() map[string]interface{} {
 	// Build the topology Spec
 	topologySpec := map[string]interface{}{

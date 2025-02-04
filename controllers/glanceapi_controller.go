@@ -845,12 +845,15 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		Name:      instance.Status.LastAppliedTopology,
 		Namespace: instance.Namespace,
 	}
+	defaultAPISelector := fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType)
+
 	topology, err := r.ensureGlanceAPITopology(
 		ctx,
 		helper,
 		instance.Spec.TopologyRef,
 		&lastTopologyRef,
 		instance.APIName(),
+		defaultAPISelector,
 	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -1513,6 +1516,7 @@ func (r *GlanceAPIReconciler) ensureGlanceAPITopology(
 	tpRef *topology.TopoRef,
 	lastAppliedTopology *topology.TopoRef,
 	finalizer string,
+	selector string,
 ) (*topologyv1.Topology, error) {
 
 	var podTopology *topologyv1.Topology
@@ -1545,11 +1549,16 @@ func (r *GlanceAPIReconciler) ensureGlanceAPITopology(
 			tpRef.Namespace = helper.GetBeforeObject().GetNamespace()
 		}
 		// Retrieve the referenced Topology
+		defaultLabelSelector := labels.GetSingleLabelSelector(
+			glance.GlanceAPIName,
+			selector,
+		)
 		podTopology, _, err = topology.EnsureTopologyRef(
 			ctx,
 			helper,
 			tpRef,
 			finalizer,
+			&defaultLabelSelector,
 		)
 		if err != nil {
 			return nil, err
