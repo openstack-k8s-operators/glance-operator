@@ -18,6 +18,7 @@ package functional
 
 import (
 	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
@@ -1026,20 +1027,23 @@ var _ = Describe("Glanceapi controller", func() {
 		It("Checks the Topology has been applied to the resulting StatefulSets", func() {
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
-			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
-			Expect(internalAPI.Status.LastAppliedTopology).ShouldNot(BeNil())
-			Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
-
+			Eventually(func(g Gomega) {
+				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+				g.Expect(internalAPI.Status.LastAppliedTopology).ShouldNot(BeNil())
+				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+			}, timeout, interval).Should(Succeed())
 			// Check the statefulSet has a default TopologySpreadConstraints and no Affinity
 			// TopologySpreadConstraints is part of the sample Topology used to test Glance,
 			// and is referenced using the Topology CR passed to the GlanceAPI
-			ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
-			ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
-			for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
-				// Check the resulting deployment fields
-				Expect(ss.Spec.Template.Spec.Affinity).To(BeNil())
-				Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).ToNot(BeNil())
-			}
+			Eventually(func(g Gomega) {
+				ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
+				ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+				for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
+					// Check the resulting deployment fields
+					g.Expect(ss.Spec.Template.Spec.Affinity).To(BeNil())
+					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).ToNot(BeNil())
+				}
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 })

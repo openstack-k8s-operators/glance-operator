@@ -693,10 +693,12 @@ var _ = Describe("Glance controller", func() {
 		It("Check the Topology has been applied to the resulting StatefulSets", func() {
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
-			internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
-			externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-			Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
-			Expect(externalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+			Eventually(func(g Gomega) {
+				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+			}, timeout, interval).Should(Succeed())
 		})
 
 		It("Update the Topology reference", func() {
@@ -732,13 +734,15 @@ var _ = Describe("Glance controller", func() {
 			// Check the statefulSet has a default Affinity and no TopologySpreadConstraints:
 			// Affinity is applied by DistributePods function provided by lib-common, while
 			// TopologySpreadConstraints is part of the sample Topology used to test Glance
-			ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
-			ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
-			for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
-				// Check the resulting deployment fields
-				Expect(ss.Spec.Template.Spec.Affinity).ToNot(BeNil())
-				Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(BeNil())
-			}
+			Eventually(func(g Gomega) {
+				ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
+				ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+				for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
+					// Check the resulting deployment fields
+					g.Expect(ss.Spec.Template.Spec.Affinity).ToNot(BeNil())
+					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(BeNil())
+				}
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 
