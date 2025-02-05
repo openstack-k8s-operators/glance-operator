@@ -655,6 +655,97 @@ var _ = Describe("Glance controller", func() {
 		})
 	})
 
+	When("Glance CR references a Topology", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			// Build the topology Spec
+			topologySpec := GetSampleTopologySpec()
+			// Create Test Topologies
+			for _, t := range glanceTest.GlanceAPITopologies {
+				CreateTopology(t, topologySpec)
+			}
+			rawSpec := GetGlanceEmptySpec()
+			// Reference a top-level topology
+			rawSpec["topologyRef"] = map[string]interface{}{
+				"name": glanceTest.GlanceAPITopologies[0].Name,
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceName).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+		})
+
+		It("Check the Topology has been applied to the resulting StatefulSets", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			Eventually(func(g Gomega) {
+				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("Update the Topology reference", func() {
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				glance.Spec.TopologyRef.Name = glanceTest.GlanceAPITopologies[1].Name
+				g.Expect(k8sClient.Update(ctx, glance)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("Remove the Topology reference", func() {
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				// Remove the TopologyRef from the existing Glance .Spec
+				glance.Spec.TopologyRef = nil
+				g.Expect(k8sClient.Update(ctx, glance)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+				g.Expect(internalAPI.Status.LastAppliedTopology).Should(BeEmpty())
+				g.Expect(externalAPI.Status.LastAppliedTopology).Should(BeEmpty())
+			}, timeout, interval).Should(Succeed())
+
+			// Check the statefulSet has a default Affinity and no TopologySpreadConstraints:
+			// Affinity is applied by DistributePods function provided by lib-common, while
+			// TopologySpreadConstraints is part of the sample Topology used to test Glance
+			Eventually(func(g Gomega) {
+				ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
+				ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+				for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
+					// Check the resulting deployment fields
+					g.Expect(ss.Spec.Template.Spec.Affinity).ToNot(BeNil())
+					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(BeNil())
+				}
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
 	// Run MariaDBAccount suite tests.  these are pre-packaged ginkgo tests
 	// that exercise standard account create / update patterns that should be
 	// common to all controllers that ensure MariaDBAccount CRs.

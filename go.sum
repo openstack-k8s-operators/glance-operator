@@ -80,12 +80,12 @@ github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094 h1:J1wuGhVxpsHykZBa6
 github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094/go.mod h1:CxgbWAlvu2iQB0UmKTtRu1YfepRg1/vJ64n2DlIEVz4=
 github.com/openstack-k8s-operators/cinder-operator/api v0.5.1-0.20241217072755-fb4d39411ad2 h1:iY0RYw5hyeaou7ujKCrkYpgebIyh5O5FRsvkMwSZdNk=
 github.com/openstack-k8s-operators/cinder-operator/api v0.5.1-0.20241217072755-fb4d39411ad2/go.mod h1:GoZVwi0mFiqivii2K+EBYW0meEv/X8txqqpBRjxDVbc=
-github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250108092548-58707fa645ce h1:2F25J61AF3STCfW69SSQ+ribEq0fcTShZjCbb4CA6AU=
-github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250108092548-58707fa645ce/go.mod h1:TDaE7BVQvJwJGFm33R6xcPTeF8LKAnMh+a1ho+YqJHs=
+github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250123115751-98853871de94 h1:qOSjHqncEAJeBBCITKqq3shZMuGbDC+YBiRnGIoMnoI=
+github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250123115751-98853871de94/go.mod h1:TDaE7BVQvJwJGFm33R6xcPTeF8LKAnMh+a1ho+YqJHs=
 github.com/openstack-k8s-operators/keystone-operator/api v0.5.1-0.20250107165241-16c3ed8e549f h1:jlUo93FAwlDll1bJRxJO5B1Vi3t3wCoHQuy5HEO96ME=
 github.com/openstack-k8s-operators/keystone-operator/api v0.5.1-0.20250107165241-16c3ed8e549f/go.mod h1:CyuEOM1TpXKNUR1n8cudNtRzTEwkzv90JFkpDPPId8E=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20241216113837-d172b3ac0f4e h1:hf4kVQBkyG79WcHBxdQ25QrDBbGFdarebS1Tc0Xclq4=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20241216113837-d172b3ac0f4e/go.mod h1:YpNTuJhDWhbXM50O3qBkhO7M+OOyRmWkNVmJ4y3cyFs=
+github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250205143454-43504d7ad19a h1:3LuUgB85VxGD6lmVOeZelYEASmytkrzaudU014PN7xw=
+github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250205143454-43504d7ad19a/go.mod h1:KxnNSUk15llkKTSq/bQEE7pnc0IMk44fxhoBRpimMa8=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.5.1-0.20241216113837-d172b3ac0f4e h1:HFo4OqPY0x4ZQeaWI2YGonTXAGTQFt+rOEJlfZVhS7s=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.5.1-0.20241216113837-d172b3ac0f4e/go.mod h1:IASoGvp5QM/tBJUd/8i8uIjj4DBnI+64Ydh4r7pmnvA=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20241216113837-d172b3ac0f4e h1:Qz0JFEoRDUyjEWorNY3LggwxTsmpMtQkcpmZDQulGHQ=

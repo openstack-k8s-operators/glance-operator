@@ -192,10 +192,14 @@ func CreateGlanceSecret(namespace string, name string) *corev1.Secret {
 // GetDefaultGlanceSpec - It returns a default API built for testing purposes
 func GetDefaultGlanceSpec() map[string]interface{} {
 	return map[string]interface{}{
-		"databaseInstance": "openstack",
-		"secret":           SecretName,
-		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
-		"glanceAPIs":       GetAPIList(),
+		"databaseInstance":    glanceTest.GlanceDatabaseName.Name,
+		"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+		"secret":              SecretName,
+		"customServiceConfig": GlanceDummyBackend,
+		"glanceAPIs":          GetAPIList(),
+		"storage": map[string]interface{}{
+			"storageRequest": glanceTest.GlancePVCSize,
+		},
 	}
 }
 
@@ -215,6 +219,26 @@ func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
 	}
 	return spec
+}
+
+// CreateGlanceAPIWithTopologySpec - It returns a GlanceAPISpec where a
+// topology is referenced. It also overrides the top-level parameter of
+// the top-level glance controller
+func CreateGlanceAPIWithTopologySpec() map[string]interface{} {
+	rawSpec := GetDefaultGlanceSpec()
+	// Add top-level topologyRef
+	rawSpec["topologyRef"] = map[string]interface{}{
+		"name": glanceTest.GlanceAPITopologies[0].Name,
+	}
+	// Override topologyRef for the subCR
+	rawSpec["glanceAPIs"] = map[string]interface{}{
+		"default": map[string]interface{}{
+			"topologyRef": map[string]interface{}{
+				"name": glanceTest.GlanceAPITopologies[1].Name,
+			},
+		},
+	}
+	return rawSpec
 }
 
 // GetDefaultGlanceAPISpec -
@@ -344,4 +368,46 @@ func GetExtraMounts() []map[string]interface{} {
 			},
 		},
 	}
+}
+
+// GetSampleTopologySpec - A sample (and opinionated) Topology Spec used to
+// test GlanceAPI
+// Note this is just an example that should not be used in production for
+// multiple reasons:
+// 1. It relies on `service=glance` instead of spreading per GlanceAPI
+// 2. It uses ScheduleAnyway as strategy, which is something we might
+// want to avoid by default
+// 3. Usually a topologySpreadConstraints is used to take care about
+// multi AZ, which is not applicable in this context
+func GetSampleTopologySpec() map[string]interface{} {
+	// Build the topology Spec
+	topologySpec := map[string]interface{}{
+		"topologySpreadConstraints": []map[string]interface{}{
+			{
+				"maxSkew":           1,
+				"topologyKey":       corev1.LabelHostname,
+				"whenUnsatisfiable": "ScheduleAnyway",
+				"labelSelector": map[string]interface{}{
+					"matchLabels": map[string]interface{}{
+						"service": glanceTest.GlanceService.Name,
+					},
+				},
+			},
+		},
+	}
+	return topologySpec
+}
+
+// CreateTopology - Creates a Topology CR based on the spec passed as input
+func CreateTopology(topology types.NamespacedName, spec map[string]interface{}) client.Object {
+	raw := map[string]interface{}{
+		"apiVersion": "topology.openstack.org/v1beta1",
+		"kind":       "Topology",
+		"metadata": map[string]interface{}{
+			"name":      topology.Name,
+			"namespace": topology.Namespace,
+		},
+		"spec": spec,
+	}
+	return th.CreateUnstructured(raw)
 }

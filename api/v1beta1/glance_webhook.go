@@ -30,6 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 
 	common_webhook "github.com/openstack-k8s-operators/lib-common/modules/common/webhook"
 )
@@ -218,7 +219,19 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
 
+	// When a TopologyRef CR is referenced, fail if a different Namespace is
+	// referenced because is not supported
+	if r.Spec.TopologyRef != nil {
+		if err := topologyv1.ValidateTopologyNamespace(r.Spec.TopologyRef.Namespace, *basePath, r.Namespace); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
+		if glanceAPI.TopologyRef != nil {
+			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
+				allErrs = append(allErrs, err)
+			}
+		}
 		// Validate glanceapi name is valid
 		// GlanceAPI name is <glance name>-<api name>-<api type>
 		// The glanceAPI controller creates StatefulSet for glanceapi to run.
@@ -307,7 +320,19 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
 
+	// When a TopologyRef CR is referenced, fail if a different Namespace is
+	// referenced because is not supported
+	if r.Spec.TopologyRef != nil {
+		if err := topologyv1.ValidateTopologyNamespace(r.Spec.TopologyRef.Namespace, *basePath, r.Namespace); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
+		if glanceAPI.TopologyRef != nil {
+			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
+				allErrs = append(allErrs, err)
+			}
+		}
 		// Validate glanceapi name is valid
 		// GlanceAPI name is <glance name>-<api name>-<api type>
 		// The glanceAPI controller creates StatefulSet for glanceapi to run.

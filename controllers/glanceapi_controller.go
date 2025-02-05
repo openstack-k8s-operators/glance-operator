@@ -45,6 +45,7 @@ import (
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glanceapi"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
@@ -58,6 +59,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/statefulset"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
+	topology "github.com/openstack-k8s-operators/lib-common/modules/common/topology"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -73,9 +75,9 @@ type GlanceAPIReconciler struct {
 	Scheme  *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update;patch
+// +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups=cinder.openstack.org,resources=cinders,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
@@ -86,6 +88,7 @@ type GlanceAPIReconciler struct {
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneendpoints,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=k8s.cni.cncf.io,resources=network-attachment-definitions,verbs=get;list;watch
 // +kubebuilder:rbac:groups=memcached.openstack.org,resources=memcacheds,verbs=get;list;watch;
+// +kubebuilder:rbac:groups=topology.openstack.org,resources=topologies,verbs=get;list;watch;update
 
 // Reconcile reconcile Glance API requests
 func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
@@ -187,6 +190,11 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !instance.DeletionTimestamp.IsZero() {
 		return r.reconcileDelete(ctx, instance, helper)
 	}
+	// Init Topology condition if there's a reference
+	if instance.Spec.TopologyRef != nil {
+		c := condition.UnknownCondition(condition.TopologyReadyCondition, condition.InitReason, condition.TopologyReadyInitMessage)
+		cl.Set(c)
+	}
 	// Handle non-deleted clusters
 	return r.reconcileNormal(ctx, instance, helper)
 }
@@ -237,6 +245,18 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return nil
 		}
 		return []string{*cr.Spec.TLS.API.Public.SecretName}
+	}); err != nil {
+		return err
+	}
+
+	// index topologyField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, topologyField, func(rawObj client.Object) []string {
+		// Extract the topology name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.TopologyRef == nil {
+			return nil
+		}
+		return []string{cr.Spec.TopologyRef.Name}
 	}); err != nil {
 		return err
 	}
@@ -349,6 +369,9 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(&memcachedv1.Memcached{},
 			handler.EnqueueRequestsFromMapFunc(memcachedFn)).
+		Watches(&topologyv1.Topology{},
+			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
@@ -388,7 +411,20 @@ func (r *GlanceAPIReconciler) findObjectsForSrc(ctx context.Context, src client.
 
 func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *glancev1.GlanceAPI, helper *helper.Helper) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s' delete", instance.Name))
+	// Remove finalizer on the KeystoneEndpoints CR
 	if ctrlResult, err := r.ensureDeletedEndpoints(ctx, instance, helper); err != nil {
+		return ctrlResult, err
+	}
+	// Remove finalizer on the Topology CR
+	if ctrlResult, err := topology.EnsureDeletedTopologyRef(
+		ctx,
+		helper,
+		&topology.TopoRef{
+			Name:      instance.Status.LastAppliedTopology,
+			Namespace: instance.Namespace,
+		},
+		instance.APIName(),
+	); err != nil {
 		return ctrlResult, err
 	}
 
@@ -813,9 +849,50 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 			err.Error()))
 		return ctrl.Result{}, err
 	}
+
 	// At this point the config is generated and the inputHash is computed
 	// we can mark the ServiceConfigReady as True and rollout the new pods
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
+
+	//
+	// Handle Topology
+	//
+	lastTopologyRef := topology.TopoRef{
+		Name:      instance.Status.LastAppliedTopology,
+		Namespace: instance.Namespace,
+	}
+	defaultAPISelector := fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType)
+
+	topology, err := r.ensureGlanceAPITopology(
+		ctx,
+		helper,
+		instance.Spec.TopologyRef,
+		&lastTopologyRef,
+		instance.APIName(),
+		defaultAPISelector,
+	)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.TopologyReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.TopologyReadyErrorMessage,
+			err.Error()))
+		return ctrl.Result{}, fmt.Errorf("waiting for Topology requirements: %w", err)
+	}
+
+	// If TopologyRef is present and ensureGlanceAPITopology returned a valid
+	// topology object, set .Status.LastAppliedTopology to the referenced one
+	// and mark the condition as true
+	if instance.Spec.TopologyRef != nil {
+		// update the Status with the last retrieved Topology name
+		instance.Status.LastAppliedTopology = instance.Spec.TopologyRef.Name
+		// update the TopologyRef associated condition
+		instance.Status.Conditions.MarkTrue(condition.TopologyReadyCondition, condition.TopologyReadyMessage)
+	} else {
+		// remove LastAppliedTopology from the .Status
+		instance.Status.LastAppliedTopology = ""
+	}
 
 	// This is currently required because cleaner and pruner cronJobs
 	// mount the same pvc to clean data present in /var/lib/glance/image-cache
@@ -831,6 +908,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		GetServiceLabels(instance),
 		serviceAnnotations,
 		privileged,
+		topology,
 	)
 	if err != nil {
 		return ctrlResult, err
@@ -1266,6 +1344,7 @@ func (r *GlanceAPIReconciler) ensureDeletedEndpoints(
 	return ctrl.Result{}, nil
 }
 
+// ensureImageCacheJob -
 func (r *GlanceAPIReconciler) ensureImageCacheJob(
 	ctx context.Context,
 	h *helper.Helper,
@@ -1455,4 +1534,64 @@ func (r *GlanceAPIReconciler) glanceAPIRefresh(
 		return err
 	}
 	return nil
+}
+
+// ensureGlanceAPITopology - when a Topology CR is referenced, remove the
+// finalizer from a previous referenced Topology (if any), and retrieve the
+// newly referenced topology object
+func (r *GlanceAPIReconciler) ensureGlanceAPITopology(
+	ctx context.Context,
+	helper *helper.Helper,
+	tpRef *topology.TopoRef,
+	lastAppliedTopology *topology.TopoRef,
+	finalizer string,
+	selector string,
+) (*topologyv1.Topology, error) {
+
+	var podTopology *topologyv1.Topology
+	var err error
+
+	// Remove (if present) the finalizer from a previously referenced topology
+	//
+	// 1. a topology reference is removed (tpRef == nil) from the GlanceAPI
+	//    CR and the finalizer should be deleted from the last applied topology
+	//    (lastAppliedTopology != "")
+	// 2. a topology reference is updated in the GlanceAPI CR (tpRef != nil)
+	//    and the finalizer should be removed from the previously
+	//    referenced topology (tpRef.Name != lastAppliedTopology.Name)
+	if (tpRef == nil && lastAppliedTopology.Name != "") ||
+		(tpRef != nil && tpRef.Name != lastAppliedTopology.Name) {
+		_, err = topology.EnsureDeletedTopologyRef(
+			ctx,
+			helper,
+			lastAppliedTopology,
+			finalizer,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// TopologyRef is passed as input, get the Topology object
+	if tpRef != nil {
+		// no Namespace is provided, default to instance.Namespace
+		if tpRef.Namespace == "" {
+			tpRef.Namespace = helper.GetBeforeObject().GetNamespace()
+		}
+		// Retrieve the referenced Topology
+		defaultLabelSelector := labels.GetSingleLabelSelector(
+			glance.GlanceAPIName,
+			selector,
+		)
+		podTopology, _, err = topology.EnsureTopologyRef(
+			ctx,
+			helper,
+			tpRef,
+			finalizer,
+			&defaultLabelSelector,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return podTopology, nil
 }

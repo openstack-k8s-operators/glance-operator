@@ -23,6 +23,7 @@ package v1beta1
 import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/topology"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -260,6 +261,11 @@ func (in *GlanceAPITemplate) DeepCopyInto(out *GlanceAPITemplate) {
 			}
 		}
 	}
+	if in.TopologyRef != nil {
+		in, out := &in.TopologyRef, &out.TopologyRef
+		*out = new(topology.TopoRef)
+		**out = **in
+	}
 	if in.CustomServiceConfigSecrets != nil {
 		in, out := &in.CustomServiceConfigSecrets, &out.CustomServiceConfigSecrets
 		*out = make([]string, len(*in))
@@ -386,6 +392,11 @@ func (in *GlanceSpecCore) DeepCopyInto(out *GlanceSpecCore) {
 				(*out)[key] = val
 			}
 		}
+	}
+	if in.TopologyRef != nil {
+		in, out := &in.TopologyRef, &out.TopologyRef
+		*out = new(topology.TopoRef)
+		**out = **in
 	}
 	if in.CustomServiceConfigSecrets != nil {
 		in, out := &in.CustomServiceConfigSecrets, &out.CustomServiceConfigSecrets
