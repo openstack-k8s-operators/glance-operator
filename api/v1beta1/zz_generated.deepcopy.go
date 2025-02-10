@@ -21,9 +21,9 @@ limitations under the License.
 package v1beta1
 
 import (
+	topologyv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/topology"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -263,7 +263,7 @@ func (in *GlanceAPITemplate) DeepCopyInto(out *GlanceAPITemplate) {
 	}
 	if in.TopologyRef != nil {
 		in, out := &in.TopologyRef, &out.TopologyRef
-		*out = new(topology.TopoRef)
+		*out = new(topologyv1beta1.TopoRef)
 		**out = **in
 	}
 	if in.CustomServiceConfigSecrets != nil {
@@ -395,7 +395,7 @@ func (in *GlanceSpecCore) DeepCopyInto(out *GlanceSpecCore) {
 	}
 	if in.TopologyRef != nil {
 		in, out := &in.TopologyRef, &out.TopologyRef
-		*out = new(topology.TopoRef)
+		*out = new(topologyv1beta1.TopoRef)
 		**out = **in
 	}
 	if in.CustomServiceConfigSecrets != nil {
