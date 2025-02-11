@@ -19,7 +19,7 @@ package v1beta1
 import (
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
-	"github.com/openstack-k8s-operators/lib-common/modules/common/topology"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -76,7 +76,7 @@ type GlanceSpecCore struct {
 	// +kubebuilder:validation:Optional
 	// TopologyRef to apply the Topology defined by the associated CR referenced
 	// by name
-	TopologyRef *topology.TopoRef `json:"topologyRef,omitempty"`
+	TopologyRef *topologyv1.TopoRef `json:"topologyRef,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
