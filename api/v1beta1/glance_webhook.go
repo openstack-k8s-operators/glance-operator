@@ -219,19 +219,7 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
 
-	// When a TopologyRef CR is referenced, fail if a different Namespace is
-	// referenced because is not supported
-	if r.Spec.TopologyRef != nil {
-		if err := topologyv1.ValidateTopologyNamespace(r.Spec.TopologyRef.Namespace, *basePath, r.Namespace); err != nil {
-			allErrs = append(allErrs, err)
-		}
-	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
-		if glanceAPI.TopologyRef != nil {
-			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
-				allErrs = append(allErrs, err)
-			}
-		}
 		// Validate glanceapi name is valid
 		// GlanceAPI name is <glance name>-<api name>-<api type>
 		// The glanceAPI controller creates StatefulSet for glanceapi to run.
@@ -250,7 +238,7 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 		allErrs = append(allErrs, err...)
 	}
 
-	if err := r.Spec.ValidateCreate(basePath); err != nil {
+	if err := r.Spec.ValidateCreate(basePath, r.Namespace); err != nil {
 		allErrs = append(allErrs, err...)
 	}
 
@@ -265,12 +253,12 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 
 // ValidateCreate - Exported function wrapping non-exported validate functions,
 // this function can be called externally to validate an ironic spec.
-func (r *GlanceSpec) ValidateCreate(basePath *field.Path) field.ErrorList {
-	return r.GlanceSpecCore.ValidateCreate(basePath)
+func (r *GlanceSpec) ValidateCreate(basePath *field.Path, namespace string) field.ErrorList {
+	return r.GlanceSpecCore.ValidateCreate(basePath, namespace)
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path) field.ErrorList {
+func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) field.ErrorList {
 	var allErrs field.ErrorList
 
 	// Check if the top-level CR has a "customServiceConfig" with an explicit
@@ -283,10 +271,23 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path) field.ErrorList {
 	// represents an invariant for the top-level CR.
 	topLevelFileBackend := isFileBackend(r.CustomServiceConfig, true)
 
+	// When a TopologyRef CR is referenced, fail if a different Namespace is
+	// referenced because is not supported
+	if r.TopologyRef != nil {
+		if err := topologyv1.ValidateTopologyNamespace(r.TopologyRef.Namespace, *basePath, namespace); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
+
 	// For each Glance backend
 	for key, glanceAPI := range r.GlanceAPIs {
 		path := basePath.Child("glanceAPIs").Key(key)
 
+		if glanceAPI.TopologyRef != nil {
+			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), namespace); err != nil {
+				allErrs = append(allErrs, err)
+			}
+		}
 		// fail if an invalid configuration/layout is detected
 		if ok, err := r.isInvalidBackend(glanceAPI, topLevelFileBackend); ok {
 			allErrs = append(allErrs, field.Invalid(path, key, err))
@@ -320,19 +321,7 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 	var allErrs field.ErrorList
 	basePath := field.NewPath("spec")
 
-	// When a TopologyRef CR is referenced, fail if a different Namespace is
-	// referenced because is not supported
-	if r.Spec.TopologyRef != nil {
-		if err := topologyv1.ValidateTopologyNamespace(r.Spec.TopologyRef.Namespace, *basePath, r.Namespace); err != nil {
-			allErrs = append(allErrs, err)
-		}
-	}
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
-		if glanceAPI.TopologyRef != nil {
-			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), r.Namespace); err != nil {
-				allErrs = append(allErrs, err)
-			}
-		}
 		// Validate glanceapi name is valid
 		// GlanceAPI name is <glance name>-<api name>-<api type>
 		// The glanceAPI controller creates StatefulSet for glanceapi to run.
@@ -351,7 +340,7 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 		allErrs = append(allErrs, err...)
 	}
 
-	if err := r.Spec.ValidateUpdate(o.Spec, basePath); err != nil {
+	if err := r.Spec.ValidateUpdate(o.Spec, basePath, r.Namespace); err != nil {
 		allErrs = append(allErrs, err...)
 	}
 
@@ -366,21 +355,33 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 
 // ValidateUpdate - Exported function wrapping non-exported validate functions,
 // this function can be called externally to validate an glance spec.
-func (r *GlanceSpec) ValidateUpdate(old GlanceSpec, basePath *field.Path) field.ErrorList {
-	return r.GlanceSpecCore.ValidateUpdate(old.GlanceSpecCore, basePath)
+func (r *GlanceSpec) ValidateUpdate(old GlanceSpec, basePath *field.Path, namespace string) field.ErrorList {
+	return r.GlanceSpecCore.ValidateUpdate(old.GlanceSpecCore, basePath, namespace)
 }
 
 // ValidateUpdate -
-func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path) field.ErrorList {
+func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path, namespace string) field.ErrorList {
 	var allErrs field.ErrorList
 
+	// When a TopologyRef CR is referenced, fail if a different Namespace is
+	// referenced because is not supported
+	if r.TopologyRef != nil {
+		if err := topologyv1.ValidateTopologyNamespace(r.TopologyRef.Namespace, *basePath, namespace); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
 	// Type can either be "split" or "single": we do not support changing layout
 	// because there's no logic in the operator to scale down the existing statefulset
 	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
 	topLevelFileBackend := isFileBackend(r.CustomServiceConfig, true)
 	for key, glanceAPI := range r.GlanceAPIs {
+		// Validate TopologyRef namespace
+		if glanceAPI.TopologyRef != nil {
+			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), namespace); err != nil {
+				allErrs = append(allErrs, err)
+			}
+		}
 		path := basePath.Child("glanceAPIs").Key(key)
-
 		// When a new entry (new glanceAPI instance) is added in the main CR, it's
 		// possible that the old CR used to compare the new map had no entry with
 		// the same name. This represent a valid use case and we shouldn't prevent
