@@ -414,14 +414,12 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 	if ctrlResult, err := r.ensureDeletedEndpoints(ctx, instance, helper); err != nil {
 		return ctrlResult, err
 	}
+
 	// Remove finalizer on the Topology CR
 	if ctrlResult, err := topologyv1.EnsureDeletedTopologyRef(
 		ctx,
 		helper,
-		&topologyv1.TopoRef{
-			Name:      instance.Status.LastAppliedTopology,
-			Namespace: instance.Namespace,
-		},
+		instance.Status.LastAppliedTopology,
 		instance.APIName(),
 	); err != nil {
 		return ctrlResult, err
@@ -856,23 +854,16 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	//
 	// Handle Topology
 	//
-	lastTopologyRef := topologyv1.TopoRef{
-		Name:      instance.Status.LastAppliedTopology,
-		Namespace: instance.Namespace,
-	}
-
-	// Retrieve the referenced Topology
-	defaultLabelSelector := labels.GetSingleLabelSelector(
-		glance.GlanceAPIName,
-		fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
-	)
 	topology, err := topologyv1.EnsureServiceTopology(
 		ctx,
 		helper,
 		instance.Spec.TopologyRef,
-		&lastTopologyRef,
+		instance.GetLastTopologyRef(),
 		instance.APIName(),
-		defaultLabelSelector,
+		labels.GetSingleLabelSelector(
+			glance.GlanceAPIName,
+			fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
+		),
 	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -889,12 +880,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// and mark the condition as true
 	if instance.Spec.TopologyRef != nil {
 		// update the Status with the last retrieved Topology name
-		instance.Status.LastAppliedTopology = instance.Spec.TopologyRef.Name
+		instance.Status.LastAppliedTopology = instance.Spec.TopologyRef
 		// update the TopologyRef associated condition
 		instance.Status.Conditions.MarkTrue(condition.TopologyReadyCondition, condition.TopologyReadyMessage)
 	} else {
 		// remove LastAppliedTopology from the .Status
-		instance.Status.LastAppliedTopology = ""
+		instance.Status.LastAppliedTopology = nil
 	}
 
 	// This is currently required because cleaner and pruner cronJobs

@@ -696,8 +696,8 @@ var _ = Describe("Glance controller", func() {
 			Eventually(func(g Gomega) {
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
-				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+				g.Expect(internalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
 			}, timeout, interval).Should(Succeed())
 		})
 
@@ -708,11 +708,13 @@ var _ = Describe("Glance controller", func() {
 				g.Expect(k8sClient.Update(ctx, glance)).To(Succeed())
 			}, timeout, interval).Should(Succeed())
 
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
 			Eventually(func(g Gomega) {
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
-				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+				g.Expect(internalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
 			}, timeout, interval).Should(Succeed())
 		})
 
@@ -727,8 +729,8 @@ var _ = Describe("Glance controller", func() {
 			Eventually(func(g Gomega) {
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-				g.Expect(internalAPI.Status.LastAppliedTopology).Should(BeEmpty())
-				g.Expect(externalAPI.Status.LastAppliedTopology).Should(BeEmpty())
+				g.Expect(internalAPI.Status.LastAppliedTopology).Should(BeNil())
+				g.Expect(externalAPI.Status.LastAppliedTopology).Should(BeNil())
 			}, timeout, interval).Should(Succeed())
 
 			// Check the statefulSet has a default Affinity and no TopologySpreadConstraints:
