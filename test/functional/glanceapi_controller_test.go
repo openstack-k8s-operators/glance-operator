@@ -1030,7 +1030,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Eventually(func(g Gomega) {
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				g.Expect(internalAPI.Status.LastAppliedTopology).ShouldNot(BeNil())
-				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+				g.Expect(internalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
 			}, timeout, interval).Should(Succeed())
 			// Check the statefulSet has a default TopologySpreadConstraints and no Affinity
 			// TopologySpreadConstraints is part of the sample Topology used to test Glance,
