@@ -4,9 +4,9 @@ go 1.21
 
 require (
 	github.com/google/go-cmp v0.6.0
-	github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250218115938-ae95bdfefded
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250211124440-b44f6585b825
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20250211124440-b44f6585b825
+	github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250225210325-92c2416febbe
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250225220922-3ead38b7284f
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20250225220922-3ead38b7284f
 	k8s.io/api v0.29.14
 	k8s.io/apimachinery v0.29.14
 	sigs.k8s.io/controller-runtime v0.17.6
