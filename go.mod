@@ -9,15 +9,15 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.5
 	github.com/onsi/ginkgo/v2 v2.20.1
 	github.com/onsi/gomega v1.34.1
-	github.com/openstack-k8s-operators/cinder-operator/api v0.5.1-0.20250122131751-fa5a7a53e15d
+	github.com/openstack-k8s-operators/cinder-operator/api v0.5.1-0.20250225210324-bac1ff4c0066
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250218115938-ae95bdfefded
-	github.com/openstack-k8s-operators/keystone-operator/api v0.5.1-0.20250212103445-ad7aee2e95d1
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250211124440-b44f6585b825
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.5.1-0.20250211124440-b44f6585b825
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20250211124440-b44f6585b825
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.5.1-0.20250211124440-b44f6585b825
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.5.1-0.20250214102757-fb5ada9d2ca7
+	github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250225210325-92c2416febbe
+	github.com/openstack-k8s-operators/keystone-operator/api v0.5.1-0.20250225210326-4f4d3cd2801d
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250225220922-3ead38b7284f
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.5.1-0.20250225220922-3ead38b7284f
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20250225220922-3ead38b7284f
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.5.1-0.20250225220922-3ead38b7284f
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.5.1-0.20250225210327-7746ba50108f
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.29.14
