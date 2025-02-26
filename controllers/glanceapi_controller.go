@@ -860,10 +860,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		instance.Spec.TopologyRef,
 		instance.GetLastTopologyRef(),
 		instance.APIName(),
-		labels.GetSingleLabelSelector(
-			glance.GlanceAPIName,
-			fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
-		),
+		labels.GetLabelSelector(GetServiceLabels(instance)),
 	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
