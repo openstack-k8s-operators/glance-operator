@@ -3,7 +3,7 @@ module github.com/openstack-k8s-operators/glance-operator/api
 go 1.21
 
 require (
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250225210325-92c2416febbe
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250227072032-4046ee8c6a91
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20250225220922-3ead38b7284f
