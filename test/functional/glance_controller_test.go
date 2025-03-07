@@ -696,7 +696,9 @@ var _ = Describe("Glance controller", func() {
 			Eventually(func(g Gomega) {
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+				g.Expect(internalAPI.Status.LastAppliedTopology).ToNot(BeNil())
 				g.Expect(internalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology).ToNot(BeNil())
 				g.Expect(externalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
 			}, timeout, interval).Should(Succeed())
 		})
@@ -713,7 +715,9 @@ var _ = Describe("Glance controller", func() {
 			Eventually(func(g Gomega) {
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+				g.Expect(internalAPI.Status.LastAppliedTopology).ToNot(BeNil())
 				g.Expect(internalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology).ToNot(BeNil())
 				g.Expect(externalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
 			}, timeout, interval).Should(Succeed())
 		})
