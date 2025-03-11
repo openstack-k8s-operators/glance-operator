@@ -156,6 +156,12 @@ func GetVolumeMounts(
 			SubPath:   "my.cnf",
 			ReadOnly:  true,
 		},
+		{
+			Name:      "config-data",
+			MountPath: "/var/lib/kolla/config_files/config.json",
+			SubPath:   "glance-httpd-config.json",
+			ReadOnly:  true,
+		},
 	}
 
 	localPVC := []corev1.VolumeMount{
@@ -270,23 +276,6 @@ func GetLogVolume() []corev1.Volume {
 	}
 }
 
-// GetHttpdVolumeMount - Returns the VolumeMounts used by the httpd sidecar
-func GetHttpdVolumeMount() []corev1.VolumeMount {
-	return []corev1.VolumeMount{
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/config-data/default",
-			ReadOnly:  true,
-		},
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "glance-httpd-config.json",
-			ReadOnly:  true,
-		},
-	}
-}
-
 // GetCacheVolume - Return the Volume used for image caching purposes
 func GetCacheVolume(pvcName string) []corev1.Volume {
 	return []corev1.Volume{
@@ -362,14 +351,7 @@ func GetAPIVolumes(name string) []corev1.Volume {
 
 // GetAPIVolumeMount -
 func GetAPIVolumeMount(cacheSize string) []corev1.VolumeMount {
-	apiVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "glance-api-config.json",
-			ReadOnly:  true,
-		},
-	}
+	apiVolumeMounts := []corev1.VolumeMount{}
 	// Append LogVolume to apiVolumes: this will be used to stream logging
 	apiVolumeMounts = append(apiVolumeMounts, GetLogVolumeMount()...)
 	// Append ScriptsVolume to apiVolumes
