@@ -695,21 +695,11 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		backendToken := strings.SplitN(availableBackends[i], ":", 2)
 		switch {
 		case backendToken[1] == "cinder":
-			cinder := &cinderv1.Cinder{}
-			err := r.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: glance.CinderName}, cinder)
+			cinderList := &cinderv1.CinderList{}
+			err := r.List(ctx, cinderList, client.InNamespace(instance.Namespace))
 			if err != nil {
-				if k8s_errors.IsNotFound(err) {
-					// Request object not found, GlanceAPI can't be executed with this config
-					r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
-					instance.Status.Conditions.Set(condition.FalseCondition(
-						glancev1.CinderCondition,
-						condition.RequestedReason,
-						condition.SeverityInfo,
-						glancev1.CinderInitMessage),
-					)
-					return glance.ResultRequeue, nil
-				}
-
+				// Error listing Cinder objects, GlanceAPI can't be executed with this config
+				r.Log.Info("Error listing Cinder resources")
 				instance.Status.Conditions.MarkFalse(
 					glancev1.CinderCondition,
 					condition.RequestedReason,
@@ -717,10 +707,24 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 					glancev1.CinderReadyErrorMessage,
 					err.Error(),
 				)
-				return ctrl.Result{}, err
+				return glance.ResultRequeue, nil
 			}
-			// Cinder CR is found, we can unblock glance deployment because
-			// it represents a valid backend.
+			if len(cinderList.Items) == 0 {
+				// We are able to list Cinder resources in the current namespace,
+				// but we're waiting for it to appear. In this case GlanceAPI
+				// can't be executed with this config, but the Condition should
+				// have CinderInitMessage
+				r.Log.Info("Cinder resource not found. Waiting for it to be deployed")
+				instance.Status.Conditions.Set(condition.FalseCondition(
+					glancev1.CinderCondition,
+					condition.RequestedReason,
+					condition.SeverityInfo,
+					glancev1.CinderInitMessage),
+				)
+				return glance.ResultRequeue, nil
+			}
+			// We see at least a Cinder CR in the namespace, unblock glance
+			// deployment
 			privileged = true
 		case backendToken[1] == "rbd":
 			// enable image conversion by default
