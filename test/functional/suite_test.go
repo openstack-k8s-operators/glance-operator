@@ -51,6 +51,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+	cinderv1 "github.com/openstack-k8s-operators/cinder-operator/api/v1beta1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/controllers"
 	rabbitmqv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
@@ -109,6 +110,9 @@ var _ = BeforeSuite(func() {
 	mariadbCRDs, err := test.GetCRDDirFromModule(
 		"github.com/openstack-k8s-operators/mariadb-operator/api", gomod, "bases")
 	Expect(err).ShouldNot(HaveOccurred())
+	cinderCRDs, err := test.GetCRDDirFromModule(
+		"github.com/openstack-k8s-operators/cinder-operator/api", gomod, "bases")
+	Expect(err).ShouldNot(HaveOccurred())
 	infraCRDs, err := test.GetCRDDirFromModule(
 		"github.com/openstack-k8s-operators/infra-operator/apis", "../../go.mod", "bases")
 	Expect(err).ShouldNot(HaveOccurred())
@@ -120,6 +124,7 @@ var _ = BeforeSuite(func() {
 			mariadbCRDs,
 			keystoneCRDs,
 			infraCRDs,
+			cinderCRDs,
 		},
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
@@ -154,6 +159,8 @@ var _ = BeforeSuite(func() {
 	err = memcachedv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = topologyv1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+	err = cinderv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
