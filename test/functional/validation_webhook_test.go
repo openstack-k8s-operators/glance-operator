@@ -17,6 +17,7 @@ package functional
 
 import (
 	"errors"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
@@ -253,31 +254,54 @@ var _ = Describe("Glance validation", func() {
 				"Invalid value: \"foo_bar\": a lowercase RFC 1123 label must consist of lower case alphanumeric characters"),
 		)
 	})
+	DescribeTable("rejects wrong topology for",
+		func(serviceNameFunc func() (string, string)) {
 
-	It("rejects a wrong TopologyRef on a different namespace", func() {
-		spec := GetDefaultGlanceSpec()
-		// Reference a top-level topology
-		spec["topologyRef"] = map[string]interface{}{
-			"name":      glanceTest.GlanceAPITopologies[0].Name,
-			"namespace": "foo",
-		}
-		raw := map[string]interface{}{
-			"apiVersion": "glance.openstack.org/v1beta1",
-			"kind":       "Glance",
-			"metadata": map[string]interface{}{
-				"name":      glanceTest.Instance.Name,
-				"namespace": glanceTest.Instance.Namespace,
-			},
-			"spec": spec,
-		}
+			api, errorPath := serviceNameFunc()
+			expectedErrorMessage := fmt.Sprintf("spec.%s.namespace: Invalid value: \"namespace\": Customizing namespace field is not supported", errorPath)
 
-		unstructuredObj := &unstructured.Unstructured{Object: raw}
-		_, err := controllerutil.CreateOrPatch(
-			th.Ctx, th.K8sClient, unstructuredObj, func() error { return nil })
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(
-			ContainSubstring(
-				"Invalid value: \"namespace\": Customizing namespace field is not supported"),
-		)
-	})
+			spec := GetDefaultGlanceSpec()
+			if api != "top-level" {
+				apiList := map[string]interface{}{
+					"default": map[string]interface{}{
+						"topologyRef": map[string]interface{}{
+							"name":      "foo",
+							"namespace": "bar",
+						},
+					},
+				}
+				spec["glanceAPIs"] = apiList
+			} else {
+				// Reference a top-level topology
+				spec["topologyRef"] = map[string]interface{}{
+					"name":      glanceTest.GlanceAPITopologies[0].Name,
+					"namespace": "foo",
+				}
+			}
+			// Build the Glance CR
+			raw := map[string]interface{}{
+				"apiVersion": "glance.openstack.org/v1beta1",
+				"kind":       "Glance",
+				"metadata": map[string]interface{}{
+					"name":      glanceTest.Instance.Name,
+					"namespace": glanceTest.Instance.Namespace,
+				},
+				"spec": spec,
+			}
+
+			unstructuredObj := &unstructured.Unstructured{Object: raw}
+			_, err := controllerutil.CreateOrPatch(
+				th.Ctx, th.K8sClient, unstructuredObj, func() error { return nil })
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(
+				ContainSubstring(expectedErrorMessage))
+		},
+		Entry("top-level topologyRef", func() (string, string) {
+			return "top-level", "topologyRef"
+		}),
+		Entry("default GlanceAPI topologyRef", func() (string, string) {
+			api := "default"
+			return api, fmt.Sprintf("glanceAPIs[%s].topologyRef", api)
+		}),
+	)
 })
