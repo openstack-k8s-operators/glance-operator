@@ -16,6 +16,7 @@ package functional
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,6 +32,8 @@ const (
 	GlanceAPITypeExternal APIType = "external"
 	//GlanceAPITypeSingle -
 	GlanceAPITypeSingle APIType = "single"
+	//GlanceAPITypeSplit -
+	GlanceAPITypeSplit APIType = "split"
 	//GlanceAPITypeEdge -
 	GlanceAPITypeEdge APIType = "edge"
 	//PublicCertSecretName -
@@ -41,6 +44,8 @@ const (
 	CABundleSecretName = "combined-ca-bundle"
 	//GlanceDummyBackend -
 	GlanceDummyBackend = "enabled_backends=backend1:type1 # CHANGE_ME"
+	//GlanceCinderBackend -
+	GlanceCinderBackend = "enabled_backends=default_backend:cinder"
 	// MemcachedInstance - name of the memcached instance
 	MemcachedInstance = "memcached"
 	// AccountName - name of the MariaDBAccount CR
@@ -62,6 +67,7 @@ type GlanceTestData struct {
 	GlancePort                  string
 	GlanceQuotas                map[string]interface{}
 	Instance                    types.NamespacedName
+	CinderName                  types.NamespacedName
 	GlanceSingle                types.NamespacedName
 	GlanceEdge                  types.NamespacedName
 	GlanceInternal              types.NamespacedName
@@ -101,6 +107,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 	return GlanceTestData{
 		Instance: m,
 
+		CinderName: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("cinder-%s", uuid.New().String()),
+		},
 		GlanceDBSync: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      "glance-db-sync",
