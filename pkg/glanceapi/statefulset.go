@@ -82,6 +82,7 @@ func StatefulSet(
 		tlsEnabled = instance.Spec.TLS.API.Enabled(service.EndpointInternal)
 	}
 
+	// Probes
 	livenessProbe.HTTPGet = &corev1.HTTPGetAction{
 		Path: "/healthcheck",
 		Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
@@ -102,25 +103,22 @@ func StatefulSet(
 		},
 	}
 
+	// envVars
 	envVars := map[string]env.Setter{}
 	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
 	envVars["GLANCE_DOMAIN"] = env.SetValue(instance.Status.Domain)
 	envVars["URISCHEME"] = env.SetValue(string(glanceURIScheme))
 
+	// basic volume/volumeMounts
 	apiVolumes := glance.GetAPIVolumes(instance.Name)
 	apiVolumeMounts := glance.GetAPIVolumeMount(instance.Spec.ImageCache.Size)
-
 	extraVolPropagation := append(glance.GlanceAPIPropagation,
 		storage.PropagationType(instance.APIName()))
-
-	httpdVolumeMount := glance.GetHttpdVolumeMount()
-
 	// Add the CA bundle to the apiVolumes and httpdVolumeMount
 	if instance.Spec.TLS.CaBundleSecretName != "" {
 		apiVolumes = append(apiVolumes, instance.Spec.TLS.CreateVolume())
 		apiVolumeMounts = append(apiVolumeMounts, instance.Spec.TLS.CreateVolumeMounts(nil)...)
-		httpdVolumeMount = append(httpdVolumeMount, instance.Spec.TLS.CreateVolumeMounts(nil)...)
 	}
 
 	// TLS-e: we need to predict the order of both Volumes and VolumeMounts to
@@ -150,7 +148,7 @@ func StatefulSet(
 			svc.KeyMount = ptr.To(fmt.Sprintf("/etc/pki/tls/private/%s.key", endpt.String()))
 
 			apiVolumes = append(apiVolumes, svc.CreateVolume(endpt.String()))
-			httpdVolumeMount = append(httpdVolumeMount, svc.CreateVolumeMounts(endpt.String())...)
+			apiVolumeMounts = append(apiVolumeMounts, svc.CreateVolumeMounts(endpt.String())...)
 		}
 	}
 
@@ -227,27 +225,6 @@ func StatefulSet(
 							},
 							Image:           instance.Spec.ContainerImage,
 							SecurityContext: glance.HttpdSecurityContext(),
-							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts:    httpdVolumeMount,
-							Resources:       instance.Spec.Resources,
-							StartupProbe:    startupProbe,
-							ReadinessProbe:  readinessProbe,
-							LivenessProbe:   livenessProbe,
-						},
-						{
-							Name: glance.ServiceName + "-api",
-							Command: []string{
-								"/usr/bin/dumb-init",
-							},
-							Args: []string{
-								"--single-child",
-								"--",
-								"/bin/bash",
-								"-c",
-								string(GlanceServiceCommand),
-							},
-							Image:           instance.Spec.ContainerImage,
-							SecurityContext: glance.APISecurityContext(userID, privileged),
 							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts: append(glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
