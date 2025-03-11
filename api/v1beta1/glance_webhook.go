@@ -273,21 +273,17 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) 
 
 	// When a TopologyRef CR is referenced, fail if a different Namespace is
 	// referenced because is not supported
-	if r.TopologyRef != nil {
-		if err := topologyv1.ValidateTopologyNamespace(r.TopologyRef.Namespace, *basePath, namespace); err != nil {
-			allErrs = append(allErrs, err)
-		}
-	}
+	allErrs = append(allErrs, topologyv1.ValidateTopologyRef(
+		r.TopologyRef, *basePath.Child("TopologyRef"), namespace)...)
 
 	// For each Glance backend
 	for key, glanceAPI := range r.GlanceAPIs {
 		path := basePath.Child("glanceAPIs").Key(key)
 
-		if glanceAPI.TopologyRef != nil {
-			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), namespace); err != nil {
-				allErrs = append(allErrs, err)
-			}
-		}
+		// fail if a wrong topology is referenced
+		allErrs = append(allErrs, topologyv1.ValidateTopologyRef(
+			glanceAPI.TopologyRef, *path.Child("TopologyRef"), namespace)...)
+
 		// fail if an invalid configuration/layout is detected
 		if ok, err := r.isInvalidBackend(glanceAPI, topLevelFileBackend); ok {
 			allErrs = append(allErrs, field.Invalid(path, key, err))
@@ -363,25 +359,21 @@ func (r *GlanceSpec) ValidateUpdate(old GlanceSpec, basePath *field.Path, namesp
 func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path, namespace string) field.ErrorList {
 	var allErrs field.ErrorList
 
-	// When a TopologyRef CR is referenced, fail if a different Namespace is
-	// referenced because is not supported
-	if r.TopologyRef != nil {
-		if err := topologyv1.ValidateTopologyNamespace(r.TopologyRef.Namespace, *basePath, namespace); err != nil {
-			allErrs = append(allErrs, err)
-		}
-	}
+	// fail if a wrong topology is referenced
+	allErrs = append(allErrs, topologyv1.ValidateTopologyRef(
+		r.TopologyRef, *basePath.Child("TopologyRef"), namespace)...)
+
 	// Type can either be "split" or "single": we do not support changing layout
 	// because there's no logic in the operator to scale down the existing statefulset
 	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
 	topLevelFileBackend := isFileBackend(r.CustomServiceConfig, true)
 	for key, glanceAPI := range r.GlanceAPIs {
-		// Validate TopologyRef namespace
-		if glanceAPI.TopologyRef != nil {
-			if err := topologyv1.ValidateTopologyNamespace(glanceAPI.TopologyRef.Namespace, *basePath.Child("glanceAPIs"), namespace); err != nil {
-				allErrs = append(allErrs, err)
-			}
-		}
 		path := basePath.Child("glanceAPIs").Key(key)
+
+		// fail if a wrong topology is referenced
+		allErrs = append(allErrs, topologyv1.ValidateTopologyRef(
+			glanceAPI.TopologyRef, *path.Child("TopologyRef"), namespace)...)
+
 		// When a new entry (new glanceAPI instance) is added in the main CR, it's
 		// possible that the old CR used to compare the new map had no entry with
 		// the same name. This represent a valid use case and we shouldn't prevent
