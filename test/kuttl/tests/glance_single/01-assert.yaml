@@ -72,15 +72,6 @@ spec:
         command:
         - /usr/bin/dumb-init
         name: glance-httpd
-      - args:
-        - --single-child
-        - --
-        - /bin/bash
-        - -c
-        - /usr/local/bin/kolla_start
-        command:
-        - /usr/bin/dumb-init
-        name: glance-api
       serviceAccount: glance-glance
       serviceAccountName: glance-glance
 status:
