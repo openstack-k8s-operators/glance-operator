@@ -9,8 +9,8 @@
         "perm": "0644"
       },
       {
-        "source": "/var/lib/config-data/default/11-glance-httpd.conf",
-        "dest": "/etc/httpd/conf.d/11-glance.conf",
+        "source": "/var/lib/config-data/default/10-glance-httpd.conf",
+        "dest": "/etc/httpd/conf.d/10-glance.conf",
         "owner": "glance:apache",
         "optional": true,
         "perm": "0644"
