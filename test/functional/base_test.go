@@ -411,3 +411,17 @@ func CreateTopology(topology types.NamespacedName, spec map[string]interface{}) 
 	}
 	return th.CreateUnstructured(raw)
 }
+
+// CreateDefaultCinderInstance - Creates a default Cinder CR used as a
+// dependency when a Cinder backend is defined in glance
+func CreateDefaultCinderInstance(cinderName types.NamespacedName) client.Object {
+	raw := map[string]interface{}{
+		"apiVersion": "cinder.openstack.org/v1beta1",
+		"kind":       "Cinder",
+		"metadata": map[string]interface{}{
+			"name":      cinderName.Name,
+			"namespace": cinderName.Namespace,
+		},
+	}
+	return th.CreateUnstructured(raw)
+}
