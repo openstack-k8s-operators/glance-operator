@@ -244,9 +244,9 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
-			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
+			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
-			container := ss.Spec.Template.Spec.Containers[2]
+			container := ss.Spec.Template.Spec.Containers[1]
 			Expect(container.VolumeMounts).To(HaveLen(6))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
@@ -261,19 +261,14 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
-			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
+			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			// Check the glance-api container
-			container := ss.Spec.Template.Spec.Containers[2]
+			container := ss.Spec.Template.Spec.Containers[1]
 			Expect(container.VolumeMounts).To(HaveLen(6))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
-
-			// Check the glance-httpd container
-			container = ss.Spec.Template.Spec.Containers[1]
-			Expect(container.VolumeMounts).To(HaveLen(2))
-			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 
 			// Check the glance-log container
 			container = ss.Spec.Template.Spec.Containers[0]
@@ -319,9 +314,9 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
-			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
+			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
-			container := ss.Spec.Template.Spec.Containers[2]
+			container := ss.Spec.Template.Spec.Containers[1]
 			Expect(container.VolumeMounts).To(HaveLen(6))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
@@ -373,9 +368,9 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
-			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
+			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
-			container := ss.Spec.Template.Spec.Containers[2]
+			container := ss.Spec.Template.Spec.Containers[1]
 			Expect(container.VolumeMounts).To(HaveLen(6))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
@@ -718,7 +713,7 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(6))
-			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
+			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			// cert deployment volumes
 			th.AssertVolumeExists(glanceTest.CABundleSecret.Name, ss.Spec.Template.Spec.Volumes)
@@ -726,7 +721,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(ss.Spec.Template.Spec.Volumes).ToNot(ContainElement(HaveField("Name", glanceTest.PublicCertSecret.Name)))
 
 			// svc container ca cert
-			svcContainer := ss.Spec.Template.Spec.Containers[2]
+			svcContainer := ss.Spec.Template.Spec.Containers[1]
 			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", svcContainer.VolumeMounts)
 
 			// httpd container certs
@@ -744,7 +739,7 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(6))
-			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
+			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			// cert deployment volumes
 			th.AssertVolumeExists(glanceTest.CABundleSecret.Name, ss.Spec.Template.Spec.Volumes)
@@ -752,7 +747,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(ss.Spec.Template.Spec.Volumes).ToNot(ContainElement(HaveField("Name", glanceTest.InternalCertSecret.Name)))
 
 			// svc container ca cert
-			svcContainer := ss.Spec.Template.Spec.Containers[2]
+			svcContainer := ss.Spec.Template.Spec.Containers[1]
 			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", svcContainer.VolumeMounts)
 
 			// httpd container certs
@@ -894,7 +889,7 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(7))
-			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(3))
+			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			// cert deployment volumes
 			th.AssertVolumeExists(glanceTest.CABundleSecret.Name, ss.Spec.Template.Spec.Volumes)
@@ -902,7 +897,7 @@ var _ = Describe("Glanceapi controller", func() {
 			th.AssertVolumeExists(glanceTest.PublicCertSecret.Name, ss.Spec.Template.Spec.Volumes)
 
 			// svc container ca cert
-			svcContainer := ss.Spec.Template.Spec.Containers[2]
+			svcContainer := ss.Spec.Template.Spec.Containers[1]
 			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", svcContainer.VolumeMounts)
 
 			// httpd container certs
