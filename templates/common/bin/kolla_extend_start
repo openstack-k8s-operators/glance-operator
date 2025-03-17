@@ -12,13 +12,6 @@ EOF
 
 }
 
-# Temporary workaround until the glance-api image in tcib is fixed
-# Other services like Cinder and manila already provides both the
-# DocumentRoot path and the wsgi script in the right location.
-# TODO: Remove L19-L20 when tcib is fixed.
-mkdir -p /var/www/cgi-bin/glance
-cp /usr/bin/glance-wsgi-api /var/www/cgi-bin/glance/glance-wsgi
-
 if [[ -n "${GLANCE_DOMAIN}" ]]; then
     set_worker_self_reference_url
 fi
