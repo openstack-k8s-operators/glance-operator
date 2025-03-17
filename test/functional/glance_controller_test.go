@@ -637,13 +637,13 @@ var _ = Describe("Glance controller", func() {
 
 			for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
 				// Check the resulting deployment fields
-				Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(5))
+				Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(6))
 				Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 				// Get the glance-api container
 				container := ss.Spec.Template.Spec.Containers[1]
 				// Fail if glance-api doesn't have the right number of VolumeMounts
 				// entries
-				Expect(container.VolumeMounts).To(HaveLen(7))
+				Expect(container.VolumeMounts).To(HaveLen(8))
 				// Inspect VolumeMounts and make sure we have the Ceph MountPath
 				// provided through extraMounts
 				for _, vm := range container.VolumeMounts {

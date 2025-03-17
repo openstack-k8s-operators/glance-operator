@@ -245,11 +245,11 @@ var _ = Describe("Glanceapi controller", func() {
 			ss := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(5))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			container := ss.Spec.Template.Spec.Containers[1]
-			Expect(container.VolumeMounts).To(HaveLen(6))
+			Expect(container.VolumeMounts).To(HaveLen(7))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
@@ -262,12 +262,12 @@ var _ = Describe("Glanceapi controller", func() {
 			ss := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(5))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			// Check the glance-api container
 			container := ss.Spec.Template.Spec.Containers[1]
-			Expect(container.VolumeMounts).To(HaveLen(6))
+			Expect(container.VolumeMounts).To(HaveLen(7))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
@@ -315,11 +315,11 @@ var _ = Describe("Glanceapi controller", func() {
 			ss := th.GetStatefulSet(glanceTest.GlanceEdgeStatefulSet)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(5))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			container := ss.Spec.Template.Spec.Containers[1]
-			Expect(container.VolumeMounts).To(HaveLen(6))
+			Expect(container.VolumeMounts).To(HaveLen(7))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
@@ -369,11 +369,11 @@ var _ = Describe("Glanceapi controller", func() {
 			ss := th.GetStatefulSet(glanceTest.GlanceSingle)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(4))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(5))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			container := ss.Spec.Template.Spec.Containers[1]
-			Expect(container.VolumeMounts).To(HaveLen(6))
+			Expect(container.VolumeMounts).To(HaveLen(7))
 			Expect(container.Image).To(Equal(glanceTest.ContainerImage))
 			Expect(container.LivenessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
 			Expect(container.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(9292)))
@@ -714,7 +714,7 @@ var _ = Describe("Glanceapi controller", func() {
 			ss := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(6))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(7))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			// cert deployment volumes
@@ -740,7 +740,7 @@ var _ = Describe("Glanceapi controller", func() {
 			ss := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(6))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(7))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			// cert deployment volumes
@@ -890,7 +890,7 @@ var _ = Describe("Glanceapi controller", func() {
 			ss := th.GetStatefulSet(glanceTest.GlanceSingle)
 			// Check the resulting deployment fields
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
-			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(7))
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(8))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
 
 			// cert deployment volumes

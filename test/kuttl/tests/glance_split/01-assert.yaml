@@ -25,8 +25,6 @@ spec:
   secret: osp-secret
   storage:
     storageRequest: 10G
-status:
-  databaseHostname: openstack.glance-kuttl-tests.svc
 ---
 apiVersion: glance.openstack.org/v1beta1
 kind: GlanceAPI
@@ -35,7 +33,6 @@ metadata:
 spec:
   apiType: external
   databaseAccount: glance
-  databaseHostname: openstack.glance-kuttl-tests.svc
   passwordSelectors:
     service: GlancePassword
   replicas: 1
@@ -47,7 +44,6 @@ metadata:
 spec:
   apiType: internal
   databaseAccount: glance
-  databaseHostname: openstack.glance-kuttl-tests.svc
   passwordSelectors:
     service: GlancePassword
   replicas: 1
