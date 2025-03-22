@@ -79,8 +79,8 @@ github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20250319162810-4
 github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20250319162810-463dd75a4cc4/go.mod h1:n5DV/lGE9DHryAJ+JLJSgUXI2QHTj+aN4KoeSNC3PfU=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20250315090821-34e570d2d5fb h1:UAFYEHnbyhO0+yymquFmIqxc9QGji9mzreuYrDS1Ev4=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20250315090821-34e570d2d5fb/go.mod h1:1CtBP0MQffdjE6buOv5jP2rB3+h7WH0a11lcyrpmxOk=
-github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20250228124213-cd63da392f97 h1:xQ7/UNSPVRzwQq7wYG9i87dCCQztgmz1kqn2sy6HhlQ=
-github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20250228124213-cd63da392f97/go.mod h1:u7Zqmyt1WB96KSz8apYltrZV9xlL0tTVYwOk9+6G57k=
+github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20250315090821-34e570d2d5fb h1:eBh6DC1D5RDKiIAEWe+Lmrs+tSCqpRy13oZFIhWb3FU=
+github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20250315090821-34e570d2d5fb/go.mod h1:5+v92XC/PRATIiBrhNLEpJ+T4R9JpxBCgRP6QvbfwgE=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
