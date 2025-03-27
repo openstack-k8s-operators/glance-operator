@@ -1,0 +1,42 @@
+# Requires two running cinder volume services and the credentials to access it
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = lvm:cinder,nfs:cinder
+        debug = true
+        [glance_store]
+        default_backend = lvm
+        [lvm]
+        rootwrap_config = /etc/glance/rootwrap.conf
+        store_description = LVM iscsi cinder backend
+        cinder_store_auth_address = {{ .KeystoneInternalURL }}
+        cinder_store_user_name = {{ .ServiceUser }}
+        cinder_store_password = {{ .ServicePassword }}
+        cinder_store_project_name = service
+        cinder_catalog_info = volumev3::internalURL
+        cinder_use_multipath = true
+        cinder_volume_type = lvm
+        [nfs]
+        rootwrap_config = /etc/glance/rootwrap.conf
+        store_description = NFS cinder backend
+        cinder_store_auth_address = {{ .KeystoneInternalURL }}
+        cinder_store_user_name = {{ .ServiceUser }}
+        cinder_store_password = {{ .ServicePassword }}
+        cinder_store_project_name = service
+        cinder_catalog_info = volumev3::internalURL
+        cinder_use_multipath = true
+        cinder_volume_type = nfs
+      databaseInstance: openstack
+      storage:
+        storageRequest: 1G
+      glanceAPIs:
+        default:
+          preserveJobs: false
+          replicas: 1
+          type: split

@@ -1,0 +1,10 @@
+resources:
+- https://github.com/openstack-k8s-operators/cinder-operator/config/samples/backends/netapp/ontap/iscsi
+
+patches:
+  - path: https://raw.githubusercontent.com/openstack-k8s-operators/cinder-operator/refs/heads/main/config/samples/backends/netapp/ontap/nfs/backend.yaml
+  - path: https://raw.githubusercontent.com/openstack-k8s-operators/cinder-operator/refs/heads/main/config/samples/backends/netapp/ontap/nfs/cinder-volume-ontap-secrets.yaml
+  - path: ./glance-cinder-multistore.yaml
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization

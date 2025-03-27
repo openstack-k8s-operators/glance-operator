@@ -488,10 +488,31 @@ pair, where:
 
 More information around multistore configuration can be found in the [upstream](https://docs.openstack.org/glance/latest/admin/multistores.html)
 documentation.
-The `glance-operator` provides an example of `OpenStackControlPlane` CR that
-provides three stores:
+The `glance-operator` provides two multistore based examples.
+The first example is based on `cinder` multistore, where multiple cinder stores
+(`lvm` and `nfs`) are configured as Glance backends:
+
+```yaml
+...
+customServiceConfig: |
+  [DEFAULT]
+  enabled_backends = lvm:cinder,nfs:cinder
+...
+```
+
+You can build a `OpenStackControlPlane` based on `Cinder` multistore with the
+following commands:
 
 ```bash
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/multistore/cinder > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
+
+The second multistore example provides three stores:
+
+```yaml
 ...
 customServiceConfig: |
   [DEFAULT]
@@ -524,7 +545,7 @@ At this point, deploy the `OpenStackControlPlane` using the [multistore samples]
 
 ```bash
 $ make crc_storage openstack
-$ oc kustomize ../glance-operator/config/samples/backends/multistore > ~/openstack-deployment.yaml
+$ oc kustomize ../glance-operator/config/samples/backends/multistore/rbd_swift > ~/openstack-deployment.yaml
 $ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
 $ make openstack_deploy
 ```
