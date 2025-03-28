@@ -8,11 +8,11 @@ spec:
     template:
       customServiceConfig: |
         [DEFAULT]
-        enabled_backends = lvm:cinder,nfs:cinder
+        enabled_backends = iscsi:cinder,nfs:cinder
         debug = true
         [glance_store]
-        default_backend = lvm
-        [lvm]
+        default_backend = iscsi
+        [iscsi]
         rootwrap_config = /etc/glance/rootwrap.conf
         store_description = LVM iscsi cinder backend
         cinder_store_auth_address = {{ .KeystoneInternalURL }}
@@ -21,7 +21,8 @@ spec:
         cinder_store_project_name = service
         cinder_catalog_info = volumev3::internalURL
         cinder_use_multipath = true
-        cinder_volume_type = lvm
+        # assumes a cinder volume type called iscsi exists
+        cinder_volume_type = iscsi
         [nfs]
         rootwrap_config = /etc/glance/rootwrap.conf
         store_description = NFS cinder backend
@@ -31,6 +32,7 @@ spec:
         cinder_store_project_name = service
         cinder_catalog_info = volumev3::internalURL
         cinder_use_multipath = true
+        # assumes a cinder volume type called nfs exists
         cinder_volume_type = nfs
       databaseInstance: openstack
       storage:
