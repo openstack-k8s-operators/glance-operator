@@ -20,11 +20,13 @@ import (
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 
 	//revive:disable-next-line:dot-imports
@@ -1046,15 +1048,21 @@ var _ = Describe("Glanceapi controller", func() {
 	})
 
 	When("GlanceAPI instance overrides a Topology", func() {
+		var topologyRefAlt *topologyv1.TopoRef
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 
-			// Build the topology Spec
-			topologySpec := GetSampleTopologySpec()
 			// Create Test Topologies
 			for _, t := range glanceTest.GlanceAPITopologies {
+				// Build the topology Spec
+				topologySpec, _ := GetSampleTopologySpec(t.Name)
 				CreateTopology(t, topologySpec)
+			}
+			// Define the two topology references used in this test
+			topologyRefAlt = &topologyv1.TopoRef{
+				Name:      glanceTest.GlanceAPITopologies[1].Name,
+				Namespace: glanceTest.GlanceAPITopologies[1].Namespace,
 			}
 
 			rawSpec := CreateGlanceAPIWithTopologySpec()
@@ -1083,7 +1091,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Eventually(func(g Gomega) {
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				g.Expect(internalAPI.Status.LastAppliedTopology).ShouldNot(BeNil())
-				g.Expect(internalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(topologyRefAlt))
 			}, timeout, interval).Should(Succeed())
 			// Check the statefulSet has a default TopologySpreadConstraints and no Affinity
 			// TopologySpreadConstraints is part of the sample Topology used to test Glance,
@@ -1091,11 +1099,28 @@ var _ = Describe("Glanceapi controller", func() {
 			Eventually(func(g Gomega) {
 				ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
 				ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+				_, topologySpecObj := GetSampleTopologySpec(topologyRefAlt.Name)
 				for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
 					// Check the resulting deployment fields
 					g.Expect(ss.Spec.Template.Spec.Affinity).To(BeNil())
 					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).ToNot(BeNil())
+					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(Equal(topologySpecObj))
 				}
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				tp := GetTopology(types.NamespacedName{
+					Name:      topologyRefAlt.Name,
+					Namespace: topologyRefAlt.Namespace,
+				})
+				finalizers := tp.GetFinalizers()
+				g.Expect(finalizers).To(HaveLen(1))
+				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+				g.Expect(finalizers).To(ContainElement(
+					fmt.Sprintf("openstack.org/glanceapi-%s", internalAPI.APIName())))
+				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
+				g.Expect(finalizers).To(ContainElement(
+					fmt.Sprintf("openstack.org/glanceapi-%s", externalAPI.APIName())))
 			}, timeout, interval).Should(Succeed())
 		})
 	})

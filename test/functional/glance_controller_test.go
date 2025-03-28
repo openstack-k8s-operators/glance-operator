@@ -28,6 +28,7 @@ import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
@@ -655,21 +656,31 @@ var _ = Describe("Glance controller", func() {
 		})
 	})
 
-	When("Glance CR references a Topology", func() {
+	When("Glance CR references a topology", func() {
+		var topologyRef, topologyRefAlt *topologyv1.TopoRef
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			// Define the two topology references used in this test
+			topologyRef = &topologyv1.TopoRef{
+				Name:      glanceTest.GlanceAPITopologies[0].Name,
+				Namespace: glanceTest.GlanceAPITopologies[0].Namespace,
+			}
+			topologyRefAlt = &topologyv1.TopoRef{
+				Name:      glanceTest.GlanceAPITopologies[1].Name,
+				Namespace: glanceTest.GlanceAPITopologies[1].Namespace,
+			}
 
-			// Build the topology Spec
-			topologySpec := GetSampleTopologySpec()
-			// Create Test Topologies
 			for _, t := range glanceTest.GlanceAPITopologies {
+				// Build the topology Spec
+				topologySpec, _ := GetSampleTopologySpec(glanceTest.Instance.Name)
+				// Create Test Topologies
 				CreateTopology(t, topologySpec)
 			}
 			rawSpec := GetGlanceEmptySpec()
 			// Reference a top-level topology
 			rawSpec["topologyRef"] = map[string]interface{}{
-				"name": glanceTest.GlanceAPITopologies[0].Name,
+				"name": topologyRef.Name,
 			}
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
 			DeferCleanup(
@@ -690,39 +701,68 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
 		})
 
-		It("Check the Topology has been applied to the resulting StatefulSets", func() {
+		It("Check the topology has been applied to the resulting StatefulSets", func() {
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
 			Eventually(func(g Gomega) {
+				tp := GetTopology(types.NamespacedName{
+					Name:      topologyRef.Name,
+					Namespace: topologyRef.Namespace,
+				})
+				finalizers := tp.GetFinalizers()
+				g.Expect(finalizers).To(HaveLen(1))
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
 				g.Expect(internalAPI.Status.LastAppliedTopology).ToNot(BeNil())
-				g.Expect(internalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(topologyRef))
+				g.Expect(finalizers).To(ContainElement(
+					fmt.Sprintf("openstack.org/glanceapi-%s", internalAPI.APIName())))
 				g.Expect(externalAPI.Status.LastAppliedTopology).ToNot(BeNil())
-				g.Expect(externalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[0].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(topologyRef))
+				g.Expect(finalizers).To(ContainElement(
+					fmt.Sprintf("openstack.org/glanceapi-%s", externalAPI.APIName())))
 			}, timeout, interval).Should(Succeed())
 		})
 
-		It("Update the Topology reference", func() {
+		It("Updates the topology reference", func() {
 			Eventually(func(g Gomega) {
 				glance := GetGlance(glanceTest.Instance)
-				glance.Spec.TopologyRef.Name = glanceTest.GlanceAPITopologies[1].Name
+				glance.Spec.TopologyRef.Name = topologyRefAlt.Name
 				g.Expect(k8sClient.Update(ctx, glance)).To(Succeed())
 			}, timeout, interval).Should(Succeed())
 
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+
 			Eventually(func(g Gomega) {
+				tp := GetTopology(types.NamespacedName{
+					Name:      topologyRefAlt.Name,
+					Namespace: topologyRefAlt.Namespace,
+				})
+				finalizers := tp.GetFinalizers()
+				g.Expect(finalizers).To(HaveLen(1))
+
 				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
 				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
 				g.Expect(internalAPI.Status.LastAppliedTopology).ToNot(BeNil())
-				g.Expect(internalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(topologyRefAlt))
+				g.Expect(finalizers).To(ContainElement(
+					fmt.Sprintf("openstack.org/glanceapi-%s", internalAPI.APIName())))
 				g.Expect(externalAPI.Status.LastAppliedTopology).ToNot(BeNil())
-				g.Expect(externalAPI.Status.LastAppliedTopology.Name).To(Equal(glanceTest.GlanceAPITopologies[1].Name))
+				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(topologyRefAlt))
+				g.Expect(finalizers).To(ContainElement(
+					fmt.Sprintf("openstack.org/glanceapi-%s", externalAPI.APIName())))
+				// Verify the previous referenced topology has no finalizers
+				tp = GetTopology(types.NamespacedName{
+					Name:      topologyRef.Name,
+					Namespace: topologyRef.Namespace,
+				})
+				finalizers = tp.GetFinalizers()
+				g.Expect(finalizers).To(BeEmpty())
 			}, timeout, interval).Should(Succeed())
 		})
 
-		It("Remove the Topology reference", func() {
+		It("Remove the topology reference", func() {
 			Eventually(func(g Gomega) {
 				glance := GetGlance(glanceTest.Instance)
 				// Remove the TopologyRef from the existing Glance .Spec
@@ -747,6 +787,18 @@ var _ = Describe("Glance controller", func() {
 					// Check the resulting deployment fields
 					g.Expect(ss.Spec.Template.Spec.Affinity).ToNot(BeNil())
 					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(BeNil())
+				}
+			}, timeout, interval).Should(Succeed())
+
+			// Verify the existing topologies have no finalizer anymore
+			Eventually(func(g Gomega) {
+				for _, topology := range glanceTest.GlanceAPITopologies {
+					tp := GetTopology(types.NamespacedName{
+						Name:      topology.Name,
+						Namespace: topology.Namespace,
+					})
+					finalizers := tp.GetFinalizers()
+					g.Expect(finalizers).To(BeEmpty())
 				}
 			}, timeout, interval).Should(Succeed())
 		})
