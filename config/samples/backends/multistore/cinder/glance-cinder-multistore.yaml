@@ -8,11 +8,11 @@ spec:
     template:
       customServiceConfig: |
         [DEFAULT]
-        enabled_backends = lvm:cinder,nfs:cinder
+        enabled_backends = ontap-iscsi:cinder,ontap-nfs:cinder
         debug = true
         [glance_store]
-        default_backend = lvm
-        [lvm]
+        default_backend = ontap-iscsi
+        [ontap-iscsi]
         rootwrap_config = /etc/glance/rootwrap.conf
         store_description = LVM iscsi cinder backend
         cinder_store_auth_address = {{ .KeystoneInternalURL }}
@@ -21,8 +21,8 @@ spec:
         cinder_store_project_name = service
         cinder_catalog_info = volumev3::internalURL
         cinder_use_multipath = true
-        cinder_volume_type = lvm
-        [nfs]
+        cinder_volume_type = ontap-iscsi
+        [ontap-nfs]
         rootwrap_config = /etc/glance/rootwrap.conf
         store_description = NFS cinder backend
         cinder_store_auth_address = {{ .KeystoneInternalURL }}
@@ -31,7 +31,7 @@ spec:
         cinder_store_project_name = service
         cinder_catalog_info = volumev3::internalURL
         cinder_use_multipath = true
-        cinder_volume_type = nfs
+        cinder_volume_type = ontap-nfs
       databaseInstance: openstack
       storage:
         storageRequest: 1G
