@@ -862,7 +862,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		ctx,
 		helper,
 		instance.Spec.TopologyRef,
-		instance.GetLastTopologyRef(),
+		instance.Status.LastAppliedTopology,
 		instance.APIName(),
 		labels.GetLabelSelector(GetServiceLabels(instance)),
 	)

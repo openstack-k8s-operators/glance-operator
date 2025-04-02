@@ -1052,7 +1052,7 @@ var _ = Describe("Glanceapi controller", func() {
 			for _, t := range glanceTest.GlanceAPITopologies {
 				// Build the topology Spec
 				topologySpec, _ := GetSampleTopologySpec(t.Name)
-				CreateTopology(t, topologySpec)
+				infra.CreateTopology(t, topologySpec)
 			}
 			// Define the two topology references used in this test
 			topologyRefAlt = &topologyv1.TopoRef{
@@ -1104,7 +1104,7 @@ var _ = Describe("Glanceapi controller", func() {
 			}, timeout, interval).Should(Succeed())
 
 			Eventually(func(g Gomega) {
-				tp := GetTopology(types.NamespacedName{
+				tp := infra.GetTopology(types.NamespacedName{
 					Name:      topologyRefAlt.Name,
 					Namespace: topologyRefAlt.Namespace,
 				})
