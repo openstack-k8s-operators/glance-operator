@@ -490,13 +490,13 @@ More information around multistore configuration can be found in the [upstream](
 documentation.
 The `glance-operator` provides two multistore based examples.
 The first example is based on `cinder` multistore, where multiple cinder stores
-(`lvm` and `nfs`) are configured as Glance backends:
+(`iscsi` and `nfs`) are configured as Glance backends:
 
 ```yaml
 ...
 customServiceConfig: |
   [DEFAULT]
-  enabled_backends = lvm:cinder,nfs:cinder
+  enabled_backends = iscsi:cinder,nfs:cinder
 ...
 ```
 
