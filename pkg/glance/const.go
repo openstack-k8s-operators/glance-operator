@@ -81,6 +81,9 @@ const (
 	// LogVolume is the default logVolume name used to mount logs on both
 	// GlanceAPI and the sidecar container
 	LogVolume = "logs"
+	// HttpdRunVolume is the default httpd ephemeral mount where pid files are
+	// stored
+	HttpdRunVolume = "httpd-run"
 	// KeystoneEndpoint - indicates whether the glanceAPI should register the
 	// endpoints in keystone
 	KeystoneEndpoint = "keystoneEndpoint"
