@@ -68,64 +68,47 @@ spec:
         - -c
         - /usr/local/bin/kolla_start
         volumeMounts:
-         - mountPath: /var/lib/config-data/default
-           name: config-data
-           readOnly: true
-         - mountPath: /var/lib/kolla/config_files/config.json
-           name: config-data
-           readOnly: true
-           subPath: glance-httpd-config.json
-         - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
-           name: combined-ca-bundle
-           readOnly: true
-           subPath: tls-ca-bundle.pem
-         - mountPath: /etc/pki/tls/certs/internal.crt
-           name: internal-tls-certs
-           readOnly: true
-           subPath: tls.crt
-         - mountPath: /etc/pki/tls/private/internal.key
-           name: internal-tls-certs
-           readOnly: true
-           subPath: tls.key
-         - mountPath: /etc/pki/tls/certs/public.crt
-           name: public-tls-certs
-           readOnly: true
-           subPath: tls.crt
-         - mountPath: /etc/pki/tls/private/public.key
-           name: public-tls-certs
-           readOnly: true
-           subPath: tls.key
+        - mountPath: /var/lib/config-data/default
+          name: config-data
+          readOnly: true
+        - mountPath: /etc/my.cnf
+          name: config-data
+          readOnly: true
+          subPath: my.cnf
+        - mountPath: /var/lib/kolla/config_files/config.json
+          name: config-data
+          readOnly: true
+          subPath: glance-httpd-config.json
+        - mountPath: /var/lib/glance
+          name: glance
+        - mountPath: /var/log/glance
+          name: logs
+        - mountPath: /usr/local/bin/container-scripts
+          name: scripts
+          readOnly: true
+        - mountPath: /run/httpd
+          name: httpd-run
+        - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+          name: combined-ca-bundle
+          readOnly: true
+          subPath: tls-ca-bundle.pem
+        - mountPath: /etc/pki/tls/certs/internal.crt
+          name: internal-tls-certs
+          readOnly: true
+          subPath: tls.crt
+        - mountPath: /etc/pki/tls/private/internal.key
+          name: internal-tls-certs
+          readOnly: true
+          subPath: tls.key
+        - mountPath: /etc/pki/tls/certs/public.crt
+          name: public-tls-certs
+          readOnly: true
+          subPath: tls.crt
+        - mountPath: /etc/pki/tls/private/public.key
+          name: public-tls-certs
+          readOnly: true
+          subPath: tls.key
         name: glance-httpd
-      - args:
-        - --single-child
-        - --
-        - /bin/bash
-        - -c
-        - /usr/local/bin/kolla_start
-        volumeMounts:
-         - mountPath: /var/lib/config-data/default
-           name: config-data
-           readOnly: true
-         - mountPath: /etc/my.cnf
-           name: config-data
-           readOnly: true
-           subPath: my.cnf
-         - mountPath: /var/lib/glance
-           name: glance
-         - mountPath: /var/lib/kolla/config_files/config.json
-           name: config-data
-           readOnly: true
-           subPath: glance-api-config.json
-         - mountPath: /var/log/glance
-           name: logs
-         - mountPath: /usr/local/bin/container-scripts
-           name: scripts
-           readOnly: true
-         - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
-           name: combined-ca-bundle
-           readOnly: true
-           subPath: tls-ca-bundle.pem
-        name: glance-api
       volumes:
       - name: config-data
         secret:
@@ -141,6 +124,8 @@ spec:
         secret:
           defaultMode: 493
           secretName: glance-scripts
+      - emptyDir: {}
+        name: httpd-run
       - name: combined-ca-bundle
         secret:
           defaultMode: 292
