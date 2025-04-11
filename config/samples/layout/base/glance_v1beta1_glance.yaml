@@ -4,6 +4,7 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
+  notificationBusInstance: rabbitmq
   customServiceConfig: |
     [DEFAULT]
     debug = true

@@ -42,6 +42,7 @@ import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
+	rabbitmqv1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
@@ -94,6 +95,7 @@ type GlanceReconciler struct {
 // +kubebuilder:rbac:groups="security.openshift.io",resourceNames=anyuid;privileged,resources=securitycontextconstraints,verbs=use
 // +kubebuilder:rbac:groups="",resources=pods,verbs=create;delete;get;list;patch;update;watch
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete;
+// +kubebuilder:rbac:groups=rabbitmq.openstack.org,resources=transporturls,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reconcile Glance requests
 func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, _err error) {
@@ -198,6 +200,14 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
 	}
 
+	if instance.Spec.NotificationBusInstance != nil {
+		c := condition.UnknownCondition(
+			condition.NotificationBusInstanceReadyCondition,
+			condition.InitReason,
+			condition.NotificationBusInstanceReadyInitMessage)
+		cl.Set(c)
+	}
+
 	// Handle service delete
 	if !instance.DeletionTimestamp.IsZero() {
 		return r.reconcileDelete(ctx, instance, helper)
@@ -250,6 +260,40 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return nil
 	}
 
+	// transportURLSecretFn - Watch for changes made to the secret associated with the RabbitMQ
+	// TransportURL created and used by Glance CRs.
+	transportURLSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
+		result := []reconcile.Request{}
+		// get all Manila CRs
+		glances := &glancev1.GlanceList{}
+		listOpts := []client.ListOption{
+			client.InNamespace(o.GetNamespace()),
+		}
+		if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
+			r.Log.Error(err, "Unable to retrieve Glance CRs %v")
+			return nil
+		}
+		for _, ownerRef := range o.GetOwnerReferences() {
+			if ownerRef.Kind == "TransportURL" {
+				for _, cr := range glances.Items {
+					if ownerRef.Name == fmt.Sprintf("%s-glance-transport", cr.Name) {
+						// return namespace and Name of CR
+						name := client.ObjectKey{
+							Namespace: o.GetNamespace(),
+							Name:      cr.Name,
+						}
+						r.Log.Info(fmt.Sprintf("TransportURL Secret %s belongs to TransportURL belonging to Glance CR %s", o.GetName(), cr.Name))
+						result = append(result, reconcile.Request{NamespacedName: name})
+					}
+				}
+			}
+		}
+		if len(result) > 0 {
+			return result
+		}
+		return nil
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.Glance{}).
 		Owns(&glancev1.GlanceAPI{}).
@@ -263,6 +307,10 @@ func (r *GlanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.Role{}).
 		Owns(&rbacv1.RoleBinding{}).
+		Owns(&rabbitmqv1.TransportURL{}).
+		// Watch for TransportURL Secrets which belong to any TransportURLs created by Glance CRs
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(transportURLSecretFn)).
 		Watches(
 			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
@@ -522,6 +570,43 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	serviceLabels := map[string]string{
 		common.AppSelector: glance.ServiceName,
 	}
+
+	//
+	// create RabbitMQ transportURL CR and get the actual URL from the associated secret that is created
+	//
+	if instance.Spec.NotificationBusInstance != nil && *instance.Spec.NotificationBusInstance != "" {
+		notificationTransportURL, op, err := r.transportURLCreateOrUpdate(ctx, instance, serviceLabels)
+		if err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.NotificationBusInstanceReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.NotificationBusInstanceReadyErrorMessage,
+				err.Error()))
+			return ctrl.Result{}, err
+		}
+
+		if op != controllerutil.OperationResultNone {
+			r.Log.Info(fmt.Sprintf("TransportURL %s successfully reconciled - operation: %s", notificationTransportURL.Name, string(op)))
+		}
+
+		instance.Status.NotificationBusSecret = notificationTransportURL.Status.SecretName
+
+		if instance.Status.NotificationBusSecret == "" {
+			r.Log.Info(fmt.Sprintf("Waiting for notification TransportURL %s secret to be created", notificationTransportURL.Name))
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.NotificationBusInstanceReadyCondition,
+				condition.RequestedReason,
+				condition.SeverityInfo,
+				condition.NotificationBusInstanceReadyRunningMessage))
+			return glance.ResultRequeue, nil
+		}
+	} else {
+		instance.Status.NotificationBusSecret = ""
+	}
+	// if we reach this point the condition can be marked as true by default
+	instance.Status.Conditions.MarkTrue(condition.NotificationBusInstanceReadyCondition, condition.NotificationBusInstanceReadyMessage)
+	// end transportURL
 
 	//
 	// Check for required memcached used for caching
@@ -854,16 +939,17 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 	apiAnnotations := map[string]string{}
 	apiSpec := glancev1.GlanceAPISpec{
-		GlanceAPITemplate: apiTemplate,
-		APIType:           apiType,
-		DatabaseHostname:  instance.Status.DatabaseHostname,
-		DatabaseAccount:   instance.Spec.DatabaseAccount,
-		Secret:            instance.Spec.Secret,
-		ExtraMounts:       instance.Spec.ExtraMounts,
-		PasswordSelectors: instance.Spec.PasswordSelectors,
-		ServiceUser:       instance.Spec.ServiceUser,
-		ServiceAccount:    instance.RbacResourceName(),
-		Quota:             instance.IsQuotaEnabled(),
+		GlanceAPITemplate:     apiTemplate,
+		APIType:               apiType,
+		DatabaseHostname:      instance.Status.DatabaseHostname,
+		DatabaseAccount:       instance.Spec.DatabaseAccount,
+		Secret:                instance.Spec.Secret,
+		ExtraMounts:           instance.Spec.ExtraMounts,
+		PasswordSelectors:     instance.Spec.PasswordSelectors,
+		ServiceUser:           instance.Spec.ServiceUser,
+		ServiceAccount:        instance.RbacResourceName(),
+		Quota:                 instance.IsQuotaEnabled(),
+		NotificationBusSecret: instance.Status.NotificationBusSecret,
 	}
 
 	if apiSpec.GlanceAPITemplate.NodeSelector == nil {
@@ -1267,4 +1353,28 @@ func (r *GlanceReconciler) checkGlanceAPIsGeneration(
 		}
 	}
 	return true, nil
+}
+
+// transportURLCreateOrUpdate -
+func (r *GlanceReconciler) transportURLCreateOrUpdate(
+	ctx context.Context,
+	instance *glancev1.Glance,
+	serviceLabels map[string]string,
+) (*rabbitmqv1.TransportURL, controllerutil.OperationResult, error) {
+	transportURL := &rabbitmqv1.TransportURL{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-glance-transport", instance.Name),
+			Namespace: instance.Namespace,
+			Labels:    serviceLabels,
+		},
+	}
+
+	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, transportURL, func() error {
+		transportURL.Spec.RabbitmqClusterName = *instance.Spec.NotificationBusInstance
+
+		err := controllerutil.SetControllerReference(instance, transportURL, r.Scheme)
+		return err
+	})
+
+	return transportURL, op, err
 }
