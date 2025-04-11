@@ -571,6 +571,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              notificationBusSecret:
+                type: string
               override:
                 properties:
                   service:
@@ -773,6 +775,8 @@ spec:
                     type: string
                   type: array
                 type: object
+              notificationBusSecret:
+                type: string
               observedGeneration:
                 format: int64
                 type: integer

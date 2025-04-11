@@ -1247,6 +1247,17 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	}
 	templateParameters["MemcachedServersWithInet"] = memcached.GetMemcachedServerListWithInetString()
 
+	// only get the secret and add the entry in templateParameters when
+	// a transportURL is referenced through the NotificationBusSecret spec
+	// parameter
+	if instance.Spec.NotificationBusSecret != "" {
+		notificationBusSecret, _, err := secret.GetSecret(ctx, h, instance.Spec.NotificationBusSecret, instance.Namespace)
+		if err != nil {
+			return err
+		}
+		templateParameters["TransportURL"] = string(notificationBusSecret.Data["transport_url"])
+	}
+
 	// 00-default.conf will be regenerated as we have a ln -s of the
 	// templates/glance/config directory
 	// Do not generate -scripts as they are inherited from the top-level CR

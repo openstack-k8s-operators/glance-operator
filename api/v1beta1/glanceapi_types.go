@@ -84,6 +84,10 @@ type GlanceAPISpec struct {
 	// +kubebuilder:default=memcached
 	// Memcached instance name.
 	MemcachedInstance string `json:"memcachedInstance"`
+
+	// +kubebuilder:validation:Optional
+	// Secret containing RabbitMq transport URL
+	NotificationBusSecret string `json:"notificationBusSecret"`
 }
 
 // GlanceAPIStatus defines the observed state of GlanceAPI
@@ -119,6 +123,10 @@ type GlanceAPIStatus struct {
 
 	// LastAppliedTopology - the last applied Topology
 	LastAppliedTopology *topologyv1.TopoRef `json:"lastAppliedTopology,omitempty"`
+
+	// NotificationBusSecret - Secret containing RabbitMQ transportURL for
+	// notification purposes
+	NotificationBusSecret string `json:"notificationBusSecret,omitempty"`
 }
 
 // +kubebuilder:object:root=true
