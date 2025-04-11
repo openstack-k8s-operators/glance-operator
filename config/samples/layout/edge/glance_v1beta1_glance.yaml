@@ -4,6 +4,7 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
+  rabbitmqClusterName: rabbitmq
   customServiceConfig: |
     [DEFAULT]
     debug = true

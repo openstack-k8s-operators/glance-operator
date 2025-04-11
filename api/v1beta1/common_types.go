@@ -113,6 +113,12 @@ type GlanceAPITemplate struct {
 	// +kubebuilder:validation:Minimum=1
 	// APITimeout for HAProxy and Apache defaults to GlanceSpecCore APITimeout
 	APITimeout int `json:"apiTimeout,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// RabbitMQ instance name
+	// Needed to request a transportURL that is created and used in Glance for
+	// notifications
+	RabbitMqClusterName *string `json:"rabbitMqClusterName,omitempty"`
 }
 
 // Storage -

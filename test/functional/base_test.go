@@ -74,10 +74,11 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 			"namespace": name.Namespace,
 		},
 		"spec": map[string]interface{}{
-			"memcachedInstance": "memcached",
-			"keystoneEndpoint":  "default",
-			"databaseInstance":  "openstack",
-			"databaseAccount":   glanceTest.GlanceDatabaseAccount.Name,
+			"memcachedInstance":   "memcached",
+			"rabbitMqClusterName": glanceTest.RabbitmqClusterName,
+			"keystoneEndpoint":    "default",
+			"databaseInstance":    "openstack",
+			"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
 			"storage": map[string]interface{}{
 				"storageRequest": glanceTest.GlancePVCSize,
 			},
@@ -91,9 +92,10 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 // Glance spec
 func GetGlanceEmptySpec() map[string]interface{} {
 	return map[string]interface{}{
-		"keystoneEndpoint": "default",
-		"secret":           SecretName,
-		"databaseInstance": "openstack",
+		"keystoneEndpoint":    "default",
+		"rabbitMqClusterName": glanceTest.RabbitmqClusterName,
+		"secret":              SecretName,
+		"databaseInstance":    "openstack",
 		"storage": map[string]interface{}{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
@@ -103,12 +105,13 @@ func GetGlanceEmptySpec() map[string]interface{} {
 
 func GetGlanceDefaultSpec() map[string]interface{} {
 	return map[string]interface{}{
-		"keystoneEndpoint": "default",
-		"databaseInstance": "openstack",
-		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
-		"serviceUser":      glanceName.Name,
-		"secret":           SecretName,
-		"glanceAPIs":       GetAPIList(),
+		"keystoneEndpoint":    "default",
+		"databaseInstance":    "openstack",
+		"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+		"serviceUser":         glanceName.Name,
+		"secret":              SecretName,
+		"rabbitMqClusterName": glanceTest.RabbitmqClusterName,
+		"glanceAPIs":          GetAPIList(),
 		"storage": map[string]interface{}{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
@@ -117,12 +120,13 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 
 func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 	return map[string]interface{}{
-		"keystoneEndpoint": "default",
-		"databaseInstance": "openstack",
-		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
-		"serviceUser":      glanceName.Name,
-		"secret":           SecretName,
-		"glanceAPIs":       GetAPIList(),
+		"keystoneEndpoint":    "default",
+		"databaseInstance":    "openstack",
+		"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+		"serviceUser":         glanceName.Name,
+		"rabbitMqClusterName": glanceTest.RabbitmqClusterName,
+		"secret":              SecretName,
+		"glanceAPIs":          GetAPIList(),
 		"storage": map[string]interface{}{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
@@ -196,6 +200,7 @@ func GetDefaultGlanceSpec() map[string]interface{} {
 		"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
 		"secret":              SecretName,
 		"customServiceConfig": GlanceDummyBackend,
+		"rabbitMqClusterName": glanceTest.RabbitmqClusterName,
 		"glanceAPIs":          GetAPIList(),
 		"storage": map[string]interface{}{
 			"storageRequest": glanceTest.GlancePVCSize,
@@ -212,11 +217,12 @@ func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 		"storage": map[string]interface{}{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
-		"apiType":          apiType,
-		"name":             "default",
-		"databaseHostname": "openstack",
-		"secret":           SecretName,
-		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
+		"apiType":            apiType,
+		"name":               "default",
+		"databaseHostname":   "openstack",
+		"secret":             SecretName,
+		"databaseAccount":    glanceTest.GlanceDatabaseAccount.Name,
+		"transportURLSecret": glanceTest.RabbitmqSecretName,
 	}
 	return spec
 }
@@ -250,11 +256,12 @@ func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 		"storage": map[string]interface{}{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
-		"type":             apiType,
-		"name":             "default",
-		"databaseHostname": "openstack",
-		"secret":           SecretName,
-		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
+		"type":               apiType,
+		"name":               "default",
+		"databaseHostname":   "openstack",
+		"secret":             SecretName,
+		"databaseAccount":    glanceTest.GlanceDatabaseAccount.Name,
+		"transportURLSecret": glanceTest.RabbitmqSecretName,
 	}
 	return spec
 }
@@ -263,9 +270,10 @@ func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 func GetTLSGlanceAPISpec(apiType APIType) map[string]interface{} {
 	spec := CreateGlanceAPISpec(apiType)
 	maps.Copy(spec, map[string]interface{}{
-		"databaseHostname": "openstack",
-		"databaseAccount":  glanceTest.GlanceDatabaseAccount.Name,
-		"secret":           SecretName,
+		"databaseHostname":    "openstack",
+		"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+		"secret":              SecretName,
+		"rabbitMqClusterName": glanceTest.RabbitmqClusterName,
 		"tls": map[string]interface{}{
 			"api": map[string]interface{}{
 				"internal": map[string]interface{}{
@@ -425,4 +433,16 @@ func CreateDefaultCinderInstance(cinderName types.NamespacedName) client.Object 
 		},
 	}
 	return th.CreateUnstructured(raw)
+}
+
+// CreateGlanceMessageBusSecret -
+func CreateGlanceMessageBusSecret(namespace string, name string) *corev1.Secret {
+	s := th.CreateSecret(
+		types.NamespacedName{Namespace: namespace, Name: name},
+		map[string][]byte{
+			"transport_url": []byte(fmt.Sprintf("rabbit://%s/fake", name)),
+		},
+	)
+	logger.Info("Secret created", "name", name)
+	return s
 }

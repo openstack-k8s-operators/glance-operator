@@ -50,6 +50,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, GetDefaultGlanceAPISpec(GlanceAPITypeSingle)))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 		})
 		It("is not Ready", func() {
@@ -70,6 +71,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, GetDefaultGlanceAPISpec(GlanceAPITypeSingle)))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, GetDefaultGlanceAPISpec(GlanceAPITypeSingle)))
 			secret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -93,6 +95,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -151,6 +154,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -203,6 +207,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -281,6 +286,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -335,6 +341,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -382,6 +389,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -432,6 +440,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -483,6 +492,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -535,6 +545,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -616,6 +627,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -664,6 +676,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -784,6 +797,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -983,6 +997,7 @@ var _ = Describe("Glanceapi controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -1037,11 +1052,12 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 	})
 
-	When("GlanceAPI instance overrides a Topology", func() {
+	When("GlanceAPI instance overrides a topology", func() {
 		var topologyRefAlt *topologyv1.TopoRef
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 
 			// Create Test Topologies
 			for _, t := range glanceTest.GlanceAPITopologies {
@@ -1067,6 +1083,7 @@ var _ = Describe("Glanceapi controller", func() {
 					},
 				),
 			)
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)

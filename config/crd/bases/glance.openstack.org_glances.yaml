@@ -633,6 +633,8 @@ spec:
                             type: object
                           type: object
                       type: object
+                    rabbitMqClusterName:
+                      type: string
                     replicas:
                       default: 1
                       format: int32
@@ -771,6 +773,8 @@ spec:
                 - imageSizeTotal
                 - imageStageTotal
                 type: object
+              rabbitMqClusterName:
+                type: string
               secret:
                 type: string
               serviceUser:
@@ -844,6 +848,8 @@ spec:
                 format: int64
                 type: integer
               serviceID:
+                type: string
+              transportURLSecret:
                 type: string
             type: object
         type: object
