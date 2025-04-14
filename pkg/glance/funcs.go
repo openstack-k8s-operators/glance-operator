@@ -55,30 +55,18 @@ func BaseSecurityContext() *corev1.SecurityContext {
 	}
 }
 
-// APISecurityContext -
-func APISecurityContext(userID int64, privileged bool) *corev1.SecurityContext {
-
-	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr.To(true),
-		RunAsUser:                ptr.To(userID),
-		Privileged:               &privileged,
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
-	}
-}
-
 // HttpdSecurityContext -
-func HttpdSecurityContext() *corev1.SecurityContext {
-
+func HttpdSecurityContext(privileged bool) *corev1.SecurityContext {
 	return &corev1.SecurityContext{
 		Capabilities: &corev1.Capabilities{
 			Drop: []corev1.Capability{
 				"MKNOD",
 			},
 		},
-		RunAsUser:  ptr.To(GlanceUID),
-		RunAsGroup: ptr.To(GlanceGID),
+		RunAsUser:                ptr.To(GlanceUID),
+		RunAsGroup:               ptr.To(GlanceGID),
+		Privileged:               &privileged,
+		AllowPrivilegeEscalation: ptr.To(true),
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		},
