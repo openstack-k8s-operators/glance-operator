@@ -224,7 +224,7 @@ func StatefulSet(
 								string(GlanceServiceCommand),
 							},
 							Image:           instance.Spec.ContainerImage,
-							SecurityContext: glance.HttpdSecurityContext(),
+							SecurityContext: glance.HttpdSecurityContext(privileged),
 							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts: append(glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
