@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package glanceapi contains glance API functionality and configuration.
 package glanceapi
 
 import (
@@ -69,9 +70,9 @@ func ImageCacheJob(
 	}
 
 	// add CA cert if defined from the first api
-	if instance.Spec.GlanceAPITemplate.TLS.CaBundleSecretName != "" {
-		cronJobVolume = append(cronJobVolume, instance.Spec.GlanceAPITemplate.TLS.CreateVolume())
-		cronJobVolumeMounts = append(cronJobVolumeMounts, instance.Spec.GlanceAPITemplate.TLS.CreateVolumeMounts(nil)...)
+	if instance.Spec.TLS.CaBundleSecretName != "" {
+		cronJobVolume = append(cronJobVolume, instance.Spec.TLS.CreateVolume())
+		cronJobVolumeMounts = append(cronJobVolumeMounts, instance.Spec.TLS.CreateVolumeMounts(nil)...)
 	}
 
 	// The image-cache PVC should be available to the Cache CronJobs to properly

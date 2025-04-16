@@ -107,7 +107,7 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 
 	// Fetch the Glance instance
 	instance := &glancev1.Glance{}
-	err := r.Client.Get(ctx, req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -244,7 +244,7 @@ func (r *GlanceReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manage
 		listOpts := []client.ListOption{
 			client.InNamespace(o.GetNamespace()),
 		}
-		if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
+		if err := r.List(context.Background(), glances, listOpts...); err != nil {
 			Log.Error(err, "Unable to retrieve Glance CRs %w")
 			return nil
 		}
@@ -274,7 +274,7 @@ func (r *GlanceReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manage
 		listOpts := []client.ListOption{
 			client.InNamespace(o.GetNamespace()),
 		}
-		if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
+		if err := r.List(context.Background(), glances, listOpts...); err != nil {
 			Log.Error(err, "Unable to retrieve Glance CRs %v")
 			return nil
 		}
@@ -795,8 +795,8 @@ func (r *GlanceReconciler) apiDeployment(
 	// want to override "external" with "single" in case APIType == "single":
 	// in this case we only deploy the External instance and skip the internal
 	// one
-	var internal string = glancev1.APIInternal
-	var external string = glancev1.APIExternal
+	var internal = glancev1.APIInternal
+	var external = glancev1.APIExternal
 	var wsgi bool
 
 	// We deploy:
@@ -959,8 +959,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		MemcachedInstance:     instance.Spec.MemcachedInstance,
 	}
 
-	if apiSpec.GlanceAPITemplate.NodeSelector == nil {
-		apiSpec.GlanceAPITemplate.NodeSelector = instance.Spec.NodeSelector
+	if apiSpec.NodeSelector == nil {
+		apiSpec.NodeSelector = instance.Spec.NodeSelector
 	}
 
 	// Inherit the ImageCacheSize from the top level if not specified
@@ -969,20 +969,20 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	}
 
 	// Inherit the values required for PVC creation from the top-level CR
-	if apiSpec.GlanceAPITemplate.Storage.StorageRequest == "" {
-		apiSpec.GlanceAPITemplate.Storage.StorageRequest = instance.Spec.Storage.StorageRequest
+	if apiSpec.Storage.StorageRequest == "" {
+		apiSpec.Storage.StorageRequest = instance.Spec.Storage.StorageRequest
 	}
-	if apiSpec.GlanceAPITemplate.Storage.StorageClass == "" {
-		apiSpec.GlanceAPITemplate.Storage.StorageClass = instance.Spec.Storage.StorageClass
+	if apiSpec.Storage.StorageClass == "" {
+		apiSpec.Storage.StorageClass = instance.Spec.Storage.StorageClass
 	}
-	if !apiSpec.GlanceAPITemplate.Storage.External {
-		apiSpec.GlanceAPITemplate.Storage.External = instance.Spec.Storage.External
+	if !apiSpec.Storage.External {
+		apiSpec.Storage.External = instance.Spec.Storage.External
 	}
 
 	// Make sure to inject the ContainerImage passed by the OpenStackVersions
 	// resource to all the underlying instances and rollout a new StatefulSet
 	// if it has been changed
-	apiSpec.GlanceAPITemplate.ContainerImage = instance.Spec.ContainerImage
+	apiSpec.ContainerImage = instance.Spec.ContainerImage
 
 	// We select which glanceAPI should register the keystoneEndpoint by using
 	// an API selector defined in the main glance CR; if it matches with the
@@ -993,8 +993,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 
 	// If topology is not present in the underlying GlanceAPI,
 	// inherit from the top-level CR
-	if apiSpec.GlanceAPITemplate.TopologyRef == nil {
-		apiSpec.GlanceAPITemplate.TopologyRef = instance.Spec.TopologyRef
+	if apiSpec.TopologyRef == nil {
+		apiSpec.TopologyRef = instance.Spec.TopologyRef
 	}
 
 	// Set deployment mode (proxypass vs mod_wsgi)
@@ -1014,7 +1014,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, glanceStatefulset, func() error {
 		// Assign the created spec containing both field provided via GlanceAPITemplate
 		// and what is inherited from the top-level CR (ExtraMounts)
-		glanceStatefulset.ObjectMeta.Annotations = apiAnnotations
+		glanceStatefulset.Annotations = apiAnnotations
 		glanceStatefulset.Spec = apiSpec
 
 		// We might want to create instances pointing to different backends in
@@ -1218,7 +1218,7 @@ func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glanc
 	listOpts := []client.ListOption{
 		client.InNamespace(instance.Namespace),
 	}
-	if err := r.Client.List(ctx, apis, listOpts...); err != nil {
+	if err := r.List(ctx, apis, listOpts...); err != nil {
 		Log.Error(err, "Unable to retrieve GlanceAPI CRs %v")
 		return nil
 	}
@@ -1237,9 +1237,9 @@ func (r *GlanceReconciler) glanceAPICleanup(ctx context.Context, instance *glanc
 		_, exists := instance.Spec.GlanceAPIs[apiName]
 		// Delete the api if it's no longer in the spec
 		if !exists && glanceAPI.DeletionTimestamp.IsZero() {
-			err := r.Client.Delete(ctx, &glanceAPI)
+			err := r.Delete(ctx, &glanceAPI)
 			if err != nil && !k8s_errors.IsNotFound(err) {
-				err = fmt.Errorf("Error cleaning up %s: %w", glanceAPI.Name, err)
+				err = fmt.Errorf("error cleaning up %s: %w", glanceAPI.Name, err)
 				return err
 			}
 			// Update the APIEndpoints in the top-level CR
@@ -1353,7 +1353,7 @@ func (r *GlanceReconciler) checkGlanceAPIsGeneration(
 	listOpts := []client.ListOption{
 		client.InNamespace(instance.Namespace),
 	}
-	if err := r.Client.List(ctx, glances, listOpts...); err != nil {
+	if err := r.List(ctx, glances, listOpts...); err != nil {
 		Log.Error(err, "Unable to retrieve Glance CRs %w")
 		return false, err
 	}

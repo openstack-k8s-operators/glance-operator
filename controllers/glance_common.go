@@ -14,10 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package controllers implements the glance-operator Kubernetes controllers.
 package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -43,10 +45,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// Common static errors for glance controllers
+var (
+	ErrNetworkAttachmentConfig = errors.New("not all pods have interfaces with ips as configured in NetworkAttachments")
+)
+
 // fields to index to reconcile when change
 const (
 	passwordSecretField        = ".spec.secret"
-	caBundleSecretNameField    = ".spec.tls.caBundleSecretName"
+	caBundleSecretNameField    = ".spec.tls.caBundleSecretName" // #nosec G101
 	tlsAPIInternalField        = ".spec.tls.api.internal.secretName"
 	tlsAPIPublicField          = ".spec.tls.api.public.secretName"
 	topologyField              = ".spec.topologyRef.Name"
@@ -281,7 +288,7 @@ func GetPvcListWithLabel(
 	pvcList, err := h.GetKClient().CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelectorString})
 
 	if err != nil {
-		err = fmt.Errorf("Error listing PVC for labels: %v - %w", labelSelectorMap, err)
+		err = fmt.Errorf("error listing PVC for labels: %v - %w", labelSelectorMap, err)
 		return nil, err
 	}
 	return pvcList, nil
