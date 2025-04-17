@@ -167,16 +167,3 @@ func (instance GlanceAPI) APIName() string {
 	// The information is stored as a label
 	return instance.Labels[APINameLabel]
 }
-
-// GetLastTopologyRef - Returns a TopoRef object that can be passed to the
-// Handle topology logic
-func (instance GlanceAPI) GetLastTopologyRef() *topologyv1.TopoRef {
-	lastAppliedTopologyName := ""
-	if instance.Status.LastAppliedTopology != nil {
-		lastAppliedTopologyName = instance.Status.LastAppliedTopology.Name
-	}
-	return &topologyv1.TopoRef{
-		Name:      lastAppliedTopologyName,
-		Namespace: instance.Namespace,
-	}
-}
