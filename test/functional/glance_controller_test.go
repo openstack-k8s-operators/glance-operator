@@ -639,19 +639,15 @@ var _ = Describe("Glance controller", func() {
 				// Check the resulting deployment fields
 				Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(6))
 				Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
-				// Get the glance-api container
+				// Get the glance-httpd container
 				container := ss.Spec.Template.Spec.Containers[1]
-				// Fail if glance-api doesn't have the right number of VolumeMounts
+				// Fail if glance-httpd doesn't have the right number of VolumeMounts
 				// entries
 				Expect(container.VolumeMounts).To(HaveLen(8))
 				// Inspect VolumeMounts and make sure we have the Ceph MountPath
 				// provided through extraMounts
-				for _, vm := range container.VolumeMounts {
-					if vm.Name == "ceph" {
-						Expect(vm.MountPath).To(
-							ContainSubstring(GlanceCephExtraMountsPath))
-					}
-				}
+				th.AssertVolumeMountPathExists(GlanceCephExtraMountsSecretName,
+					GlanceCephExtraMountsPath, "", container.VolumeMounts)
 			}
 		})
 	})
