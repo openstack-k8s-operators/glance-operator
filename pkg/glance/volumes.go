@@ -15,6 +15,7 @@ limitations under the License.
 package glance
 
 import (
+	"fmt"
 	"strconv"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
@@ -143,6 +144,7 @@ func GetVolumeMounts(
 	external bool,
 	extraVol []glancev1.GlanceExtraVolMounts,
 	svc []storage.PropagationType,
+	apiMode string,
 ) []corev1.VolumeMount {
 
 	vm := []corev1.VolumeMount{
@@ -160,7 +162,7 @@ func GetVolumeMounts(
 		{
 			Name:      "config-data",
 			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "glance-httpd-config.json",
+			SubPath:   fmt.Sprintf("glance-%s-config.json", apiMode),
 			ReadOnly:  true,
 		},
 	}

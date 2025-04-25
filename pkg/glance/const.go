@@ -108,6 +108,8 @@ const (
 	ShortDuration = time.Duration(5) * time.Second
 	// NormalDuration -
 	NormalDuration = time.Duration(10) * time.Second
+	// GlanceWSGILabel -
+	GlanceWSGILabel = "wsgi"
 )
 
 // DbsyncPropagation keeps track of the DBSync Service Propagation Type
