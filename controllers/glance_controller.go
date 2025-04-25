@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
@@ -629,7 +630,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// Reconcile the GlanceAPI deployment
 	//
-
 	for name, glanceAPI := range instance.Spec.GlanceAPIs {
 		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels, memcached)
 		if err != nil {
@@ -713,6 +713,20 @@ func (r *GlanceReconciler) apiDeployment(
 	if current.Type == glancev1.APIEdge {
 		external = glancev1.APIEdge
 	}
+
+	// Retrieve WSGI annotation and fail if the format is not what is expected
+	// by the glance-operator
+	wsgi, err := GetWSGIAnnotation(instance)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			glancev1.GlanceAPIReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			glancev1.GlanceAPIReadyErrorMessage,
+			err.Error()))
+		return err
+	}
+
 	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(
 		ctx,
 		instance,
@@ -722,6 +736,7 @@ func (r *GlanceReconciler) apiDeployment(
 		helper,
 		serviceLabels,
 		memcached,
+		wsgi,
 	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -771,6 +786,7 @@ func (r *GlanceReconciler) apiDeployment(
 			helper,
 			serviceLabels,
 			memcached,
+			wsgi,
 		)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -819,6 +835,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	helper *helper.Helper,
 	serviceLabels map[string]string,
 	memcached *memcachedv1.Memcached,
+	wsgi bool,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 	apiAnnotations := map[string]string{}
 	apiSpec := glancev1.GlanceAPISpec{
@@ -872,6 +889,9 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	if apiSpec.GlanceAPITemplate.TopologyRef == nil {
 		apiSpec.GlanceAPITemplate.TopologyRef = instance.Spec.TopologyRef
 	}
+
+	// Set deployment mode (legacy vs mod_wsgi)
+	apiAnnotations[glance.GlanceWSGILabel] = strconv.FormatBool(wsgi)
 
 	// Add the API name to the GlanceAPI instance as a label
 	serviceLabels[glancev1.APINameLabel] = apiName

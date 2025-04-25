@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
@@ -299,4 +300,27 @@ func GetServiceLabels(
 		glance.GlanceAPIName:     fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), instance.Spec.APIType),
 		common.OwnerSelector:     instance.Name,
 	}
+}
+
+// GetWSGIAnnotation - returns in the form of a boolean the value associated to
+// the "wsgi" annotation. It determines whether Glance will be deployed in WSGI
+// or ProxyPass mode.
+func GetWSGIAnnotation(
+	instance client.Object,
+) (bool, error) {
+	// deploy by default in wsgi mode
+	var wsgi = true
+	var err error
+	// Get WSGI annotation, but default to true and deploy in wsgi mode
+	// when the annotation is not present
+	if l, ok := instance.GetAnnotations()[glance.GlanceWSGILabel]; ok {
+		wsgi, err = strconv.ParseBool(l)
+		if err != nil {
+			// the annotation is not a valid boolean, return an error
+			// that should be reflected in the status message of the
+			// Glance resource
+			return true, fmt.Errorf("Invalid boolean value for %s annotation: a boolean value (true or false) is expected", glance.GlanceWSGILabel)
+		}
+	}
+	return wsgi, nil
 }
