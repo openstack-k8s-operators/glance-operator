@@ -724,13 +724,13 @@ var _ = Describe("Glanceapi controller", func() {
 
 			// svc container ca cert
 			svcContainer := ss.Spec.Template.Spec.Containers[1]
-			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", svcContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.CABundleSecret.Name, "", "tls-ca-bundle.pem", svcContainer.VolumeMounts)
 
 			// httpd container certs
 			httpdProxyContainer := ss.Spec.Template.Spec.Containers[1]
-			th.AssertVolumeMountExists(glanceTest.InternalCertSecret.Name, "tls.key", httpdProxyContainer.VolumeMounts)
-			th.AssertVolumeMountExists(glanceTest.InternalCertSecret.Name, "tls.crt", httpdProxyContainer.VolumeMounts)
-			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.InternalCertSecret.Name, "", "tls.key", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.InternalCertSecret.Name, "", "tls.crt", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.CABundleSecret.Name, "", "tls-ca-bundle.pem", httpdProxyContainer.VolumeMounts)
 
 			Expect(httpdProxyContainer.ReadinessProbe.HTTPGet.Scheme).To(Equal(corev1.URISchemeHTTPS))
 			Expect(httpdProxyContainer.LivenessProbe.HTTPGet.Scheme).To(Equal(corev1.URISchemeHTTPS))
@@ -750,13 +750,13 @@ var _ = Describe("Glanceapi controller", func() {
 
 			// svc container ca cert
 			svcContainer := ss.Spec.Template.Spec.Containers[1]
-			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", svcContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.CABundleSecret.Name, "", "tls-ca-bundle.pem", svcContainer.VolumeMounts)
 
 			// httpd container certs
 			httpdProxyContainer := ss.Spec.Template.Spec.Containers[1]
-			th.AssertVolumeMountExists(glanceTest.PublicCertSecret.Name, "tls.key", httpdProxyContainer.VolumeMounts)
-			th.AssertVolumeMountExists(glanceTest.PublicCertSecret.Name, "tls.crt", httpdProxyContainer.VolumeMounts)
-			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.PublicCertSecret.Name, "", "tls.key", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.PublicCertSecret.Name, "", "tls.crt", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.CABundleSecret.Name, "", "tls-ca-bundle.pem", httpdProxyContainer.VolumeMounts)
 
 			Expect(httpdProxyContainer.ReadinessProbe.HTTPGet.Scheme).To(Equal(corev1.URISchemeHTTPS))
 			Expect(httpdProxyContainer.LivenessProbe.HTTPGet.Scheme).To(Equal(corev1.URISchemeHTTPS))
@@ -900,15 +900,15 @@ var _ = Describe("Glanceapi controller", func() {
 
 			// svc container ca cert
 			svcContainer := ss.Spec.Template.Spec.Containers[1]
-			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", svcContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.CABundleSecret.Name, "", "tls-ca-bundle.pem", svcContainer.VolumeMounts)
 
 			// httpd container certs
 			httpdProxyContainer := ss.Spec.Template.Spec.Containers[1]
-			th.AssertVolumeMountExists(glanceTest.InternalCertSecret.Name, "tls.key", httpdProxyContainer.VolumeMounts)
-			th.AssertVolumeMountExists(glanceTest.InternalCertSecret.Name, "tls.crt", httpdProxyContainer.VolumeMounts)
-			th.AssertVolumeMountExists(glanceTest.PublicCertSecret.Name, "tls.key", httpdProxyContainer.VolumeMounts)
-			th.AssertVolumeMountExists(glanceTest.PublicCertSecret.Name, "tls.crt", httpdProxyContainer.VolumeMounts)
-			th.AssertVolumeMountExists(glanceTest.CABundleSecret.Name, "tls-ca-bundle.pem", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.InternalCertSecret.Name, "", "tls.key", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.InternalCertSecret.Name, "", "tls.crt", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.PublicCertSecret.Name, "", "tls.key", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.PublicCertSecret.Name, "", "tls.crt", httpdProxyContainer.VolumeMounts)
+			th.AssertVolumeMountPathExists(glanceTest.CABundleSecret.Name, "", "tls-ca-bundle.pem", httpdProxyContainer.VolumeMounts)
 
 			Expect(httpdProxyContainer.ReadinessProbe.HTTPGet.Scheme).To(Equal(corev1.URISchemeHTTPS))
 			Expect(httpdProxyContainer.LivenessProbe.HTTPGet.Scheme).To(Equal(corev1.URISchemeHTTPS))
