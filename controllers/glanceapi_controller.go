@@ -48,6 +48,7 @@ import (
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	cronjob "github.com/openstack-k8s-operators/lib-common/modules/common/cronjob"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
@@ -617,6 +618,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 ) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("Reconciling Service '%s'", instance.Name))
 
+	var wsgi bool
 	configVars := make(map[string]env.Setter)
 	privileged := false
 	imageConv := false
@@ -822,7 +824,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// not a valid boolean we are not able to generate the Service Config and
 	// the associated condition is False as we require an external input to
 	// provide the right annotation
-	wsgi, err := GetWSGIAnnotation(instance)
+	wsgi, exists, err := annotations.GetBoolFromAnnotation(
+		instance.GetAnnotations(), glancev1.GlanceWSGILabel)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -831,6 +834,11 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 			condition.ServiceConfigReadyErrorMessage,
 			err.Error()))
 		return ctrlResult, err
+	}
+	// If there's no associated annotation, glance-operators defaults to WSGI
+	// and we explicitly set this variable to true
+	if !exists {
+		wsgi = true
 	}
 
 	// Generate service config

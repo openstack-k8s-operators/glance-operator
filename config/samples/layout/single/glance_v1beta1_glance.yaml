@@ -3,7 +3,7 @@ kind: Glance
 metadata:
   name: glance
   annotations:
-    wsgi: true
+    glance.openstack.org/wsgi: true
 spec:
   serviceUser: glance
   databaseInstance: openstack

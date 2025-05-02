@@ -44,6 +44,7 @@ import (
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	cronjob "github.com/openstack-k8s-operators/lib-common/modules/common/cronjob"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
@@ -697,6 +698,7 @@ func (r *GlanceReconciler) apiDeployment(
 	// one
 	var internal string = glancev1.APIInternal
 	var external string = glancev1.APIExternal
+	var wsgi bool
 
 	// We deploy:
 	// - an internal + external instances if layout is Split
@@ -716,7 +718,8 @@ func (r *GlanceReconciler) apiDeployment(
 
 	// Retrieve WSGI annotation and fail if the format is not what is expected
 	// by the glance-operator
-	wsgi, err := GetWSGIAnnotation(instance)
+	wsgi, exists, err := annotations.GetBoolFromAnnotation(
+		instance.GetAnnotations(), glancev1.GlanceWSGILabel)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			glancev1.GlanceAPIReadyCondition,
@@ -725,6 +728,13 @@ func (r *GlanceReconciler) apiDeployment(
 			glancev1.GlanceAPIReadyErrorMessage,
 			err.Error()))
 		return err
+	}
+	// If there's no associated annotation, glance-operators defaults to WSGI
+	// and we explicitly set this variable to true. As a result of this, the
+	// glance.openstack.org/wsgi annotation is applied to the underlying
+	// resources and glance is deplyed in WSGI mode.
+	if !exists {
+		wsgi = true
 	}
 
 	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(
@@ -890,8 +900,8 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		apiSpec.GlanceAPITemplate.TopologyRef = instance.Spec.TopologyRef
 	}
 
-	// Set deployment mode (legacy vs mod_wsgi)
-	apiAnnotations[glance.GlanceWSGILabel] = strconv.FormatBool(wsgi)
+	// Set deployment mode (proxypass vs mod_wsgi)
+	apiAnnotations[glancev1.GlanceWSGILabel] = strconv.FormatBool(wsgi)
 
 	// Add the API name to the GlanceAPI instance as a label
 	serviceLabels[glancev1.APINameLabel] = apiName
