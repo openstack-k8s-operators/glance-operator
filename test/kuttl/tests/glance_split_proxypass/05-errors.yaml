@@ -1,0 +1,69 @@
+#
+# Check for:
+# - No Glance CR
+# - No GlanceAPI glance-external CR
+# - No GlanceAPI glance-internal CR
+# - No GlanceAPI glance-external-api StatefulSet
+# - No GlanceAPI glance-internal-api StatefulSet
+# - No glance-external-api Pod
+# - No glance-internal-api Pod
+# - No glance-internal service
+# - No glance-public service
+# - No glance internal and public endpoints
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-external
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-internal
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-external-api
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-internal-api
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    service: glance
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-public
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-external-api

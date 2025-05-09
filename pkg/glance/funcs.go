@@ -72,3 +72,15 @@ func HttpdSecurityContext(privileged bool) *corev1.SecurityContext {
 		},
 	}
 }
+
+// APISecurityContext -
+func APISecurityContext(userID int64, privileged bool) *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		AllowPrivilegeEscalation: ptr.To(true),
+		RunAsUser:                ptr.To(userID),
+		Privileged:               &privileged,
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}

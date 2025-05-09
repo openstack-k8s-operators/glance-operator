@@ -1,0 +1,29 @@
+#
+# Check for:
+# - Glance CR with 0 replicas for each GlanceAPI
+# - GlanceAPI glance-external-api StatefulSet with 0 replicas
+# - GlanceAPI glance-internal-api StatefulSet with 0 replicas
+
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  glanceAPIs:
+    default:
+      replicas: 0
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-external-api
+spec:
+  replicas: 0
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-internal-api
+spec:
+  replicas: 0
