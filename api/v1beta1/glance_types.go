@@ -34,6 +34,8 @@ const (
 	APISingle = "single"
 	// APIEdge -
 	APIEdge = "edge"
+	// GlanceWSGILabel -
+	GlanceWSGILabel = "glance.openstack.org/wsgi"
 )
 
 // GlanceSpecCore defines the desired state of Glance

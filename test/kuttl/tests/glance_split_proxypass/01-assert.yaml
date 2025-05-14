@@ -1,0 +1,269 @@
+#
+# Check for:
+# - Glance CR
+# - GlanceAPI glance-external CR
+# - GlanceAPI glance-internal CR
+# - GlanceAPI glance-external-api StatefulSet
+# - GlanceAPI glance-internal-api StatefulSet
+# - glance-external-api Pod
+# - glance-internal-api Pod
+# - glance-internal service
+# - glance-public service
+# - glance internal and public endpoints
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+spec:
+  serviceUser: glance
+  databaseInstance: openstack
+  databaseAccount: glance
+  glanceAPIs:
+    default:
+      replicas: 1
+  secret: osp-secret
+  storage:
+    storageRequest: 10G
+status:
+  databaseHostname: openstack.glance-kuttl-tests.svc
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-external
+spec:
+  apiType: external
+  databaseAccount: glance
+  databaseHostname: openstack.glance-kuttl-tests.svc
+  passwordSelectors:
+    service: GlancePassword
+  replicas: 1
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-internal
+spec:
+  apiType: internal
+  databaseAccount: glance
+  databaseHostname: openstack.glance-kuttl-tests.svc
+  passwordSelectors:
+    service: GlancePassword
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-external-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: glance
+  template:
+    metadata:
+      labels:
+        service: glance
+    spec:
+      containers:
+      - args:
+        - --single-child
+        - --
+        - /bin/sh
+        - -c
+        - /usr/bin/tail -n+1 -F /var/log/glance/glance-default-external.log 2>/dev/null
+        command:
+        - /usr/bin/dumb-init
+        name: glance-log
+      - args:
+        - --single-child
+        - --
+        - /bin/bash
+        - -c
+        - /usr/local/bin/kolla_start
+        command:
+        - /usr/bin/dumb-init
+        name: glance-httpd
+      - args:
+        - --single-child
+        - --
+        - /bin/bash
+        - -c
+        - /usr/local/bin/kolla_start
+        command:
+        - /usr/bin/dumb-init
+        name: glance-api
+      serviceAccount: glance-glance
+      serviceAccountName: glance-glance
+status:
+  availableReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-internal-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: glance
+  template:
+    metadata:
+      labels:
+        service: glance
+    spec:
+      containers:
+      - args:
+        - --single-child
+        - --
+        - /bin/sh
+        - -c
+        - /usr/bin/tail -n+1 -F /var/log/glance/glance-default-internal.log 2>/dev/null
+        command:
+        - /usr/bin/dumb-init
+        name: glance-log
+      - args:
+        - --single-child
+        - --
+        - /bin/bash
+        - -c
+        - /usr/local/bin/kolla_start
+        command:
+        - /usr/bin/dumb-init
+        name: glance-httpd
+      - args:
+        - --single-child
+        - --
+        - /bin/bash
+        - -c
+        - /usr/local/bin/kolla_start
+        command:
+        - /usr/bin/dumb-init
+        name: glance-api
+      serviceAccount: glance-glance
+      serviceAccountName: glance-glance
+status:
+  availableReplicas: 1
+  replicas: 1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    service: glance
+status:
+  phase: Running
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    service: glance
+status:
+  phase: Running
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal
+  labels:
+    endpoint: internal
+    service: glance
+spec:
+  ports:
+  - name: glance-default-internal
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-public
+  labels:
+    endpoint: public
+    service: glance
+spec:
+  ports:
+  - name: glance-default-public
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-external-api
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-default-external-api
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal-api
+  labels:
+    service: glance
+spec:
+  ports:
+  - name: glance-default-internal-api
+    port: 9292
+    protocol: TCP
+    targetPort: 9292
+  selector:
+    service: glance
+---
+# the actual addresses of the apiEndpoints are platform specific, so we can't rely on
+# kuttl asserts to check them. This short script gathers the addresses and checks that
+# the three endpoints are defined and their addresses follow the default pattern
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+namespaced: true
+commands:
+  - script: |
+      set -euxo pipefail
+      template='{{ index .status.apiEndpoint "default-internal" }}{{ ":" }}{{ index .status.apiEndpoint "default-public" }}'
+      regex="http:\/\/glance-default-internal.$NAMESPACE.*:http:\/\/glance-default-public.$NAMESPACE.*"
+      apiEndpoints=$(oc get -n $NAMESPACE Glance glance -o go-template="$template")
+      matches=$(echo "$apiEndpoints" | sed -e "s?$regex??")
+      if [ -z "$matches" ]; then
+        exit 0
+      else
+        exit 1
+      fi
+# Verify that Glance CRs have the containerImage defaulted from the CSV RELATED_IMAGE parameter default
+  - script: |
+      set -euxo pipefail
+      tupleTemplate='{{ range (index .spec.template.spec.containers 1).env }}{{ .name }}{{ "#" }}{{ .value}}{{"\n"}}{{ end }}'
+      imageTuples=$(oc get -n openstack-operators deployment glance-operator-controller-manager -o go-template="$tupleTemplate")
+      for ITEM in $(echo $imageTuples); do
+        # it is an image
+        if echo $ITEM | grep 'RELATED_IMAGE' &> /dev/null; then
+          NAME=$(echo $ITEM | sed -e 's|^RELATED_IMAGE_GLANCE_\([^_]*\)_.*|\1|')
+          IMG_FROM_ENV=$(echo $ITEM | sed -e 's|^.*#\(.*\)|\1|')
+          template='{{.spec.containerImage}}'
+          case $NAME in
+            API)
+              SERVICE_IMAGE=$(oc get -n $NAMESPACE glance glance -o go-template="$template")
+              ;;
+          esac
+          if [ "$SERVICE_IMAGE" != "$IMG_FROM_ENV" ]; then
+            echo "$NAME image does not equal $VALUE"
+            exit 1
+          fi
+        fi
+      done
+      exit 0

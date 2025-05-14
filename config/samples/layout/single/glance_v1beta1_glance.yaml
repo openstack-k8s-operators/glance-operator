@@ -2,6 +2,8 @@ apiVersion: glance.openstack.org/v1beta1
 kind: Glance
 metadata:
   name: glance
+  annotations:
+    glance.openstack.org/wsgi: true
 spec:
   serviceUser: glance
   databaseInstance: openstack

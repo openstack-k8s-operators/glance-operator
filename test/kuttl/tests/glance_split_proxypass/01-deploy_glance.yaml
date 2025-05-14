@@ -1,0 +1,6 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      oc kustomize ../../../../config/samples/layout/split | oc apply -n $NAMESPACE -f -
+      oc patch Glance -n $NAMESPACE glance --type='json' -p='[{"op": "replace", "path": "/metadata/annotations/glance.openstack.org~1wsgi", "value":"false"}]'

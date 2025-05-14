@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
@@ -43,6 +44,7 @@ import (
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	cronjob "github.com/openstack-k8s-operators/lib-common/modules/common/cronjob"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
@@ -629,7 +631,6 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// Reconcile the GlanceAPI deployment
 	//
-
 	for name, glanceAPI := range instance.Spec.GlanceAPIs {
 		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels, memcached)
 		if err != nil {
@@ -697,6 +698,7 @@ func (r *GlanceReconciler) apiDeployment(
 	// one
 	var internal string = glancev1.APIInternal
 	var external string = glancev1.APIExternal
+	var wsgi bool
 
 	// We deploy:
 	// - an internal + external instances if layout is Split
@@ -713,6 +715,28 @@ func (r *GlanceReconciler) apiDeployment(
 	if current.Type == glancev1.APIEdge {
 		external = glancev1.APIEdge
 	}
+
+	// Retrieve WSGI annotation and fail if the format is not what is expected
+	// by the glance-operator
+	wsgi, exists, err := annotations.GetBoolFromAnnotation(
+		instance.GetAnnotations(), glancev1.GlanceWSGILabel)
+	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			glancev1.GlanceAPIReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			glancev1.GlanceAPIReadyErrorMessage,
+			err.Error()))
+		return err
+	}
+	// If there's no associated annotation, glance-operators defaults to WSGI
+	// and we explicitly set this variable to true. As a result of this, the
+	// glance.openstack.org/wsgi annotation is applied to the underlying
+	// resources and glance is deplyed in WSGI mode.
+	if !exists {
+		wsgi = true
+	}
+
 	glanceAPI, op, err := r.apiDeploymentCreateOrUpdate(
 		ctx,
 		instance,
@@ -722,6 +746,7 @@ func (r *GlanceReconciler) apiDeployment(
 		helper,
 		serviceLabels,
 		memcached,
+		wsgi,
 	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -771,6 +796,7 @@ func (r *GlanceReconciler) apiDeployment(
 			helper,
 			serviceLabels,
 			memcached,
+			wsgi,
 		)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -819,6 +845,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	helper *helper.Helper,
 	serviceLabels map[string]string,
 	memcached *memcachedv1.Memcached,
+	wsgi bool,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 	apiAnnotations := map[string]string{}
 	apiSpec := glancev1.GlanceAPISpec{
@@ -872,6 +899,9 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	if apiSpec.GlanceAPITemplate.TopologyRef == nil {
 		apiSpec.GlanceAPITemplate.TopologyRef = instance.Spec.TopologyRef
 	}
+
+	// Set deployment mode (proxypass vs mod_wsgi)
+	apiAnnotations[glancev1.GlanceWSGILabel] = strconv.FormatBool(wsgi)
 
 	// Add the API name to the GlanceAPI instance as a label
 	serviceLabels[glancev1.APINameLabel] = apiName

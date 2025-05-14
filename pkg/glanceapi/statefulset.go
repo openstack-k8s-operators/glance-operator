@@ -51,6 +51,7 @@ func StatefulSet(
 	annotations map[string]string,
 	privileged bool,
 	topology *topologyv1.Topology,
+	wsgi bool,
 ) (*appsv1.StatefulSet, error) {
 	userID := glance.GlanceUID
 	startupProbe := &corev1.Probe{
@@ -231,7 +232,9 @@ func StatefulSet(
 								privileged,
 								instance.Spec.Storage.External,
 								instance.Spec.ExtraMounts,
-								extraVolPropagation),
+								extraVolPropagation,
+								"httpd",
+							),
 								apiVolumeMounts...,
 							),
 							Resources:      instance.Spec.Resources,
@@ -244,6 +247,44 @@ func StatefulSet(
 			},
 		},
 	}
+	// When wsgi is false, Glance must be deployed in legacy mode (httpd + proxyPass)
+	// For this reason we need an additional container to run glance-api processes
+	if !wsgi {
+		apiContainer := []corev1.Container{
+			{
+				Name: glance.ServiceName + "-api",
+				Command: []string{
+					"/usr/bin/dumb-init",
+				},
+				Args: []string{
+					"--single-child",
+					"--",
+					"/bin/bash",
+					"-c",
+					string(GlanceServiceCommand),
+				},
+				Image:           instance.Spec.ContainerImage,
+				SecurityContext: glance.APISecurityContext(userID, privileged),
+				Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
+				VolumeMounts: append(glance.GetVolumeMounts(
+					instance.Spec.CustomServiceConfigSecrets,
+					privileged,
+					instance.Spec.Storage.External,
+					instance.Spec.ExtraMounts,
+					extraVolPropagation,
+					"api",
+				),
+					apiVolumeMounts...,
+				),
+				Resources:      instance.Spec.Resources,
+				StartupProbe:   startupProbe,
+				ReadinessProbe: readinessProbe,
+				LivenessProbe:  livenessProbe,
+			},
+		}
+		statefulset.Spec.Template.Spec.Containers = append(statefulset.Spec.Template.Spec.Containers, apiContainer...)
+	}
+
 	var err error
 	if !instance.Spec.Storage.External {
 		localPvc, err := glance.GetPvc(instance, labels, glance.PvcLocal)
