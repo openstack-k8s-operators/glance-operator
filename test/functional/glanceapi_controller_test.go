@@ -34,18 +34,13 @@ import (
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ptr "k8s.io/utils/ptr"
 )
 
 var _ = Describe("Glanceapi controller", func() {
 	var memcachedSpec memcachedv1.MemcachedSpec
 
 	BeforeEach(func() {
-		memcachedSpec = memcachedv1.MemcachedSpec{
-			MemcachedSpecCore: memcachedv1.MemcachedSpecCore{
-				Replicas: ptr.To[int32](3),
-			},
-		}
+		memcachedSpec = infra.GetDefaultMemcachedSpec()
 		acc, accSecret := mariadb.CreateMariaDBAccountAndSecret(glanceTest.GlanceDatabaseAccount, mariadbv1.MariaDBAccountSpec{})
 		DeferCleanup(k8sClient.Delete, ctx, accSecret)
 		DeferCleanup(k8sClient.Delete, ctx, acc)
