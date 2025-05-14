@@ -35,18 +35,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ptr "k8s.io/utils/ptr"
 )
 
 var _ = Describe("Glance controller", func() {
 	var memcachedSpec memcachedv1.MemcachedSpec
 
 	BeforeEach(func() {
-		memcachedSpec = memcachedv1.MemcachedSpec{
-			MemcachedSpecCore: memcachedv1.MemcachedSpecCore{
-				Replicas: ptr.To[int32](3),
-			},
-		}
+		memcachedSpec = infra.GetDefaultMemcachedSpec()
 	})
 
 	When("Glance is created", func() {
@@ -820,11 +815,7 @@ var _ = Describe("Glance controller", func() {
 		// are removed from unused accounts since that's part of what we are testing
 		SetupCR: func(accountName types.NamespacedName) {
 
-			memcachedSpec = memcachedv1.MemcachedSpec{
-				MemcachedSpecCore: memcachedv1.MemcachedSpecCore{
-					Replicas: ptr.To[int32](3),
-				},
-			}
+			memcachedSpec = infra.GetDefaultMemcachedSpec()
 
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
