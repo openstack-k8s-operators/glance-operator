@@ -12,12 +12,12 @@ require (
 	github.com/openstack-k8s-operators/cinder-operator/api v0.5.1-0.20250505135219-b4ff765055a7
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
 	github.com/openstack-k8s-operators/infra-operator/apis v0.5.1-0.20250509085724-f145148f2c92
-	github.com/openstack-k8s-operators/keystone-operator/api v0.5.1-0.20250506083817-4cbbf3c3a5fd
+	github.com/openstack-k8s-operators/keystone-operator/api v0.5.1-0.20250512070833-e79aedaa6278
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.5.1-0.20250429142319-453fcb22aa51
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.5.1-0.20250429142319-453fcb22aa51
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.5.1-0.20250429142319-453fcb22aa51
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.5.1-0.20250429142319-453fcb22aa51
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.5.1-0.20250505143124-fb8696f5a309
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.5.1-0.20250512070835-cee940f15bf8
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.29.15
