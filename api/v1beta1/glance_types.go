@@ -133,6 +133,11 @@ type GlanceSpecCore struct {
 	// +kubebuilder:validation:Minimum=1
 	// Default APITimeout for HAProxy and Apache, defaults to 60 seconds
 	APITimeout int `json:"apiTimeout"`
+
+	// +kubebuilder:validation:Optional
+	// RabbitMQ instance name
+	// Needed to request a transportURL that is created and used in Cinder
+	RabbitMqClusterName *string `json:"rabbitMqClusterName,omitempty"`
 }
 
 // GlanceSpec defines the desired state of Glance
@@ -191,6 +196,9 @@ type GlanceStatus struct {
 	// then the controller has not processed the latest changes injected by
 	// the opentack-operator in the top-level CR (e.g. the ContainerImage)
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// TransportURLSecret - Secret containing RabbitMQ transportURL
+	TransportURLSecret string `json:"transportURLSecret,omitempty"`
 }
 
 //+kubebuilder:object:root=true

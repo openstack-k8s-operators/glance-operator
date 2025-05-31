@@ -634,6 +634,8 @@ spec:
               quota:
                 default: false
                 type: boolean
+              rabbitMqClusterName:
+                type: string
               replicas:
                 default: 1
                 format: int32
@@ -712,6 +714,8 @@ spec:
                   namespace:
                     type: string
                 type: object
+              transportURLSecret:
+                type: string
               type:
                 default: split
                 enum:
@@ -781,6 +785,8 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              transportURLSecret:
+                type: string
             required:
             - readyCount
             type: object

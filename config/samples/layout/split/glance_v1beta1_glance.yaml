@@ -16,6 +16,7 @@ spec:
     swift_store_user = service:glance
     swift_store_key = {{ .ServicePassword }}
   keystoneEndpoint: default
+  rabbitmqClusterName: rabbitmq
   glanceAPIs:
     default:
       replicas: 1
