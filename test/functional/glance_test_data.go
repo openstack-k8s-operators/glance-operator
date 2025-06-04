@@ -16,6 +16,7 @@ package functional
 
 import (
 	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
@@ -174,7 +175,7 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		},
 		GlanceInternalConfigMapData: types.NamespacedName{
 			Namespace: glanceName.Namespace,
-			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "internal-config-data"),
+			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "default-internal-config-data"),
 		},
 		GlanceSingleConfigMapData: types.NamespacedName{
 			Namespace: glanceName.Namespace,
