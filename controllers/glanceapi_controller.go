@@ -377,6 +377,9 @@ func (r *GlanceAPIReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&topologyv1.Topology{},
 			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&keystonev1.KeystoneAPI{},
+			handler.EnqueueRequestsFromMapFunc(r.findObjectForSrc),
+			builder.WithPredicates(keystonev1.KeystoneAPIStatusChangedPredicate)).
 		Complete(r)
 }
 
@@ -409,6 +412,37 @@ func (r *GlanceAPIReconciler) findObjectsForSrc(ctx context.Context, src client.
 				},
 			)
 		}
+	}
+
+	return requests
+}
+
+func (r *GlanceAPIReconciler) findObjectForSrc(ctx context.Context, src client.Object) []reconcile.Request {
+	requests := []reconcile.Request{}
+
+	l := log.FromContext(context.Background()).WithName("Controllers").WithName("GlanceAPI")
+
+	crList := &glancev1.GlanceAPIList{}
+	listOps := &client.ListOptions{
+		Namespace: src.GetNamespace(),
+	}
+	err := r.List(ctx, crList, listOps)
+	if err != nil {
+		l.Error(err, fmt.Sprintf("listing %s for namespace: %s", crList.GroupVersionKind().Kind, src.GetNamespace()))
+		return requests
+	}
+
+	for _, item := range crList.Items {
+		l.Info(fmt.Sprintf("input source %s changed, reconcile: %s - %s", src.GetName(), item.GetName(), item.GetNamespace()))
+
+		requests = append(requests,
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      item.GetName(),
+					Namespace: item.GetNamespace(),
+				},
+			},
+		)
 	}
 
 	return requests
@@ -850,10 +884,10 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv, memcached, wsgi)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
-			glancev1.GlanceAPIReadyCondition,
+			condition.ServiceConfigReadyCondition,
 			condition.ErrorReason,
 			condition.SeverityWarning,
-			glancev1.GlanceAPIReadyErrorMessage,
+			condition.ServiceConfigReadyErrorMessage,
 			err.Error()))
 		return glance.ResultRequeue, err
 	}

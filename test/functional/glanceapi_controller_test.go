@@ -18,6 +18,7 @@ package functional
 
 import (
 	"fmt"
+	"os"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,6 +41,12 @@ var _ = Describe("Glanceapi controller", func() {
 	var memcachedSpec memcachedv1.MemcachedSpec
 
 	BeforeEach(func() {
+		// lib-common uses OPERATOR_TEMPLATES env var to locate the "templates"
+		// directory of the operator. We need to set them othervise lib-common
+		// will fail to generate the ConfigMap as it does not find common.sh
+		err := os.Setenv("OPERATOR_TEMPLATES", "../../templates")
+		Expect(err).NotTo(HaveOccurred())
+
 		memcachedSpec = infra.GetDefaultMemcachedSpec()
 		acc, accSecret := mariadb.CreateMariaDBAccountAndSecret(glanceTest.GlanceDatabaseAccount, mariadbv1.MariaDBAccountSpec{})
 		DeferCleanup(k8sClient.Delete, ctx, accSecret)
@@ -1111,6 +1118,60 @@ var _ = Describe("Glanceapi controller", func() {
 				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
 				g.Expect(finalizers).To(ContainElement(
 					fmt.Sprintf("openstack.org/glanceapi-%s", externalAPI.APIName())))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
+	Context("GlanceAPI is fully deployed", func() {
+		keystoneAPIName := types.NamespacedName{}
+
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			keystoneAPIName = keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPIName)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+
+		It("updates the KeystoneAuthURL if keystone internal endpoint changes", func() {
+			newInternalEndpoint := "https://keystone-internal"
+
+			keystone.UpdateKeystoneAPIEndpoint(keystoneAPIName, "internal", newInternalEndpoint)
+			logger.Info("Reconfigured")
+
+			Eventually(func(g Gomega) {
+				confSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(confSecret).ShouldNot(BeNil())
+
+				conf := string(confSecret.Data["00-config.conf"])
+				g.Expect(string(conf)).Should(
+					ContainSubstring("auth_url=%s", newInternalEndpoint))
 			}, timeout, interval).Should(Succeed())
 		})
 	})
