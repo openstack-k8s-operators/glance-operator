@@ -966,6 +966,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		privileged,
 		topology,
 		wsgi,
+		memcached,
 	)
 	if err != nil {
 		return ctrlResult, err
@@ -1246,6 +1247,14 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
 	}
 	templateParameters["MemcachedServersWithInet"] = memcached.GetMemcachedServerListWithInetString()
+	templateParameters["MemcachedServers"] = memcached.GetMemcachedServerListString()
+
+	// MTLS
+	if memcached.GetMemcachedMTLSSecret() != "" {
+		templateParameters["MemcachedAuthCert"] = fmt.Sprint(memcachedv1.CertMountPath())
+		templateParameters["MemcachedAuthKey"] = fmt.Sprint(memcachedv1.KeyMountPath())
+		templateParameters["MemcachedAuthCa"] = fmt.Sprint(memcachedv1.CaMountPath())
+	}
 
 	// 00-default.conf will be regenerated as we have a ln -s of the
 	// templates/glance/config directory
