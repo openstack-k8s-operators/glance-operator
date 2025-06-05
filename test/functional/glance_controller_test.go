@@ -53,9 +53,10 @@ var _ = Describe("Glance controller", func() {
 		It("initializes the status fields", func() {
 			Eventually(func(g Gomega) {
 				glance := GetGlance(glanceName)
-				g.Expect(glance.Status.Conditions).To(HaveLen(12))
+				g.Expect(glance.Status.Conditions).To(HaveLen(13))
 				g.Expect(glance.Status.DatabaseHostname).To(Equal(""))
 				g.Expect(glance.Status.APIEndpoints).To(BeEmpty())
+				g.Expect(glance.Status.NotificationBusSecret).To(BeEmpty())
 			}, timeout, interval).Should(Succeed())
 		})
 		It("reports InputReady False as secret is not found", func() {
@@ -144,6 +145,7 @@ var _ = Describe("Glance controller", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
 			DeferCleanup(
 				mariadb.DeleteDBService,
@@ -157,6 +159,7 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 		It("Should set DBReady Condition and set DatabaseHostname Status when DB is Created", func() {
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
@@ -183,6 +186,7 @@ var _ = Describe("Glance controller", func() {
 			)
 		})
 		It("Should fail if db-sync job fails when DB is Created", func() {
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobFailure(glanceTest.GlanceDBSync)
@@ -205,6 +209,7 @@ var _ = Describe("Glance controller", func() {
 	})
 	When("Glance DB is created and db-sync Job succeeded", func() {
 		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
@@ -218,6 +223,7 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
@@ -244,6 +250,7 @@ var _ = Describe("Glance controller", func() {
 			// GlanceEmptySpec is used to provide a standard Glance CR where no
 			// field is customized
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceEmptySpec()))
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 		})
@@ -261,6 +268,7 @@ var _ = Describe("Glance controller", func() {
 	})
 	When("All the Resources are ready", func() {
 		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
@@ -276,6 +284,7 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
@@ -317,6 +326,7 @@ var _ = Describe("Glance controller", func() {
 	})
 	When("GlanceCR is created with nodeSelector", func() {
 		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 
@@ -337,6 +347,7 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
@@ -470,6 +481,7 @@ var _ = Describe("Glance controller", func() {
 	})
 	When("Glance CR is deleted", func() {
 		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec()))
@@ -484,6 +496,7 @@ var _ = Describe("Glance controller", func() {
 				),
 			)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
@@ -498,6 +511,7 @@ var _ = Describe("Glance controller", func() {
 	})
 	When("Glance CR instance is built with NAD", func() {
 		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 			nad := th.CreateNetworkAttachmentDefinition(glanceTest.InternalAPINAD)
@@ -551,6 +565,7 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
+			//infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
@@ -588,7 +603,7 @@ var _ = Describe("Glance controller", func() {
 		})
 	})
 
-	When("Glance CR instance is built with ExtraMounts", func() {
+	When("Glance CR instance is built with extraMounts", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
@@ -650,6 +665,7 @@ var _ = Describe("Glance controller", func() {
 	When("Glance CR references a topology", func() {
 		var topologyRef, topologyRefAlt *topologyv1.TopoRef
 		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 			// Define the two topology references used in this test
@@ -684,6 +700,7 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
@@ -820,6 +837,8 @@ var _ = Describe("Glance controller", func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+
 			spec := GetGlanceDefaultSpec()
 			spec["databaseAccount"] = accountName.Name
 
@@ -836,6 +855,7 @@ var _ = Describe("Glance controller", func() {
 			)
 
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBAccountCompleted(accountName)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
