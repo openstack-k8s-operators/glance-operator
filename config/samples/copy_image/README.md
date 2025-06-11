@@ -14,7 +14,8 @@ than the default, for example:
 "copy_image": "'public':%(visibility)s"
 ```
 
-For example, use the following configuration to enable `copy-imge` import method:
+For example, use the following configuration to enable `copy-image` import
+method:
 
 ```
 ...
