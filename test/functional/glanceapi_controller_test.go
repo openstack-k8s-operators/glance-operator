@@ -413,8 +413,9 @@ var _ = Describe("Glanceapi controller", func() {
 
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, CreateGlanceAPISpec(GlanceAPITypeExternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceExternal.Namespace))
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			keystone.CreateKeystoneEndpoint(glanceTest.GlanceExternal)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
 		})
 		It("reports that StatefulSet is ready", func() {
 			th.ExpectCondition(
@@ -465,8 +466,9 @@ var _ = Describe("Glanceapi controller", func() {
 
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, CreateGlanceAPISpec(GlanceAPITypeInternal)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			keystone.CreateKeystoneEndpoint(glanceTest.GlanceInternal)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 		})
 		It("reports that StatefulSet is ready", func() {
 			th.ExpectCondition(
@@ -517,8 +519,9 @@ var _ = Describe("Glanceapi controller", func() {
 
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, CreateGlanceAPISpec(GlanceAPITypeSingle)))
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceSingle.Namespace))
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
+			keystone.CreateKeystoneEndpoint(glanceTest.GlanceSingle)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
 		})
 		It("reports that StatefulSet is ready", func() {
 			th.ExpectCondition(
@@ -594,8 +597,8 @@ var _ = Describe("Glanceapi controller", func() {
 			glance := CreateGlanceAPI(glanceTest.GlanceInternal, spec)
 			th.SimulateLoadBalancerServiceIP(glanceTest.GlanceInternalSvc)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace))
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 			DeferCleanup(th.DeleteInstance, glance)
 		})
 		It("creates KeystoneEndpoint", func() {
@@ -1165,8 +1168,9 @@ var _ = Describe("Glanceapi controller", func() {
 
 			keystoneAPIName = keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace)
 			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPIName)
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			keystone.CreateKeystoneEndpoint(glanceTest.GlanceInternal)
 			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
 
 			th.ExpectCondition(
 				glanceTest.GlanceInternal,
