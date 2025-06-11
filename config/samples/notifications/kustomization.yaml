@@ -1,0 +1,12 @@
+resources:
+- ../backends/base/openstack
+
+patches:
+- target:
+    kind: OpenStackControlPlane
+  patch: |-
+    - op: add
+      path: /spec/glance/template/notificationBusInstance
+      value: rabbitmq
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization

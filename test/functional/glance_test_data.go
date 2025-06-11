@@ -98,6 +98,9 @@ type GlanceTestData struct {
 	KeystoneService             types.NamespacedName
 	DBPurgeCronJob              types.NamespacedName
 	GlanceAPITopologies         []types.NamespacedName
+	RabbitmqSecretName          string
+	NotificationsBusInstance    string
+	GlanceTransportURL          types.NamespacedName
 }
 
 // GetGlanceTestData is a function that initialize the GlanceTestData
@@ -208,11 +211,13 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Name:      AccountName,
 		},
 		// Password used for both db and service
-		GlancePassword:    "12345678",
-		GlanceServiceUser: "glance",
-		GlancePVCSize:     "10G",
-		ContainerImage:    "test://glance",
-		GlancePort:        "9292",
+		GlancePassword:           "12345678",
+		GlanceServiceUser:        "glance",
+		GlancePVCSize:            "10G",
+		ContainerImage:           "test://glance",
+		GlancePort:               "9292",
+		RabbitmqSecretName:       "rabbitmq-secret",
+		NotificationsBusInstance: "rabbitmq",
 		CABundleSecret: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      CABundleSecretName,
@@ -247,6 +252,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 				Namespace: glanceName.Namespace,
 				Name:      fmt.Sprintf("glance-%s-topology-alt", glanceName.Name),
 			},
+		},
+		GlanceTransportURL: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-glance-transport", glanceName.Name),
 		},
 	}
 }
