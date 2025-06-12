@@ -966,6 +966,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		privileged,
 		topology,
 		wsgi,
+		memcached,
 	)
 	if err != nil {
 		return ctrlResult, err
@@ -1246,6 +1247,14 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		templateParameters["ImageCacheDir"] = glance.ImageCacheDir
 	}
 	templateParameters["MemcachedServersWithInet"] = memcached.GetMemcachedServerListWithInetString()
+	templateParameters["MemcachedServers"] = memcached.GetMemcachedServerListString()
+
+	// MTLS
+	if memcached.GetMemcachedMTLSSecret() != "" {
+		templateParameters["MemcachedAuthCert"] = fmt.Sprint(memcachedv1.CertMountPath())
+		templateParameters["MemcachedAuthKey"] = fmt.Sprint(memcachedv1.KeyMountPath())
+		templateParameters["MemcachedAuthCa"] = fmt.Sprint(memcachedv1.CaMountPath())
+	}
 
 	// only get the secret and add the entry in templateParameters when
 	// a transportURL is referenced through the NotificationBusSecret spec

@@ -20,6 +20,7 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
@@ -52,6 +53,7 @@ func StatefulSet(
 	privileged bool,
 	topology *topologyv1.Topology,
 	wsgi bool,
+	memcached *memcachedv1.Memcached,
 ) (*appsv1.StatefulSet, error) {
 	userID := glance.GlanceUID
 	startupProbe := &corev1.Probe{
@@ -120,6 +122,12 @@ func StatefulSet(
 	if instance.Spec.TLS.CaBundleSecretName != "" {
 		apiVolumes = append(apiVolumes, instance.Spec.TLS.CreateVolume())
 		apiVolumeMounts = append(apiVolumeMounts, instance.Spec.TLS.CreateVolumeMounts(nil)...)
+	}
+
+	// add MTLS cert if defined
+	if memcached.GetMemcachedMTLSSecret() != "" {
+		apiVolumes = append(apiVolumes, memcached.CreateMTLSVolume())
+		apiVolumeMounts = append(apiVolumeMounts, memcached.CreateMTLSVolumeMounts(nil, nil)...)
 	}
 
 	// TLS-e: we need to predict the order of both Volumes and VolumeMounts to
