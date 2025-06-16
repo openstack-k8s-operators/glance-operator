@@ -1,4 +1,45 @@
-# FAQ
+# Glance operator main doc
+
+The glance-operator manages deploying OpenStack Glance (the Image service) on
+OpenShift using the Operator Framework. It supports Ceph backends, extra
+volumes, database syncing, and flexible configuration via Custom Resources
+(CRs) as part of the openstack-operator control plane deployment.
+
+## Configuration Guide
+
+This section provides an outline of the configuration options, backend
+integration, samples and use cases supported by the Glance Operator. For
+detailed guides and examples, refer to the provided
+[config/samples](../config/samples) files.
+
+- [Design decisions](design_decisions.md): Understanding the architecture and
+  deployment layout
+- [Configuring Image Service backends](../config/samples/backends): supported
+  backends examples
+- [Copy Image](../config/samples/copy_image): Enable copy-image import method
+- [Disk format](../config/samples/disk_formats): Configure Glance to allow or
+  deny specific disk formats (qcow2, raw, vmdk, etc.)
+- [Distributed Image import](../config/samples/distributed_image_import):
+  Enable image import with local staging area
+- [Image Cache](../config/samples/image_cache): Enable/Disable image cache for
+  performance optimization
+- [Image Signature](../config/samples/image_signature): Configure Glance with
+  Barbican to perform image validation using a digital signature and asymmetric
+  cryptography.
+- [Import plugins](../config/samples/import_plugins): enable/disable import
+  plugins such as web-download, copy-image, etc
+- [Notifications](../config/samples/notifications): Glance can emit events to
+  message queues (e.g., RabbitMQ) and it is possible to enable/disable this
+  behavior
+- [Customize Glance Policy](../config/samples/policy): inject custom policies
+  through extraMounts interface
+- [Glance Quotas](../config/samples/quotas): Configure/Register keystone limits
+  for image count, upload and a few other allowed options URL.
+- [Troubleshooting guide](troubleshooting.md): Refer to troubleshooting guide
+  for guidance on resolving common deployment issues related to backend
+  configuration
+
+## FAQ
 
 Here's a curated list of general questions about requirements and design
 choices of glance-operator.
