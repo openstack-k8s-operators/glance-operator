@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
@@ -1425,26 +1424,22 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 
 		It("Checks the Topology has been applied to the resulting StatefulSets", func() {
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
 			Eventually(func(g Gomega) {
-				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
-				g.Expect(internalAPI.Status.LastAppliedTopology).ShouldNot(BeNil())
-				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(topologyRefAlt))
+				glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
+				g.Expect(glanceAPI.Status.LastAppliedTopology).ShouldNot(BeNil())
+				g.Expect(glanceAPI.Status.LastAppliedTopology).To(Equal(topologyRefAlt))
 			}, timeout, interval).Should(Succeed())
 			// Check the statefulSet has a default TopologySpreadConstraints and no Affinity
 			// TopologySpreadConstraints is part of the sample Topology used to test Glance,
 			// and is referenced using the Topology CR passed to the GlanceAPI
 			Eventually(func(g Gomega) {
-				ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
-				ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+				ss := th.GetStatefulSet(glanceTest.GlanceSingle)
 				_, topologySpecObj := GetSampleTopologySpec(topologyRefAlt.Name)
-				for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
-					// Check the resulting deployment fields
-					g.Expect(ss.Spec.Template.Spec.Affinity).To(BeNil())
-					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).ToNot(BeNil())
-					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(Equal(topologySpecObj))
-				}
+				// Check the resulting deployment fields
+				g.Expect(ss.Spec.Template.Spec.Affinity).To(BeNil())
+				g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).ToNot(BeNil())
+				g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(Equal(topologySpecObj))
 			}, timeout, interval).Should(Succeed())
 
 			Eventually(func(g Gomega) {
@@ -1454,12 +1449,9 @@ var _ = Describe("Glanceapi controller", func() {
 				})
 				finalizers := tp.GetFinalizers()
 				g.Expect(finalizers).To(HaveLen(1))
-				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
+				glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
 				g.Expect(finalizers).To(ContainElement(
-					fmt.Sprintf("openstack.org/glanceapi-%s", internalAPI.APIName())))
-				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-				g.Expect(finalizers).To(ContainElement(
-					fmt.Sprintf("openstack.org/glanceapi-%s", externalAPI.APIName())))
+					fmt.Sprintf("openstack.org/glanceapi-%s", glanceAPI.APIName())))
 			}, timeout, interval).Should(Succeed())
 		})
 	})
