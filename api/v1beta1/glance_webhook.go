@@ -197,11 +197,6 @@ func (r *GlanceSpecCore) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel 
 	if glanceAPI.Type == "split" && isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
 		return true, InvalidBackendErrorMessageSplit
 	}
-	// Do not allow to deploy a glanceAPI with "type: single" and a backend
-	// different than File (Cinder, Swift, Ceph): we must split in that case
-	if glanceAPI.Type == APISingle && !isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
-		return true, InvalidBackendErrorMessageSingle
-	}
 	return false, ""
 }
 
@@ -332,6 +327,10 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) 
 	for key, glanceAPI := range r.GlanceAPIs {
 		path := basePath.Child("glanceAPIs").Key(key)
 
+		// From 19 onwards we always raise a warning if "split" is used
+		if glanceAPI.Type == "split" {
+			allWarns = append(allWarns, GlanceWarnSplitDeprecateMsg)
+		}
 		// fail if a wrong topology is referenced
 		allErrs = append(allErrs, glanceAPI.ValidateTopology(path, namespace)...)
 
@@ -427,7 +426,10 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 	topLevelFileBackend := isFileBackend(r.CustomServiceConfig, true)
 	for key, glanceAPI := range r.GlanceAPIs {
 		path := basePath.Child("glanceAPIs").Key(key)
-
+		// From 19 onwards we always raise a warning if "split" is used
+		if glanceAPI.Type == "split" {
+			allWarns = append(allWarns, GlanceWarnSplitDeprecateMsg)
+		}
 		// fail if a wrong topology is referenced
 		allErrs = append(allErrs, glanceAPI.ValidateTopology(path, namespace)...)
 
