@@ -13,7 +13,6 @@ spec:
         [glance_store]
         default_backend = iscsi
         [iscsi]
-        rootwrap_config = /etc/glance/rootwrap.conf
         store_description = LVM iscsi cinder backend
         cinder_store_auth_address = {{ .KeystoneInternalURL }}
         cinder_store_user_name = {{ .ServiceUser }}
@@ -24,7 +23,6 @@ spec:
         # assumes a cinder volume type called iscsi exists
         cinder_volume_type = iscsi
         [nfs]
-        rootwrap_config = /etc/glance/rootwrap.conf
         store_description = NFS cinder backend
         cinder_store_auth_address = {{ .KeystoneInternalURL }}
         cinder_store_user_name = {{ .ServiceUser }}
