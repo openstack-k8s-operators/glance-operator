@@ -203,11 +203,6 @@ func (r *GlanceSpecCore) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel 
 	if glanceAPI.Type == "split" && isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
 		return true, InvalidBackendErrorMessageSplit
 	}
-	// Do not allow to deploy a glanceAPI with "type: single" and a backend
-	// different than File (Cinder, Swift, Ceph): we must split in that case
-	if glanceAPI.Type == APISingle && !isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
-		return true, InvalidBackendErrorMessageSingle
-	}
 	return false, ""
 }
 

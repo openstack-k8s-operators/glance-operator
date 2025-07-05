@@ -58,26 +58,15 @@ var _ = Describe("Glance validation", func() {
 		spec := GetGlanceDefaultSpec()
 
 		gapis := map[string]interface{}{
-			"glanceAPIs": map[string]interface{}{
-				"default": map[string]interface{}{
-					"replicas": 1,
-					"type":     "split",
-				},
-				"edge1": map[string]interface{}{
-					"replicas": 1,
-					"type":     "edge",
-				},
-				// Webhooks catch that a backend != File is set for an instance
-				// that has type: single
-				"api1": map[string]interface{}{
-					"customServiceConfig": GetDummyBackend(),
-					"replicas":            1,
-					"type":                "single",
-				},
+			// Webhooks catch that a backend == File is set for an instance
+			// that has type: split, which is invalid
+			"default": map[string]interface{}{
+				"replicas": 1,
+				"type":     "split",
 			},
 		}
 
-		spec["keystoneEndpoint"] = "edge1"
+		spec["keystoneEndpoint"] = "default"
 		spec["glanceAPIs"] = gapis
 
 		raw := map[string]interface{}{
