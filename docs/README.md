@@ -12,7 +12,7 @@ integration, samples and use cases supported by the Glance Operator. For
 detailed guides and examples, refer to the provided
 [config/samples](../config/samples) files.
 
-- [Design decisions](design_decisions.md): Understanding the architecture and
+- [Design decisions](design-decisions.md): Understanding the architecture and
   deployment layout
 - [Configuring Image Service backends](../config/samples/backends): supported
   backends examples
