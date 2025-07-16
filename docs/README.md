@@ -38,6 +38,8 @@ detailed guides and examples, refer to the provided
 - [Troubleshooting guide](troubleshooting.md): Refer to troubleshooting guide
   for guidance on resolving common deployment issues related to backend
   configuration
+- [Horizon integration](horizon.md): Configuration guide for Horizon to not hit
+  upload limits due to the default configuration
 
 ## FAQ
 
