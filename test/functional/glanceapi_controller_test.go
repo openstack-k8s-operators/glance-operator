@@ -628,7 +628,7 @@ var _ = Describe("Glanceapi controller", func() {
 			th.ExpectCondition(
 				glanceTest.GlanceInternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
-				condition.ReadyCondition,
+				condition.CreateServiceReadyCondition,
 				corev1.ConditionTrue,
 			)
 		})
