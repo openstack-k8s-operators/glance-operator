@@ -1216,9 +1216,12 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	}
 
 	// Only set EndpointID parameter when the Endpoint has been created and the
-	// associated ID is set in the keystoneapi CR
+	// associated ID is set in the keystoneapi CR. Because we have the Keystone
+	// CR, we mirror right now .Spec.Region until it will be propagated to the
+	// endpoint .Status. This fixes the immediate bug (OSPRH-18291) for quotas
 	if len(endpointID) > 0 {
 		templateParameters["EndpointID"] = endpointID
+		templateParameters["Region"] = keystoneAPI.Spec.Region
 	}
 
 	// Configure the internal GlanceAPI to provide image location data, and the
