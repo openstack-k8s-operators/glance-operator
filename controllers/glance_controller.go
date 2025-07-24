@@ -730,7 +730,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// Reconcile the GlanceAPI deployment
 	//
 	for name, glanceAPI := range instance.Spec.GlanceAPIs {
-		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels, memcached)
+		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -788,7 +788,6 @@ func (r *GlanceReconciler) apiDeployment(
 	current glancev1.GlanceAPITemplate,
 	helper *helper.Helper,
 	serviceLabels map[string]string,
-	memcached *memcachedv1.Memcached,
 ) error {
 	Log := r.GetLogger(ctx)
 
@@ -845,7 +844,6 @@ func (r *GlanceReconciler) apiDeployment(
 		instanceName,
 		helper,
 		serviceLabels,
-		memcached,
 		wsgi,
 	)
 	if err != nil {
@@ -895,7 +893,6 @@ func (r *GlanceReconciler) apiDeployment(
 			instanceName,
 			helper,
 			serviceLabels,
-			memcached,
 			wsgi,
 		)
 		if err != nil {
@@ -944,7 +941,6 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	apiName string,
 	helper *helper.Helper,
 	serviceLabels map[string]string,
-	memcached *memcachedv1.Memcached,
 	wsgi bool,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 	apiAnnotations := map[string]string{}
@@ -960,6 +956,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		ServiceAccount:        instance.RbacResourceName(),
 		Quota:                 instance.IsQuotaEnabled(),
 		NotificationBusSecret: instance.Status.NotificationBusSecret,
+		MemcachedInstance:     instance.Spec.MemcachedInstance,
 	}
 
 	if apiSpec.GlanceAPITemplate.NodeSelector == nil {
@@ -982,7 +979,6 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		apiSpec.GlanceAPITemplate.Storage.External = instance.Spec.Storage.External
 	}
 
-	apiSpec.MemcachedInstance = memcached.Name
 	// Make sure to inject the ContainerImage passed by the OpenStackVersions
 	// resource to all the underlying instances and rollout a new StatefulSet
 	// if it has been changed
