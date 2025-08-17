@@ -157,6 +157,96 @@ var _ = Describe("Glanceapi controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
+	When("the Secret is created with quorum queues enabled", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, infra.CreateTransportURLSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName, true))
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			spec := GetDefaultGlanceAPISpec(GlanceAPITypeSingle)
+			spec["notificationBusSecret"] = glanceTest.RabbitmqSecretName
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, spec))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+		})
+		It("generated configs with quorum queue settings", func() {
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+			secretDataMap := th.GetSecret(glanceTest.GlanceSingleConfigMapData)
+			Expect(secretDataMap).ShouldNot(BeNil())
+			configData := string(secretDataMap.Data["00-config.conf"])
+			Expect(configData).Should(ContainSubstring("rabbit_quorum_queue=true"))
+			Expect(configData).Should(ContainSubstring("rabbit_transient_quorum_queue=true"))
+			Expect(configData).Should(ContainSubstring("amqp_durable_queues=true"))
+		})
+	})
+	When("quorum queues are enabled dynamically", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, infra.CreateTransportURLSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName, false))
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			spec := GetDefaultGlanceAPISpec(GlanceAPITypeSingle)
+			spec["notificationBusSecret"] = glanceTest.RabbitmqSecretName
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, spec))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+		})
+		It("updates configs when quorum queues are enabled", func() {
+			// First verify no quorum queue settings initially
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+			secretDataMap := th.GetSecret(glanceTest.GlanceSingleConfigMapData)
+			configData := string(secretDataMap.Data["00-config.conf"])
+			Expect(configData).ShouldNot(ContainSubstring("rabbit_quorum_queue=true"))
+
+			// Enable quorum queues by updating the secret
+			secret := th.GetSecret(types.NamespacedName{Namespace: glanceTest.Instance.Namespace, Name: glanceTest.RabbitmqSecretName})
+			_ = k8sClient.Delete(ctx, &secret)
+			infra.CreateTransportURLSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName, true)
+
+			// Verify quorum queue settings are now present
+			Eventually(func(g Gomega) {
+				secretDataMap := th.GetSecret(glanceTest.GlanceSingleConfigMapData)
+				configData := string(secretDataMap.Data["00-config.conf"])
+				g.Expect(configData).Should(ContainSubstring("rabbit_quorum_queue=true"))
+				g.Expect(configData).Should(ContainSubstring("rabbit_transient_quorum_queue=true"))
+				g.Expect(configData).Should(ContainSubstring("amqp_durable_queues=true"))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
 	When("GlanceAPI is deployed with Cinder backend", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))

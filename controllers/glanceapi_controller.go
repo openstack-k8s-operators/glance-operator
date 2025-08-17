@@ -273,6 +273,18 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		return err
 	}
 
+	// index notificationBusSecretField
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &glancev1.GlanceAPI{}, notificationBusSecretField, func(rawObj client.Object) []string {
+		// Extract the notification bus secret name from the spec, if one is provided
+		cr := rawObj.(*glancev1.GlanceAPI)
+		if cr.Spec.NotificationBusSecret == "" {
+			return nil
+		}
+		return []string{cr.Spec.NotificationBusSecret}
+	}); err != nil {
+		return err
+	}
+
 	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
 	svcSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		var namespace string = o.GetNamespace()
@@ -1282,6 +1294,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 			return err
 		}
 		templateParameters["TransportURL"] = string(notificationBusSecret.Data["transport_url"])
+		templateParameters["QuorumQueues"] = string(notificationBusSecret.Data["quorumqueues"]) == "true"
 	}
 
 	// Try to get Horizon endpoint and setup CORS section if the CR is found
