@@ -44,6 +44,21 @@ The fields above are defined at the top level CR and applied by default to all
 the `GlanceAPI` instances.
 It's not possible setup or override those values for each GlanceAPI instances
 independently.
+
+**Note:** Setting quota limits to `0` has different implications depending on
+the quota type. As per the [OpenStack
+documentation](https://docs.openstack.org/glance/latest/admin/quotas.html#quota-strategies):
+- `imageCountTotal: 0` prevents users from creating any images
+- `imageCountUpload: 0` allows users to upload data to any image
+
+For example:
+```yaml
+quotas:
+  imageSizeTotal: 1000   # Limited to 1000 MiB total image storage
+  imageStageTotal: 500   # Limited to 500 MiB staging space
+  imageCountUpload: 0    # No Limit defined
+  imageCountTotal: 100   # Limited to 100 total images
+```
 The Glance upstream [documentation](https://docs.openstack.org/glance/latest/admin/quotas.html#configuring-glance-for-per-tenant-quotas)
 covers this topic, and when `Quotas` are enabled as per example above, the
 `00-config.conf` config file is updated with the relevant config options in both
