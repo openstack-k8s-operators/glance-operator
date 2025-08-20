@@ -44,6 +44,7 @@ import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
 	"github.com/openstack-k8s-operators/glance-operator/pkg/glanceapi"
+	horizonv1 "github.com/openstack-k8s-operators/horizon-operator/api/v1beta1"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
@@ -83,6 +84,7 @@ func (r *GlanceAPIReconciler) GetLogger(ctx context.Context) logr.Logger {
 // +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups=cinder.openstack.org,resources=cinders,verbs=get;list;watch
+// +kubebuilder:rbac:groups=horizon.openstack.org,resources=horizons,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;list;watch
@@ -333,6 +335,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		return nil
 	}
 
+	// Watch for changes in memcached used by Glance
 	memcachedFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
 
@@ -385,6 +388,9 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		Watches(&keystonev1.KeystoneAPI{},
 			handler.EnqueueRequestsFromMapFunc(r.findObjectForSrc),
 			builder.WithPredicates(keystonev1.KeystoneAPIStatusChangedPredicate)).
+		Watches(&horizonv1.Horizon{},
+			handler.EnqueueRequestsFromMapFunc(r.findObjectForSrc),
+			builder.WithPredicates(horizonv1.HorizonEndpointChangedPredicate)).
 		Complete(r)
 }
 
@@ -1278,6 +1284,11 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		templateParameters["TransportURL"] = string(notificationBusSecret.Data["transport_url"])
 	}
 
+	// Try to get Horizon endpoint and setup CORS section if the CR is found
+	if horizonEndpoint, err := r.GetHorizonEndpoint(ctx, h, instance); err == nil {
+		templateParameters["HorizonEndpoint"] = horizonEndpoint
+	}
+
 	// 00-default.conf will be regenerated as we have a ln -s of the
 	// templates/glance/config directory
 	// Do not generate -scripts as they are inherited from the top-level CR
@@ -1632,4 +1643,27 @@ func (r *GlanceAPIReconciler) glanceAPIRefresh(
 		return err
 	}
 	return nil
+}
+
+// GetHorizonEndpoint - Returns the horizon endpoint set in the CR .Status
+func (r *GlanceAPIReconciler) GetHorizonEndpoint(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.GlanceAPI,
+) (string, error) {
+	Log := r.GetLogger(ctx)
+
+	horizon, err := horizonv1.GetHorizon(ctx, h, instance.Namespace)
+	if err != nil {
+		Log.Info("Error getting Horizon CR")
+		return "", err
+	}
+
+	ep, err := horizon.GetEndpoint()
+	if err != nil {
+		Log.Info("No endpoint present in the Status")
+		return "", err
+	}
+
+	return ep, nil
 }
