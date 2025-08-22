@@ -45,11 +45,12 @@ import (
 
 // fields to index to reconcile when change
 const (
-	passwordSecretField     = ".spec.secret"
-	caBundleSecretNameField = ".spec.tls.caBundleSecretName"
-	tlsAPIInternalField     = ".spec.tls.api.internal.secretName"
-	tlsAPIPublicField       = ".spec.tls.api.public.secretName"
-	topologyField           = ".spec.topologyRef.Name"
+	passwordSecretField        = ".spec.secret"
+	caBundleSecretNameField    = ".spec.tls.caBundleSecretName"
+	tlsAPIInternalField        = ".spec.tls.api.internal.secretName"
+	tlsAPIPublicField          = ".spec.tls.api.public.secretName"
+	topologyField              = ".spec.topologyRef.Name"
+	notificationBusSecretField = ".spec.notificationBusSecret"
 )
 
 var (
@@ -62,6 +63,7 @@ var (
 		tlsAPIInternalField,
 		tlsAPIPublicField,
 		topologyField,
+		notificationBusSecretField,
 	}
 )
 
