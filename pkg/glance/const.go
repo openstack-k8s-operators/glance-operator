@@ -13,12 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package glance contains glance service constants and configuration.
 package glance
 
 import (
+	"time"
+
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"time"
 )
 
 // CronJobType -
@@ -63,7 +65,7 @@ const (
 	// CustomServiceConfigFileName -
 	CustomServiceConfigFileName = "02-config.conf"
 	// CustomServiceConfigSecretsFileName -
-	CustomServiceConfigSecretsFileName = "03-config.conf"
+	CustomServiceConfigSecretsFileName = "03-config.conf" // #nosec G101
 
 	// GlanceExtraVolTypeUndefined can be used to label an extraMount which
 	// is not associated with a specific backend
