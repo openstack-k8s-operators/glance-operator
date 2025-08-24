@@ -54,6 +54,7 @@ import (
 	cinderv1 "github.com/openstack-k8s-operators/cinder-operator/api/v1beta1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/controllers"
+	horizonv1 "github.com/openstack-k8s-operators/horizon-operator/api/v1beta1"
 	rabbitmqv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
 	infra_test "github.com/openstack-k8s-operators/infra-operator/apis/test/helpers"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
@@ -113,6 +114,9 @@ var _ = BeforeSuite(func() {
 	cinderCRDs, err := test.GetCRDDirFromModule(
 		"github.com/openstack-k8s-operators/cinder-operator/api", gomod, "bases")
 	Expect(err).ShouldNot(HaveOccurred())
+	horizonCRDs, err := test.GetCRDDirFromModule(
+		"github.com/openstack-k8s-operators/horizon-operator/api", gomod, "bases")
+	Expect(err).ShouldNot(HaveOccurred())
 	infraCRDs, err := test.GetCRDDirFromModule(
 		"github.com/openstack-k8s-operators/infra-operator/apis", "../../go.mod", "bases")
 	Expect(err).ShouldNot(HaveOccurred())
@@ -125,6 +129,7 @@ var _ = BeforeSuite(func() {
 			keystoneCRDs,
 			infraCRDs,
 			cinderCRDs,
+			horizonCRDs,
 		},
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
@@ -161,6 +166,8 @@ var _ = BeforeSuite(func() {
 	err = topologyv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = cinderv1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+	err = horizonv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
