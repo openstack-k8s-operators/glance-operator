@@ -14,9 +14,10 @@ trap cleanup SIGINT SIGTERM
 TMPDIR=${TMPDIR:-"/tmp/k8s-webhook-server/serving-certs"}
 SKIP_CERT=${SKIP_CERT:-false}
 CRC_IP=${CRC_IP:-$(/sbin/ip -o -4 addr list crc | awk '{print $4}' | cut -d/ -f1)}
+WEBHOOK_PORT=${WEBHOOK_PORT:-${WEBHOOK_PORT}}
 
-#Open 9443
-sudo firewall-cmd --zone=libvirt --add-port=9443/tcp
+#Open ${WEBHOOK_PORT}
+sudo firewall-cmd --zone=libvirt --add-port=${WEBHOOK_PORT}/tcp
 sudo firewall-cmd --runtime-to-permanent
 
 # Generate the certs and the ca bundle
@@ -47,7 +48,7 @@ webhooks:
   - v1
   clientConfig:
     caBundle: ${CA_BUNDLE}
-    url: https://${CRC_IP}:9443/validate-glance-openstack-org-v1beta1-glance
+    url: https://${CRC_IP}:${WEBHOOK_PORT}/validate-glance-openstack-org-v1beta1-glance
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: vglance.kb.io
@@ -75,7 +76,7 @@ webhooks:
   - v1
   clientConfig:
     caBundle: ${CA_BUNDLE}
-    url: https://${CRC_IP}:9443/mutate-glance-openstack-org-v1beta1-glance
+    url: https://${CRC_IP}:${WEBHOOK_PORT}/mutate-glance-openstack-org-v1beta1-glance
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: mglance.kb.io
@@ -103,7 +104,7 @@ webhooks:
   - v1
   clientConfig:
     caBundle: ${CA_BUNDLE}
-    url: https://${CRC_IP}:9443/validate-glance-openstack-org-v1beta1-glanceapi
+    url: https://${CRC_IP}:${WEBHOOK_PORT}/validate-glance-openstack-org-v1beta1-glanceapi
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: vglanceapi.kb.io
@@ -131,7 +132,7 @@ webhooks:
   - v1
   clientConfig:
     caBundle: ${CA_BUNDLE}
-    url: https://${CRC_IP}:9443/mutate-glance-openstack-org-v1beta1-glanceapi
+    url: https://${CRC_IP}:${WEBHOOK_PORT}/mutate-glance-openstack-org-v1beta1-glanceapi
   failurePolicy: Fail
   matchPolicy: Equivalent
   name: mglanceapi.kb.io
@@ -187,4 +188,4 @@ else
     oc scale --replicas=0 -n openstack-operators deploy/glance-operator-controller-manager
 fi
 
-go run ./main.go -metrics-bind-address ":${METRICS_PORT}" -health-probe-bind-address ":${HEALTH_PORT}" -pprof-bind-address ":${PPROF_PORT}"
+go run ./main.go -metrics-bind-address ":${METRICS_PORT}" -health-probe-bind-address ":${HEALTH_PORT}" -pprof-bind-address ":${PPROF_PORT}" -webhook-bind-address "${WEBHOOK_PORT}"
