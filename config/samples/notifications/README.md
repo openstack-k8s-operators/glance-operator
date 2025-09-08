@@ -20,14 +20,14 @@ documentation](https://docs.openstack.org/glance/latest/admin/notifications.html
 
 ## Enabling Notifications
 
-The `glance-operator` exposes an API parameter called `notificationBusInstance`
+The `glance-operator` exposes an API parameter called `notificationsBusInstance`
 that specifies the RabbitMQ instance name to use for requesting a
 `TransportURL`. This URL is then configured in the Glance service through a
 generated `Secret` object.
 
 ### Configuration via OpenStackControlPlane
 
-Edit the `OpenStackControlPlane` specification and add the `notificationBusInstance` parameter to the `Glance` template section:
+Edit the `OpenStackControlPlane` specification and add the `notificationsBusInstance` parameter to the `Glance` template section:
 
 ```yaml
 ...
@@ -35,7 +35,7 @@ spec:
   ...
   glance:
     template:
-      notificationBusInstance: rabbitmq
+      notificationsBusInstance: rabbitmq
   ...
 ```
 
@@ -44,7 +44,7 @@ following command:
 
 ```bash
 OSCP=$(oc get oscp -o custom-columns=NAME:.metadata.name --no-headers)
-oc -n openstack patch oscp $OSCP --type json -p='[{"op": "add", "path": "/spec/glance/template/notificationBusInstance", "value": "rabbitmq"}]'
+oc -n openstack patch oscp $OSCP --type json -p='[{"op": "add", "path": "/spec/glance/template/notificationsBusInstance", "value": "rabbitmq"}]'
 ```
 
 ### Verification
@@ -63,7 +63,7 @@ transport_url = rabbit://<user>:<pwd>@rabbitmq.openstack.svc:5671/?ssl=1
 ## Disabling Notifications
 
 When notifications are enabled, you can disable them by reverting the driver
-back to `noop`. This is accomplished by removing the `notificationBusInstance`
+back to `noop`. This is accomplished by removing the `notificationsBusInstance`
 parameter from the `Glance` template section in the `OpenStackControlPlane`.
 This action triggers a reconciliation loop that updates the `GlanceAPI`
 configuration and initiates a rolling update of the pods.
@@ -73,7 +73,7 @@ configuration and initiates a rolling update of the pods.
 Use the following patch command to remove the notification configuration:
 
 ```bash
-oc patch openstackcontrolplane openstack-galera -n openstack --type json -p='[{"op": "remove", "path": "/spec/glance/template/notificationBusInstance"}]'
+oc patch openstackcontrolplane openstack-galera -n openstack --type json -p='[{"op": "remove", "path": "/spec/glance/template/notificationsBusInstance"}]'
 ```
 
 This operation will trigger the reconciliation process, updating the

@@ -138,7 +138,7 @@ type GlanceSpecCore struct {
 	// RabbitMQ instance name
 	// Needed to request a transportURL that is created and used for notification
 	// purposes
-	NotificationBusInstance *string `json:"notificationBusInstance,omitempty"`
+	NotificationsBusInstance *string `json:"notificationsBusInstance,omitempty"`
 }
 
 // GlanceSpec defines the desired state of Glance
