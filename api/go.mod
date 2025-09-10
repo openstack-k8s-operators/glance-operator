@@ -71,3 +71,7 @@ require (
 // mschuppert: map to latest commit from release-4.16 tag
 // must consistent within modules and service operators
 replace github.com/openshift/api => github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094 //allow-merging
+
+replace github.com/openstack-k8s-operators/keystone-operator/api => github.com/fmount/keystone-operator/api v0.0.0-20250911131155-943583d54a0f
+
+replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/fmount/lib-common/modules/common v0.0.0-20250911113320-38e70af6eeb4
