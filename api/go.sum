@@ -12,6 +12,8 @@ github.com/evanphx/json-patch v5.7.0+incompatible h1:vgGkfT/9f8zE6tvSCe74nfpAVDQ
 github.com/evanphx/json-patch v5.7.0+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch/v5 v5.9.0 h1:kcBlZQbplgElYIlo/n1hJbls2z/1awpXxpRi0/FOJfg=
 github.com/evanphx/json-patch/v5 v5.9.0/go.mod h1:VNkHZ/282BpEyt/tObQO8s5CMPmYYq14uClGH4abBuQ=
+github.com/fmount/lib-common/modules/common v0.0.0-20250911113320-38e70af6eeb4 h1:QwZdXf9dAuvvN1eOGnzPtUtROv4R0pfuWxZOtdqBDQE=
+github.com/fmount/lib-common/modules/common v0.0.0-20250911113320-38e70af6eeb4/go.mod h1:Z+rmtn3qhuPZfx2EDVmloUh2MkYbvDMgcpJneRYerS0=
 github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nosvA=
 github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
@@ -77,8 +79,6 @@ github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094 h1:J1wuGhVxpsHykZBa6
 github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094/go.mod h1:CxgbWAlvu2iQB0UmKTtRu1YfepRg1/vJ64n2DlIEVz4=
 github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20250909143828-e33d35ffd64f h1:chuu4iBT5sXHYw8aPeP/pWC+S3yGo6hdy39foP7c5vs=
 github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20250909143828-e33d35ffd64f/go.mod h1:Dv8qpmBIQy3Jv/EyQnOyc0w61X8vyfxpjcIQONP5CwY=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20250823121217-7e1cd2e3dd03 h1:9VanDdvg1APf9B1nzGElLvWr6dM5GsSayMLSV/nJZnE=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20250823121217-7e1cd2e3dd03/go.mod h1:Z+rmtn3qhuPZfx2EDVmloUh2MkYbvDMgcpJneRYerS0=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20250823121217-7e1cd2e3dd03 h1:DrKbzsweRx8VBNb5ur+/XcHSi+MR3VdzCsIEXYGc5SM=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20250823121217-7e1cd2e3dd03/go.mod h1:U3LQ4Nz2+syTPfW66bSLv6OzefLpsqxWLdX9AFotRPA=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

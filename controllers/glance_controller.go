@@ -269,7 +269,7 @@ func (r *GlanceReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manage
 	// TransportURL created and used by Glance CRs.
 	transportURLSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
-		// get all Manila CRs
+		// get all Glance CRs
 		glances := &glancev1.GlanceList{}
 		listOpts := []client.ListOption{
 			client.InNamespace(o.GetNamespace()),

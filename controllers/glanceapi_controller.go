@@ -377,6 +377,39 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		return nil
 	}
 
+	keystoneOverrideSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
+		secret := o.(*corev1.Secret)
+		result := []reconcile.Request{}
+		// get all GlanceAPI CRs
+		glances := &glancev1.GlanceAPIList{}
+		listOpts := []client.ListOption{
+			client.InNamespace(o.GetNamespace()),
+		}
+		if err := r.Client.List(context.Background(), glances, listOpts...); err != nil {
+			Log.Error(err, "Unable to retrieve GlanceAPI CRs %v")
+			return nil
+		}
+		// Check if the secret has a specific label
+		if ls := secret.GetLabels(); ls != nil {
+			lSelector := labels.GetLabelSelector(ls)
+			kSelector := labels.GetLabelSelector(keystonev1.KeystoneOverridesLabelSelector)
+			if labels.EqualLabelSelectors(lSelector, kSelector) {
+				for _, cr := range glances.Items {
+					name := client.ObjectKey{
+						Namespace: o.GetNamespace(),
+						Name:      cr.Name,
+					}
+					// append the request for this particular glance instance
+					result = append(result, reconcile.Request{NamespacedName: name})
+				}
+			}
+		}
+		if len(result) > 0 {
+			return result
+		}
+		return nil
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.GlanceAPI{}).
 		Owns(&keystonev1.KeystoneEndpoint{}).
@@ -385,6 +418,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		Owns(&appsv1.StatefulSet{}).
 		Watches(&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(svcSecretFn)).
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(keystoneOverrideSecretFn)).
 		Watches(&networkv1.NetworkAttachmentDefinition{},
 			handler.EnqueueRequestsFromMapFunc(nadFn)).
 		Watches(
@@ -1188,6 +1223,30 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		return err
 	}
 
+	// Collect all keystone information required to render the config templates
+	// in a dedicated structure.
+	keystoneData := map[string]string{
+		"www_authenticate_uri": keystonePublicURL,
+		"auth_url":             keystoneInternalURL,
+		"region":               keystoneAPI.GetRegion(),
+	}
+
+	// Get keystoneOverrides
+	keystoneOverrides, err := keystonev1.GetKeystoneOverrides(
+		ctx,
+		h,
+		instance.Namespace,
+		keystonev1.KeystoneOverridesLabelSelector,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Merge overrides into keystoneData
+	for k, v := range keystoneOverrides {
+		keystoneData[k] = v
+	}
+
 	ospSecret, _, err := secret.GetSecret(ctx, h, instance.Spec.Secret, instance.Namespace)
 	if err != nil {
 		return err
@@ -1224,8 +1283,9 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	templateParameters := map[string]interface{}{
 		"ServiceUser":         instance.Spec.ServiceUser,
 		"ServicePassword":     string(ospSecret.Data[instance.Spec.PasswordSelectors.Service]),
-		"KeystoneInternalURL": keystoneInternalURL,
-		"KeystonePublicURL":   keystonePublicURL,
+		"KeystoneInternalURL": keystoneData["auth_url"],
+		"KeystonePublicURL":   keystoneData["www_authenticate_uri"],
+		"Region":              keystoneData["region"],
 		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s?read_default_file=/etc/my.cnf",
 			databaseAccount.Spec.UserName,
 			string(dbSecret.Data[mariadbv1.DatabasePasswordSelector]),
@@ -1247,7 +1307,6 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	// .Status.
 	if len(endpointID) > 0 {
 		templateParameters["EndpointID"] = endpointID
-		templateParameters["Region"] = keystoneAPI.GetRegion()
 	}
 
 	// Configure the internal GlanceAPI to provide image location data, and the
