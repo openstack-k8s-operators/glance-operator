@@ -1560,7 +1560,7 @@ spec:
                 description: NodeSelector to target subset of worker nodes running
                   this service
                 type: object
-              notificationBusInstance:
+              notificationsBusInstance:
                 description: |-
                   RabbitMQ instance name
                   Needed to request a transportURL that is created and used for notification

@@ -426,8 +426,8 @@ func (in *GlanceSpecCore) DeepCopyInto(out *GlanceSpecCore) {
 	out.Quotas = in.Quotas
 	out.ImageCache = in.ImageCache
 	out.DBPurge = in.DBPurge
-	if in.NotificationBusInstance != nil {
-		in, out := &in.NotificationBusInstance, &out.NotificationBusInstance
+	if in.NotificationsBusInstance != nil {
+		in, out := &in.NotificationsBusInstance, &out.NotificationsBusInstance
 		*out = new(string)
 		**out = **in
 	}

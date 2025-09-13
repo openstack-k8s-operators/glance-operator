@@ -204,7 +204,7 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
 	}
 
-	if instance.Spec.NotificationBusInstance != nil {
+	if instance.Spec.NotificationsBusInstance != nil {
 		c := condition.UnknownCondition(
 			condition.NotificationBusInstanceReadyCondition,
 			condition.InitReason,
@@ -582,7 +582,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// create RabbitMQ transportURL CR and get the actual URL from the associated secret that is created
 	//
-	if instance.Spec.NotificationBusInstance != nil && *instance.Spec.NotificationBusInstance != "" {
+	if instance.Spec.NotificationsBusInstance != nil && *instance.Spec.NotificationsBusInstance != "" {
 		notificationTransportURL, op, err := r.transportURLCreateOrUpdate(ctx, instance, serviceLabels)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -1380,7 +1380,7 @@ func (r *GlanceReconciler) transportURLCreateOrUpdate(
 	}
 
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, transportURL, func() error {
-		transportURL.Spec.RabbitmqClusterName = *instance.Spec.NotificationBusInstance
+		transportURL.Spec.RabbitmqClusterName = *instance.Spec.NotificationsBusInstance
 
 		err := controllerutil.SetControllerReference(instance, transportURL, r.Scheme)
 		return err
