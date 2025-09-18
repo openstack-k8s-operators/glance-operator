@@ -16,7 +16,7 @@ for OpenStack.
 - *If possible don't run things in your own machine to avoid the risk of
   affecting the development of your other projects.*
 
-Here we'll explain how to get a functiona OpenShift deployment running inside a
+Here we'll explain how to get a functional OpenShift deployment running inside a
 VM that is running MariaDB, RabbitMQ, KeyStone and Glance services
 against a Ceph backend.
 
@@ -200,7 +200,7 @@ make openstack_cleanup
 targets.
 
 More information about the Makefile can be found via the [Kubebuilder
-Documentation]( https://book.kubebuilder.io/introduction.html).
+Documentation](https://book.kubebuilder.io/introduction.html).
 
 For developer specific documentation please refer to the [Contributing
 Guide](CONTRIBUTING.md).

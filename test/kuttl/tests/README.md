@@ -50,7 +50,7 @@ features. In the current kuttl tests, two backends are allowed and tested:
   the interaction between two glanceAPI replicas, and there's no interest to
   see a specific backend behavior)
   For further information about the topologies and design choices, review the
-  [dedicated section](../../../../docs/dev/design-decisions.md).
+  [dedicated section](https://github.com/openstack-k8s-operators/glance-operator/blob/main/docs/design-decisions.md).
 
 ## Available kuttl tests
 
@@ -92,7 +92,7 @@ guidelines to follow:
    `openstackclient`. For this particular purpose it is possible to deploy an
    `openstackclient` `Pod` and load a set of scripts via the `configMapGenerator`
    defined in the
-   [kustomization.yaml](../../../../config/samples/openstackclient/kustomization.yaml).
+   [kustomization.yaml](https://github.com/openstack-k8s-operators/glance-operator/blob/main/config/samples/openstackclient/kustomization.yaml).
    See the [how to include the openstackclient in a kuttl
    test](../../../config/samples/openstackclient) section for further
    information
