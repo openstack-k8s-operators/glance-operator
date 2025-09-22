@@ -38,11 +38,11 @@ const (
 	//GlanceAPITypeEdge -
 	GlanceAPITypeEdge APIType = "edge"
 	//PublicCertSecretName -
-	PublicCertSecretName = "public-tls-certs"
+	PublicCertSecretName = "public-tls-certs" // #nosec G101
 	//InternalCertSecretName -
-	InternalCertSecretName = "internal-tls-certs"
+	InternalCertSecretName = "internal-tls-certs" // #nosec G101
 	//CABundleSecretName -
-	CABundleSecretName = "combined-ca-bundle"
+	CABundleSecretName = "combined-ca-bundle" // #nosec G101
 	//GlanceDummyBackend -
 	GlanceDummyBackend = "enabled_backends=backend1:type1 # CHANGE_ME"
 	//GlanceCinderBackend -

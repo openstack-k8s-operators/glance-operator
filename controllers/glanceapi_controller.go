@@ -102,7 +102,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Fetch the GlanceAPI instance
 	instance := &glancev1.GlanceAPI{}
-	err := r.Client.Get(ctx, req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -287,8 +287,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 
 	// Watch for changes to any CustomServiceConfigSecrets. Global secrets
 	svcSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
-		var namespace string = o.GetNamespace()
-		var secretName string = o.GetName()
+		var namespace = o.GetNamespace()
+		var secretName = o.GetName()
 		result := []reconcile.Request{}
 
 		// get all API CRs
@@ -296,7 +296,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		listOpts := []client.ListOption{
 			client.InNamespace(namespace),
 		}
-		if err := r.Client.List(context.Background(), apis, listOpts...); err != nil {
+		if err := r.List(context.Background(), apis, listOpts...); err != nil {
 			Log.Error(err, "Unable to retrieve API CRs %v")
 			return nil
 		}
@@ -327,7 +327,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		listOpts := []client.ListOption{
 			client.InNamespace(o.GetNamespace()),
 		}
-		if err := r.Client.List(context.Background(), glanceAPIs, listOpts...); err != nil {
+		if err := r.List(context.Background(), glanceAPIs, listOpts...); err != nil {
 			Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
 			return nil
 		}
@@ -356,7 +356,7 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		listOpts := []client.ListOption{
 			client.InNamespace(o.GetNamespace()),
 		}
-		if err := r.Client.List(context.Background(), glanceAPIs, listOpts...); err != nil {
+		if err := r.List(context.Background(), glanceAPIs, listOpts...); err != nil {
 			Log.Error(err, "Unable to retrieve GlanceAPI CRs %w")
 			return nil
 		}
@@ -760,8 +760,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// iterate over availableBackends for backend specific cases
 	for i := 0; i < len(availableBackends); i++ {
 		backendToken := strings.SplitN(availableBackends[i], ":", 2)
-		switch {
-		case backendToken[1] == "cinder":
+		switch backendToken[1] {
+		case "cinder":
 			cinderList := &cinderv1.CinderList{}
 			err := r.List(ctx, cinderList, client.InNamespace(instance.Namespace))
 			if err != nil {
@@ -793,7 +793,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 			// We see at least a Cinder CR in the namespace, unblock glance
 			// deployment
 			privileged = true
-		case backendToken[1] == "rbd":
+		case "rbd":
 			// enable image conversion by default
 			Log.Info("Ceph config detected: enable image conversion by default")
 			imageConv = true
@@ -822,7 +822,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 					condition.TLSInputReadyCondition,
 					condition.RequestedReason,
 					condition.SeverityInfo,
-					fmt.Sprintf(condition.TLSInputReadyWaitingMessage, instance.Spec.TLS.CaBundleSecretName)))
+					condition.TLSInputReadyWaitingMessage, instance.Spec.TLS.CaBundleSecretName))
 				return ctrl.Result{}, nil
 			}
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -846,7 +846,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 				condition.TLSInputReadyCondition,
 				condition.RequestedReason,
 				condition.SeverityInfo,
-				fmt.Sprintf(condition.TLSInputReadyWaitingMessage, err.Error())))
+				condition.TLSInputReadyWaitingMessage, err.Error()))
 			return ctrl.Result{}, nil
 		}
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -918,7 +918,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		return glance.ResultRequeue, err
 	}
 
-	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.ObjectMeta.Annotations[glance.KeystoneEndpoint])
+	configVars[glance.KeystoneEndpoint] = env.SetValue(instance.Annotations[glance.KeystoneEndpoint])
 	//
 	// normal reconcile tasks
 	//
@@ -1050,7 +1050,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		if networkReady {
 			instance.Status.Conditions.MarkTrue(condition.NetworkAttachmentsReadyCondition, condition.NetworkAttachmentsReadyMessage)
 		} else {
-			err := fmt.Errorf("not all pods have interfaces with ips as configured in NetworkAttachments: %s", instance.Spec.NetworkAttachments)
+			err := fmt.Errorf("%w: %s", ErrNetworkAttachmentConfig, instance.Spec.NetworkAttachments)
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.NetworkAttachmentsReadyCondition,
 				condition.ErrorReason,
@@ -1152,7 +1152,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	}
 
 	var tlsCfg *tls.Service
-	if instance.Spec.TLS.Ca.CaBundleSecretName != "" {
+	if instance.Spec.TLS.CaBundleSecretName != "" {
 		tlsCfg = &tls.Service{}
 	}
 	// 02-config.conf
@@ -1393,8 +1393,8 @@ func (r *GlanceAPIReconciler) ensureKeystoneEndpoints(
 
 	// If the parent controller didn't set the annotation, the current glanceAPIs
 	// shouldn't register the endpoints in keystone
-	if len(instance.ObjectMeta.Annotations) == 0 ||
-		instance.ObjectMeta.Annotations[glance.KeystoneEndpoint] != "true" {
+	if len(instance.Annotations) == 0 ||
+		instance.Annotations[glance.KeystoneEndpoint] != "true" {
 		// Mark the KeystoneEndpointReadyCondition as True because there's nothing
 		// to do here
 		instance.Status.Conditions.MarkTrue(
@@ -1485,7 +1485,7 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 	}
 	cachePVCs, _ := GetPvcListWithLabel(ctx, h, instance.Namespace, serviceLabels)
 	for _, vc := range cachePVCs.Items {
-		var pvcName string = vc.GetName()
+		var pvcName = vc.GetName()
 		cacheAnnotations := vc.GetAnnotations()
 		if _, ok := cacheAnnotations["image-cache"]; ok {
 			cronSpec := glance.CronJobSpec{
@@ -1540,10 +1540,10 @@ func (r *GlanceAPIReconciler) cleanupImageCacheJob(
 	for _, vc := range cachePVCs.Items {
 		cacheAnnotations := vc.GetAnnotations()
 		if _, ok := cacheAnnotations["image-cache"]; ok {
-			var pvcName string = vc.GetName()
+			var pvcName = vc.GetName()
 			// Get the pod (by name) associated to the current pvc
 			var pod corev1.Pod
-			if err := r.Client.Get(ctx, types.NamespacedName{
+			if err := r.Get(ctx, types.NamespacedName{
 				Name:      strings.TrimPrefix(pvcName, "glance-cache-"),
 				Namespace: instance.Namespace,
 			}, &pod); err != nil && k8s_errors.IsNotFound(err) || instance.Spec.ImageCache.Size == "" {
@@ -1577,7 +1577,7 @@ func (r *GlanceAPIReconciler) deleteJob(
 	// For each imageCache we have both cleaner and pruner cronJobs to check and
 	// cleanup if the conditions are met
 	for _, cj := range []glance.CronJobType{glance.CachePruner, glance.CacheCleaner} {
-		if err = r.Client.Get(
+		if err = r.Get(
 			ctx,
 			types.NamespacedName{
 				Name:      fmt.Sprintf("%s-%s", pvcName, cj),
@@ -1650,9 +1650,9 @@ func (r *GlanceAPIReconciler) glanceAPIRefresh(
 		}
 		return err
 	}
-	err = r.Client.Delete(ctx, sts)
+	err = r.Delete(ctx, sts)
 	if err != nil && !k8s_errors.IsNotFound(err) {
-		err = fmt.Errorf("Error deleting %s: %w", instance.Name, err)
+		err = fmt.Errorf("error deleting %s: %w", instance.Name, err)
 		return err
 	}
 	return nil
