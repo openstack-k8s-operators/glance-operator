@@ -169,6 +169,7 @@ func (r *GlanceAPIReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// failure
 		condition.UnknownCondition(condition.ReadyCondition, condition.InitReason, condition.ReadyInitMessage),
 		condition.UnknownCondition(glancev1.CinderCondition, condition.InitReason, glancev1.CinderInitMessage),
+		condition.UnknownCondition(condition.MemcachedReadyCondition, condition.InitReason, condition.MemcachedReadyInitMessage),
 		condition.UnknownCondition(condition.CreateServiceReadyCondition, condition.InitReason, condition.CreateServiceReadyInitMessage),
 		condition.UnknownCondition(condition.InputReadyCondition, condition.InitReason, condition.InputReadyInitMessage),
 		condition.UnknownCondition(condition.ServiceConfigReadyCondition, condition.InitReason, condition.ServiceConfigReadyInitMessage),
@@ -714,11 +715,14 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	memcached, err := memcachedv1.GetMemcachedByName(ctx, helper, instance.Spec.MemcachedInstance, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
+			// Memcached should be automatically created by the encompassing OpenStackControlPlane,
+			// but we don't propagate its name into the "memcachedInstance" field of other sub-resources,
+			// so we treat this as a warning because it means that the service will not be able to start.
 			Log.Info(fmt.Sprintf("memcached %s not found", instance.Spec.MemcachedInstance))
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.MemcachedReadyCondition,
-				condition.RequestedReason,
-				condition.SeverityInfo,
+				condition.ErrorReason,
+				condition.SeverityWarning,
 				condition.MemcachedReadyWaitingMessage))
 			return glance.ResultRequeue, nil
 		}
@@ -730,6 +734,20 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 			err.Error()))
 		return ctrl.Result{}, err
 	}
+
+	if !memcached.IsReady() {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.MemcachedReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.MemcachedReadyWaitingMessage))
+		Log.Info(fmt.Sprintf("%s...requeueing", condition.MemcachedReadyWaitingMessage))
+		return glance.ResultRequeue, nil
+	}
+	// Mark the Memcached Service as Ready if we get to this point with no errors
+	instance.Status.Conditions.MarkTrue(
+		condition.MemcachedReadyCondition, condition.MemcachedReadyMessage)
+	// run check memcached - end
 
 	// Get Enabled backends from customServiceConfig and run pre backend conditions
 	availableBackends := glancev1.GetEnabledBackends(instance.Spec.CustomServiceConfig)
@@ -818,10 +836,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		)
 		if err != nil {
 			if k8s_errors.IsNotFound(err) {
+				// Since the CA cert secret should have been manually created by the user and provided in the spec,
+				// we treat this as a warning because it means that the service will not be able to start.
 				instance.Status.Conditions.Set(condition.FalseCondition(
 					condition.TLSInputReadyCondition,
-					condition.RequestedReason,
-					condition.SeverityInfo,
+					condition.ErrorReason,
+					condition.SeverityWarning,
 					condition.TLSInputReadyWaitingMessage, instance.Spec.TLS.CaBundleSecretName))
 				return ctrl.Result{}, nil
 			}

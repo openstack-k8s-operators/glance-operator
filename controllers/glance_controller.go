@@ -623,10 +623,13 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	memcached, err = memcachedv1.GetMemcachedByName(ctx, helper, instance.Spec.MemcachedInstance, instance.Namespace)
 	if err != nil {
 		if k8s_errors.IsNotFound(err) {
+			// Memcached should be automatically created by the encompassing OpenStackControlPlane,
+			// but we don't propagate its name into the "memcachedInstance" field of other sub-resources,
+			// so we treat this as a warning because it means that the service will not be able to start.
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.MemcachedReadyCondition,
-				condition.RequestedReason,
-				condition.SeverityInfo,
+				condition.ErrorReason,
+				condition.SeverityWarning,
 				condition.MemcachedReadyWaitingMessage))
 			Log.Info(fmt.Sprintf("%s...requeueing", condition.MemcachedReadyWaitingMessage))
 			return glance.ResultRequeue, nil
