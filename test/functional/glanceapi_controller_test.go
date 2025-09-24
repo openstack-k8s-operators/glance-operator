@@ -247,6 +247,177 @@ var _ = Describe("Glanceapi controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
+	Context("GlanceAPI is deployed with S3 backend and TLS is enabled", func() {
+		keystoneAPIName := types.NamespacedName{}
+
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCABundleSecret(glanceTest.CABundleSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.InternalCertSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
+			spec := GetTLSGlanceAPISpec(GlanceAPITypeInternal)
+			spec["customServiceConfig"] = GlanceS3Backend
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			keystoneAPIName = keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPIName)
+			keystone.CreateKeystoneEndpoint(glanceTest.GlanceInternal)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+
+		It("s3 backend is present in customServiceConfig", func() {
+			gapi := GetGlanceAPI(glanceTest.GlanceInternal)
+			Expect(gapi.Spec.CustomServiceConfig).Should(ContainSubstring("s3"))
+		})
+
+		It("extends customServiceConfig and inject s3_store_cacert", func() {
+			Eventually(func(g Gomega) {
+				confSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(confSecret).ShouldNot(BeNil())
+				g.Expect(confSecret.Data).Should(HaveKey("02-config.conf"))
+				conf := string(confSecret.Data["02-config.conf"])
+				g.Expect(string(conf)).Should(
+					ContainSubstring("s3_store_cacert"))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+	Context("GlanceAPI is deployed with S3 backend and a customServiceConfig override and TLS is enabled", func() {
+		keystoneAPIName := types.NamespacedName{}
+
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCABundleSecret(glanceTest.CABundleSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.InternalCertSecret))
+			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
+			spec := GetTLSGlanceAPISpec(GlanceAPITypeInternal)
+			spec["customServiceConfig"] = GlanceS3BackendOverride
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			keystoneAPIName = keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPIName)
+			keystone.CreateKeystoneEndpoint(glanceTest.GlanceInternal)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+
+		It("s3 backend is present in customServiceConfig", func() {
+			gapi := GetGlanceAPI(glanceTest.GlanceInternal)
+			Expect(gapi.Spec.CustomServiceConfig).Should(ContainSubstring("s3"))
+		})
+
+		It("does not extend customServiceConfig because the key s3_store_cacert is already present", func() {
+			Eventually(func(g Gomega) {
+				confSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(confSecret).ShouldNot(BeNil())
+				g.Expect(confSecret.Data).Should(HaveKey("02-config.conf"))
+				conf := string(confSecret.Data["02-config.conf"])
+				g.Expect(string(conf)).Should(
+					ContainSubstring("s3_store_cacert = \"\""))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+	Context("GlanceAPI is deployed with S3 backend and TLS is disabled", func() {
+		keystoneAPIName := types.NamespacedName{}
+
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
+			spec["customServiceConfig"] = GlanceS3Backend
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			keystoneAPIName = keystone.CreateKeystoneAPI(glanceTest.GlanceInternal.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPIName)
+			keystone.CreateKeystoneEndpoint(glanceTest.GlanceInternal)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+
+		It("s3 backend is present in customServiceConfig", func() {
+			gapi := GetGlanceAPI(glanceTest.GlanceInternal)
+			Expect(gapi.Spec.CustomServiceConfig).Should(ContainSubstring("s3"))
+		})
+
+		It("does not inject s3_store_cacert param", func() {
+			Eventually(func(g Gomega) {
+				confSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(confSecret).ShouldNot(BeNil())
+				g.Expect(confSecret.Data).Should(HaveKey("02-config.conf"))
+				conf := string(confSecret.Data["02-config.conf"])
+				g.Expect(string(conf)).Should(Not(
+					ContainSubstring("s3_store_cacert")))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
 	When("GlanceAPI is deployed with Cinder backend", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
@@ -771,7 +942,6 @@ var _ = Describe("Glanceapi controller", func() {
 			)
 		})
 	})
-
 	When("A split GlanceAPI with TLS is generated by the top-level CR", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
@@ -892,7 +1062,6 @@ var _ = Describe("Glanceapi controller", func() {
 			)
 		})
 	})
-
 	When("A single GlanceAPI with TLS is generated by the top-level CR (single-api)", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
@@ -1092,7 +1261,6 @@ var _ = Describe("Glanceapi controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
-
 	When("A GlanceAPI with TLS is created with service override endpointURL", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
@@ -1151,7 +1319,6 @@ var _ = Describe("Glanceapi controller", func() {
 			)
 		})
 	})
-
 	When("GlanceAPI instance overrides a topology", func() {
 		var topologyRefAlt *topologyv1.TopoRef
 		BeforeEach(func() {
@@ -1231,7 +1398,6 @@ var _ = Describe("Glanceapi controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
-
 	Context("GlanceAPI is fully deployed", func() {
 		keystoneAPIName := types.NamespacedName{}
 
