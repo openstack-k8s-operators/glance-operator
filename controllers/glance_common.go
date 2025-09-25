@@ -76,7 +76,7 @@ var (
 
 type conditionUpdater interface {
 	Set(c *condition.Condition)
-	MarkTrue(t condition.Type, messageFormat string, messageArgs ...interface{})
+	MarkTrue(t condition.Type, messageFormat string, messageArgs ...any)
 }
 
 // verifyServiceSecret - ensures that the Secret object exists and the expected
@@ -173,7 +173,7 @@ func GenerateConfigsGeneric(
 	ctx context.Context, h *helper.Helper,
 	instance client.Object,
 	envVars *map[string]env.Setter,
-	templateParameters map[string]interface{},
+	templateParameters map[string]any,
 	customData map[string]string,
 	cmLabels map[string]string,
 	scripts bool,

@@ -331,7 +331,7 @@ var _ = Describe("Glance controller", func() {
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 
 			spec := GetGlanceDefaultSpec()
-			spec["nodeSelector"] = map[string]interface{}{
+			spec["nodeSelector"] = map[string]any{
 				"foo": "bar",
 			}
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, spec))
@@ -517,8 +517,8 @@ var _ = Describe("Glance controller", func() {
 			nad := th.CreateNetworkAttachmentDefinition(glanceTest.InternalAPINAD)
 			DeferCleanup(th.DeleteInstance, nad)
 
-			serviceOverride := map[string]interface{}{}
-			serviceOverride["internal"] = map[string]interface{}{
+			serviceOverride := map[string]any{}
+			serviceOverride["internal"] = map[string]any{
 				"metadata": map[string]map[string]string{
 					"annotations": {
 						"metallb.universe.tf/address-pool":    "osp-internalapi",
@@ -530,12 +530,12 @@ var _ = Describe("Glance controller", func() {
 						"service":  "glance",
 					},
 				},
-				"spec": map[string]interface{}{
+				"spec": map[string]any{
 					"type": "LoadBalancer",
 				},
 			}
-			rawSpec := map[string]interface{}{
-				"storage": map[string]interface{}{
+			rawSpec := map[string]any{
+				"storage": map[string]any{
 					"storageRequest": glanceTest.GlancePVCSize,
 				},
 				"storageRequest":      glanceTest.GlancePVCSize,
@@ -544,11 +544,11 @@ var _ = Describe("Glance controller", func() {
 				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
 				"keystoneEndpoint":    "default",
 				"customServiceConfig": GlanceDummyBackend,
-				"glanceAPIs": map[string]interface{}{
-					"default": map[string]interface{}{
+				"glanceAPIs": map[string]any{
+					"default": map[string]any{
 						"containerImage":     glancev1.GlanceAPIContainerImage,
 						"networkAttachments": []string{"internalapi"},
-						"override": map[string]interface{}{
+						"override": map[string]any{
 							"service": serviceOverride,
 						},
 					},
@@ -608,8 +608,8 @@ var _ = Describe("Glance controller", func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
 
-			rawSpec := map[string]interface{}{
-				"storage": map[string]interface{}{
+			rawSpec := map[string]any{
+				"storage": map[string]any{
 					"storageRequest": glanceTest.GlancePVCSize,
 				},
 				"storageRequest":      glanceTest.GlancePVCSize,
@@ -686,7 +686,7 @@ var _ = Describe("Glance controller", func() {
 			}
 			rawSpec := GetGlanceEmptySpec()
 			// Reference a top-level topology
-			rawSpec["topologyRef"] = map[string]interface{}{
+			rawSpec["topologyRef"] = map[string]any{
 				"name": topologyRef.Name,
 			}
 			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))

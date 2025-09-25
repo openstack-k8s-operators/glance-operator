@@ -776,7 +776,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		}
 	}
 	// iterate over availableBackends for backend specific cases
-	for i := 0; i < len(availableBackends); i++ {
+	for i := range availableBackends {
 		backendToken := strings.SplitN(availableBackends[i], ":", 2)
 		switch backendToken[1] {
 		case "cinder":
@@ -1226,9 +1226,9 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	if instance.Spec.APIType != glancev1.APISingle {
 		endptName = fmt.Sprintf("%s-api", instance.Name)
 	}
-	httpdVhostConfig := map[string]interface{}{}
+	httpdVhostConfig := map[string]any{}
 	for endpt := range glanceEndpoints {
-		endptConfig := map[string]interface{}{}
+		endptConfig := map[string]any{}
 		endptConfig["ServerName"] = fmt.Sprintf("glance-%s.%s.svc", endpt.String(), instance.Namespace)
 		endptConfig["ServerAlias"] = fmt.Sprintf("%s.%s.svc", endptName, instance.Namespace)
 		endptConfig["TLS"] = false // default TLS to false, and set it bellow to true if enabled
@@ -1241,7 +1241,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		httpdVhostConfig[endpt.String()] = endptConfig
 	}
 
-	templateParameters := map[string]interface{}{
+	templateParameters := map[string]any{
 		"ServiceUser":         instance.Spec.ServiceUser,
 		"ServicePassword":     string(ospSecret.Data[instance.Spec.PasswordSelectors.Service]),
 		"KeystoneInternalURL": keystoneInternalURL,

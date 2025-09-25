@@ -66,7 +66,7 @@ type GlanceTestData struct {
 	GlanceServiceUser           string
 	GlancePVCSize               string
 	GlancePort                  string
-	GlanceQuotas                map[string]interface{}
+	GlanceQuotas                map[string]any
 	Instance                    types.NamespacedName
 	CinderName                  types.NamespacedName
 	GlanceSingle                types.NamespacedName
@@ -188,7 +188,7 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Namespace: glanceName.Namespace,
 			Name:      "image",
 		},
-		GlanceQuotas: map[string]interface{}{
+		GlanceQuotas: map[string]any{
 			"imageSizeTotal":   1000,
 			"imageStageTotal":  1000,
 			"imageCountUpload": 100,

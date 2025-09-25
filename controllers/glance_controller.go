@@ -1068,7 +1068,7 @@ func (r *GlanceReconciler) generateServiceConfig(
 
 	// We only need a minimal 00-config.conf that is only used by db-sync job,
 	// hence only passing the database related parameters
-	templateParameters := map[string]interface{}{
+	templateParameters := map[string]any{
 		"MinimalConfig": true, // This tells the template to generate a minimal config
 		"DatabaseConnection": fmt.Sprintf("mysql+pymysql://%s:%s@%s/%s?read_default_file=/etc/my.cnf",
 			databaseAccount.Spec.UserName,
