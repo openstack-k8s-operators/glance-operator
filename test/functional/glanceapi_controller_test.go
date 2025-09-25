@@ -925,7 +925,7 @@ var _ = Describe("Glanceapi controller", func() {
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.TLSInputReadyCondition,
 				corev1.ConditionFalse,
-				condition.RequestedReason,
+				condition.ErrorReason,
 				fmt.Sprintf("TLSInput is missing: %s", CABundleSecretName),
 			)
 			th.ExpectCondition(
