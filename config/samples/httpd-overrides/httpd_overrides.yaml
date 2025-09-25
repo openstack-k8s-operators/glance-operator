@@ -1,0 +1,19 @@
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      glanceAPI:
+        extraMounts:
+          - extraVol:
+              - extraVolType: httpd-overrides
+                mounts:
+                  - mountPath: /etc/httpd/conf_custom
+                    name: httpd-overrides
+                    readOnly: true
+                volumes:
+                  - configMap:
+                      name: httpd-overrides
+                    name: httpd-overrides

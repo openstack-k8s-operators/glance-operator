@@ -40,6 +40,8 @@ detailed guides and examples, refer to the provided
   configuration
 - [Horizon integration](horizon.md): Configuration guide for Horizon to not hit
   upload limits due to the default configuration
+- [Customize httpd](../config/samples/httpd-overrides): inject custom httpd
+  configuration through extraMounts interface
 
 ## FAQ
 
