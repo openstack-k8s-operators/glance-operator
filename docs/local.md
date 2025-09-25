@@ -1,7 +1,7 @@
 # Running the operator locally
 
-**NOTE**: This article [makes some assumptions](assumptions.md), make sure they
-are correct or adapt the steps accordingly.
+**NOTE**: This article makes some assumptions about your environment setup,
+make sure they are correct or adapt the steps accordingly.
 
 This development model is useful for quick iterations of the operator code
 where one can easily use debugging tools and change template and asset files on
@@ -23,9 +23,9 @@ time our login credentials expire.
 ### Preparation
 
 This article assumes we have followed the [Getting
-Started](../../README.md#getting-started) section successfully so we'll not
-only have a glance-operator pod running, but also other required services
-running.
+Started](https://github.com/openstack-k8s-operators/glance-operator/blob/main/README.md#getting-started)
+section successfully so we'll not only have a glance-operator pod running,
+but also other required services running.
 
 Since we have everything running we need to uninstalling both the
 glance-operator and Glance services.

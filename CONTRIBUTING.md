@@ -33,7 +33,7 @@ There is some [global podification
 documentation](https://github.com/openstack-k8s-operators/docs) relevant for
 all the operators, but there are also some global design decisions that have
 not been spelled out yet anywhere else, so they are included in the
-[glance-operator design decisions document](docs/dev/design-decisions.md).
+[glance-operator design decisions document](docs/design-decisions.md).
 
 ### How to contribute?
 
@@ -68,15 +68,15 @@ The following list of articles assumes that podified OpenStack has been
 deployed using the openstack-operator as described in the [Getting started
 section](README.md#getting-started):
 
-- [Run operator locally](docs/dev/local.md)
+- [Run operator locally](docs/local.md)
 
 ### Debugging
 
 When working on the glance-operator there will be times where things won't work
 as expected and we'll need to debug things.
 
-In the [debugging article](docs/dev/debug.md) we present some ideas to help you
-figure things out.
+In the [debugging article](https://github.com/openstack-k8s-operators/dev-docs/blob/main/debugging.md)
+we present some ideas to help you figure things out.
 
 ### Pull Requests
 

@@ -64,7 +64,7 @@ Make sure to properly plan storage for the Glance Pod when this feature is
 enabled, especially if is enabled in combination with other image plugins.
 
 You can find more information about storage planning in the design assumptions
-[section](../../../docs/dev/design-decisions.md).
+[section](../../../docs/design-decisions.md).
 
 You can find more about plugin configuration options
 in [upstream](https://docs.openstack.org/glance/latest/admin/interoperable-image-import.html#the-image-decompression)

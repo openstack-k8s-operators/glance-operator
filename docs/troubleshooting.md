@@ -4,7 +4,7 @@ Troubleshooting the Glance Service involves running the `oc debug` command as
 described in the [openstack-k8s-operators doc](https://github.com/openstack-k8s-operators/docs/blob/main/troubleshooting.md).
 It is possible to choose which container should be run with the debug command
 simply passing the `-c <container` flag. The available containers are defined
-and described in the [design document](https://github.com/openstack-k8s-operators/glance-operator/blob/main/docs/dev/design-decisions.md).
+and described in the [design document](https://github.com/openstack-k8s-operators/glance-operator/blob/main/docs/design-decisions.md).
 As an example, let's suppose that the goal is to perform some troubleshooting
 against the `GlanceAPI service` (not the operator).
 
@@ -114,7 +114,7 @@ sh-5.1# alias glance="glance \
 Check the API works as expected running an `image-list` command:
 
 ```bash
-sh-5.1# glance --os-image-url "http://localhost.9293" image-list
+sh-5.1# glance --os-image-url "http://localhost:9293" image-list
 
 +----+------+
 | ID | Name |
