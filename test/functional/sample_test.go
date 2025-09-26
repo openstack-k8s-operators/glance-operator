@@ -28,8 +28,8 @@ import (
 // Test the basic glance samples
 const SamplesDir = "../../config/samples/"
 
-func ReadSample(sampleFileName string) map[string]interface{} {
-	rawSample := make(map[string]interface{})
+func ReadSample(sampleFileName string) map[string]any {
+	rawSample := make(map[string]any)
 
 	bytes, err := os.ReadFile(filepath.Join(SamplesDir, sampleFileName)) // #nosec G304
 	Expect(err).ShouldNot(HaveOccurred())
@@ -40,14 +40,14 @@ func ReadSample(sampleFileName string) map[string]interface{} {
 
 func CreateGlanceFromSample(sampleFileName string, name types.NamespacedName) types.NamespacedName {
 	raw := ReadSample(sampleFileName)
-	instance := CreateGlance(name, raw["spec"].(map[string]interface{}))
+	instance := CreateGlance(name, raw["spec"].(map[string]any))
 	DeferCleanup(th.DeleteInstance, instance)
 	return types.NamespacedName{Name: instance.GetName(), Namespace: instance.GetNamespace()}
 }
 
 func CreateGlanceAPIFromSample(sampleFileName string, name types.NamespacedName) types.NamespacedName {
 	raw := ReadSample(sampleFileName)
-	instance := CreateGlanceAPI(name, raw["spec"].(map[string]interface{}))
+	instance := CreateGlanceAPI(name, raw["spec"].(map[string]any))
 	DeferCleanup(th.DeleteInstance, instance)
 	return types.NamespacedName{Name: instance.GetName(), Namespace: instance.GetNamespace()}
 }

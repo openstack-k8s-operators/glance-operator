@@ -33,10 +33,10 @@ var _ = Describe("Glance validation", func() {
 		// field is customized: we can inject our parameters to test webhooks
 		spec := GetGlanceDefaultSpec()
 		spec["keystoneEndpoint"] = "foo"
-		raw := map[string]interface{}{
+		raw := map[string]any{
 			"apiVersion": "glance.openstack.org/v1beta1",
 			"kind":       "Glance",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name":      glanceTest.Instance.Name,
 				"namespace": glanceTest.Instance.Namespace,
 			},
@@ -57,19 +57,19 @@ var _ = Describe("Glance validation", func() {
 	It("webhooks reject the request - invalid backend", func() {
 		spec := GetGlanceDefaultSpec()
 
-		gapis := map[string]interface{}{
-			"glanceAPIs": map[string]interface{}{
-				"default": map[string]interface{}{
+		gapis := map[string]any{
+			"glanceAPIs": map[string]any{
+				"default": map[string]any{
 					"replicas": 1,
 					"type":     "split",
 				},
-				"edge1": map[string]interface{}{
+				"edge1": map[string]any{
 					"replicas": 1,
 					"type":     "edge",
 				},
 				// Webhooks catch that a backend != File is set for an instance
 				// that has type: single
-				"api1": map[string]interface{}{
+				"api1": map[string]any{
 					"customServiceConfig": GetDummyBackend(),
 					"replicas":            1,
 					"type":                "single",
@@ -80,10 +80,10 @@ var _ = Describe("Glance validation", func() {
 		spec["keystoneEndpoint"] = "edge1"
 		spec["glanceAPIs"] = gapis
 
-		raw := map[string]interface{}{
+		raw := map[string]any{
 			"apiVersion": "glance.openstack.org/v1beta1",
 			"kind":       "Glance",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name":      glanceTest.Instance.Name,
 				"namespace": glanceTest.Instance.Namespace,
 			},
@@ -106,20 +106,20 @@ var _ = Describe("Glance validation", func() {
 	It("webhooks reject the request - invalid instance", func() {
 		spec := GetGlanceDefaultSpec()
 
-		gapis := map[string]interface{}{
-			"edge2": map[string]interface{}{
+		gapis := map[string]any{
+			"edge2": map[string]any{
 				"replicas": 1,
 				"type":     "edge",
 				// inject a valid Ceph backend
 				"customServiceConfig": GetDummyBackend(),
 			},
-			"default": map[string]interface{}{
+			"default": map[string]any{
 				"replicas": 1,
 				"type":     "split",
 				// inject a valid Ceph backend
 				"customServiceConfig": GetDummyBackend(),
 			},
-			"edge1": map[string]interface{}{
+			"edge1": map[string]any{
 				"replicas": 1,
 				"type":     "edge",
 				// inject a valid Ceph backend
@@ -131,10 +131,10 @@ var _ = Describe("Glance validation", func() {
 		// Deploy multiple GlanceAPIs
 		spec["glanceAPIs"] = gapis
 
-		raw := map[string]interface{}{
+		raw := map[string]any{
 			"apiVersion": "glance.openstack.org/v1beta1",
 			"kind":       "Glance",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name":      glanceTest.Instance.Name,
 				"namespace": glanceTest.Instance.Namespace,
 			},
@@ -156,25 +156,25 @@ var _ = Describe("Glance validation", func() {
 
 	It("webhook rejects with wrong service override endpoint type", func() {
 		spec := GetGlanceDefaultSpec()
-		gapis := map[string]interface{}{
-			"default": map[string]interface{}{
+		gapis := map[string]any{
+			"default": map[string]any{
 				"replicas":            1,
 				"type":                "split",
 				"customServiceConfig": GetDummyBackend(),
-				"override": map[string]interface{}{
-					"service": map[string]interface{}{
-						"internal": map[string]interface{}{},
-						"wrooong":  map[string]interface{}{},
+				"override": map[string]any{
+					"service": map[string]any{
+						"internal": map[string]any{},
+						"wrooong":  map[string]any{},
 					},
 				},
 			},
 		}
 		spec["glanceAPIs"] = gapis
 
-		raw := map[string]interface{}{
+		raw := map[string]any{
 			"apiVersion": "glance.openstack.org/v1beta1",
 			"kind":       "Glance",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name":      glanceTest.Instance.Name,
 				"namespace": glanceTest.Instance.Namespace,
 			},
@@ -195,17 +195,17 @@ var _ = Describe("Glance validation", func() {
 		// GlanceEmptySpec is used to provide a standard Glance CR where no
 		// field is customized: we can inject our parameters to test webhooks
 		spec := GetGlanceDefaultSpec()
-		raw := map[string]interface{}{
+		raw := map[string]any{
 			"apiVersion": "glance.openstack.org/v1beta1",
 			"kind":       "Glance",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name":      glanceTest.Instance.Name,
 				"namespace": glanceTest.Instance.Namespace,
 			},
 			"spec": spec,
 		}
 
-		apiList := map[string]interface{}{
+		apiList := map[string]any{
 			"foo-1234567890-1234567890-1234567890-1234567890-1234567890": GetDefaultGlanceAPISpec(GlanceAPITypeSingle),
 		}
 		spec["glanceAPIs"] = apiList
@@ -227,17 +227,17 @@ var _ = Describe("Glance validation", func() {
 		// GlanceEmptySpec is used to provide a standard Glance CR where no
 		// field is customized: we can inject our parameters to test webhooks
 		spec := GetGlanceDefaultSpec()
-		raw := map[string]interface{}{
+		raw := map[string]any{
 			"apiVersion": "glance.openstack.org/v1beta1",
 			"kind":       "Glance",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name":      glanceTest.Instance.Name,
 				"namespace": glanceTest.Instance.Namespace,
 			},
 			"spec": spec,
 		}
 
-		apiList := map[string]interface{}{
+		apiList := map[string]any{
 			"foo_bar": GetDefaultGlanceAPISpec(GlanceAPITypeSingle),
 		}
 		spec["glanceAPIs"] = apiList
@@ -262,9 +262,9 @@ var _ = Describe("Glance validation", func() {
 
 			spec := GetDefaultGlanceSpec()
 			if api != "top-level" {
-				apiList := map[string]interface{}{
-					"default": map[string]interface{}{
-						"topologyRef": map[string]interface{}{
+				apiList := map[string]any{
+					"default": map[string]any{
+						"topologyRef": map[string]any{
 							"name":      "foo",
 							"namespace": "bar",
 						},
@@ -273,16 +273,16 @@ var _ = Describe("Glance validation", func() {
 				spec["glanceAPIs"] = apiList
 			} else {
 				// Reference a top-level topology
-				spec["topologyRef"] = map[string]interface{}{
+				spec["topologyRef"] = map[string]any{
 					"name":      glanceTest.GlanceAPITopologies[0].Name,
 					"namespace": "foo",
 				}
 			}
 			// Build the Glance CR
-			raw := map[string]interface{}{
+			raw := map[string]any{
 				"apiVersion": "glance.openstack.org/v1beta1",
 				"kind":       "Glance",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name":      glanceTest.Instance.Name,
 					"namespace": glanceTest.Instance.Namespace,
 				},

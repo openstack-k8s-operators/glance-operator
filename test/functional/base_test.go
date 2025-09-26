@@ -67,19 +67,19 @@ func GlanceAPIConditionGetter(name types.NamespacedName) condition.Conditions {
 }
 
 func CreateDefaultGlance(name types.NamespacedName) client.Object {
-	raw := map[string]interface{}{
+	raw := map[string]any{
 		"apiVersion": "glance.openstack.org/v1beta1",
 		"kind":       "Glance",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name":      name.Name,
 			"namespace": name.Namespace,
 		},
-		"spec": map[string]interface{}{
+		"spec": map[string]any{
 			"memcachedInstance": "memcached",
 			"keystoneEndpoint":  "default",
 			"databaseInstance":  "openstack",
 			"databaseAccount":   glanceTest.GlanceDatabaseAccount.Name,
-			"storage": map[string]interface{}{
+			"storage": map[string]any{
 				"storageRequest": glanceTest.GlancePVCSize,
 			},
 			"glanceAPIs": GetAPIList(),
@@ -90,21 +90,21 @@ func CreateDefaultGlance(name types.NamespacedName) client.Object {
 
 // GetGlanceEmptySpec - the resulting map is usually assigned to the top-level
 // Glance spec
-func GetGlanceEmptySpec() map[string]interface{} {
-	return map[string]interface{}{
+func GetGlanceEmptySpec() map[string]any {
+	return map[string]any{
 		"keystoneEndpoint":        "default",
 		"notificationBusInstance": glanceTest.NotificationsBusInstance,
 		"secret":                  SecretName,
 		"databaseInstance":        "openstack",
-		"storage": map[string]interface{}{
+		"storage": map[string]any{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
-		"glanceAPIs": map[string]interface{}{},
+		"glanceAPIs": map[string]any{},
 	}
 }
 
-func GetGlanceDefaultSpec() map[string]interface{} {
-	return map[string]interface{}{
+func GetGlanceDefaultSpec() map[string]any {
+	return map[string]any{
 		"keystoneEndpoint":        "default",
 		"databaseInstance":        "openstack",
 		"databaseAccount":         glanceTest.GlanceDatabaseAccount.Name,
@@ -112,14 +112,14 @@ func GetGlanceDefaultSpec() map[string]interface{} {
 		"secret":                  SecretName,
 		"notificationBusInstance": glanceTest.NotificationsBusInstance,
 		"glanceAPIs":              GetAPIList(),
-		"storage": map[string]interface{}{
+		"storage": map[string]any{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
 	}
 }
 
-func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
-	return map[string]interface{}{
+func GetGlanceDefaultSpecWithQuota() map[string]any {
+	return map[string]any{
 		"keystoneEndpoint":        "default",
 		"databaseInstance":        "openstack",
 		"databaseAccount":         glanceTest.GlanceDatabaseAccount.Name,
@@ -127,7 +127,7 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 		"notificationBusInstance": glanceTest.NotificationsBusInstance,
 		"secret":                  SecretName,
 		"glanceAPIs":              GetAPIList(),
-		"storage": map[string]interface{}{
+		"storage": map[string]any{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
 		"quotas":    glanceTest.GlanceQuotas,
@@ -136,29 +136,29 @@ func GetGlanceDefaultSpecWithQuota() map[string]interface{} {
 }
 
 // By default we're splitting here
-func GetAPIList() map[string]interface{} {
-	apiList := map[string]interface{}{
+func GetAPIList() map[string]any {
+	apiList := map[string]any{
 		"default": GetDefaultGlanceAPISpec(GlanceAPITypeSingle),
 	}
 	return apiList
 }
 
-func GetGlanceAPIDefaultSpec() map[string]interface{} {
-	return map[string]interface{}{
+func GetGlanceAPIDefaultSpec() map[string]any {
+	return map[string]any{
 		"replicas": 1,
-		"storage": map[string]interface{}{
+		"storage": map[string]any{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
 		"databaseAccount": glanceTest.GlanceDatabaseAccount.Name,
 	}
 }
 
-func CreateGlance(name types.NamespacedName, spec map[string]interface{}) client.Object {
+func CreateGlance(name types.NamespacedName, spec map[string]any) client.Object {
 
-	raw := map[string]interface{}{
+	raw := map[string]any{
 		"apiVersion": "glance.openstack.org/v1beta1",
 		"kind":       "Glance",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name":      name.Name,
 			"namespace": name.Namespace,
 		},
@@ -167,12 +167,12 @@ func CreateGlance(name types.NamespacedName, spec map[string]interface{}) client
 	return th.CreateUnstructured(raw)
 }
 
-func CreateGlanceAPI(name types.NamespacedName, spec map[string]interface{}) client.Object {
-	raw := map[string]interface{}{
+func CreateGlanceAPI(name types.NamespacedName, spec map[string]any) client.Object {
+	raw := map[string]any{
 		"apiVersion": "glance.openstack.org/v1beta1",
 		"kind":       "GlanceAPI",
-		"metadata": map[string]interface{}{
-			"annotations": map[string]interface{}{
+		"metadata": map[string]any{
+			"annotations": map[string]any{
 				"keystoneEndpoint": "true",
 			},
 			"name":      name.Name,
@@ -194,27 +194,27 @@ func CreateGlanceSecret(namespace string, name string) *corev1.Secret {
 }
 
 // GetDefaultGlanceSpec - It returns a default API built for testing purposes
-func GetDefaultGlanceSpec() map[string]interface{} {
-	return map[string]interface{}{
+func GetDefaultGlanceSpec() map[string]any {
+	return map[string]any{
 		"databaseInstance":        glanceTest.GlanceDatabaseName.Name,
 		"databaseAccount":         glanceTest.GlanceDatabaseAccount.Name,
 		"secret":                  SecretName,
 		"customServiceConfig":     GlanceDummyBackend,
 		"notificationBusInstance": glanceTest.NotificationsBusInstance,
 		"glanceAPIs":              GetAPIList(),
-		"storage": map[string]interface{}{
+		"storage": map[string]any{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
 	}
 }
 
 // CreateGlanceAPISpec -
-func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
-	spec := map[string]interface{}{
+func CreateGlanceAPISpec(apiType APIType) map[string]any {
+	spec := map[string]any{
 		"replicas":       1,
 		"serviceAccount": glanceTest.GlanceSA.Name,
 		"containerImage": glanceTest.ContainerImage,
-		"storage": map[string]interface{}{
+		"storage": map[string]any{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
 		"apiType":            apiType,
@@ -230,16 +230,16 @@ func CreateGlanceAPISpec(apiType APIType) map[string]interface{} {
 // CreateGlanceAPIWithTopologySpec - It returns a GlanceAPISpec where a
 // topology is referenced. It also overrides the top-level parameter of
 // the top-level glance controller
-func CreateGlanceAPIWithTopologySpec() map[string]interface{} {
+func CreateGlanceAPIWithTopologySpec() map[string]any {
 	rawSpec := GetDefaultGlanceSpec()
 	// Add top-level topologyRef
-	rawSpec["topologyRef"] = map[string]interface{}{
+	rawSpec["topologyRef"] = map[string]any{
 		"name": glanceTest.GlanceAPITopologies[0].Name,
 	}
 	// Override topologyRef for the subCR
-	rawSpec["glanceAPIs"] = map[string]interface{}{
-		"default": map[string]interface{}{
-			"topologyRef": map[string]interface{}{
+	rawSpec["glanceAPIs"] = map[string]any{
+		"default": map[string]any{
+			"topologyRef": map[string]any{
 				"name": glanceTest.GlanceAPITopologies[1].Name,
 			},
 		},
@@ -248,12 +248,12 @@ func CreateGlanceAPIWithTopologySpec() map[string]interface{} {
 }
 
 // GetDefaultGlanceAPISpec -
-func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
-	spec := map[string]interface{}{
+func GetDefaultGlanceAPISpec(apiType APIType) map[string]any {
+	spec := map[string]any{
 		"replicas":       1,
 		"containerImage": glanceTest.ContainerImage,
 		"serviceAccount": glanceTest.GlanceSA.Name,
-		"storage": map[string]interface{}{
+		"storage": map[string]any{
 			"storageRequest": glanceTest.GlancePVCSize,
 		},
 		"type":               apiType,
@@ -267,19 +267,19 @@ func GetDefaultGlanceAPISpec(apiType APIType) map[string]interface{} {
 }
 
 // GetTLSGlanceAPISpec -
-func GetTLSGlanceAPISpec(apiType APIType) map[string]interface{} {
+func GetTLSGlanceAPISpec(apiType APIType) map[string]any {
 	spec := CreateGlanceAPISpec(apiType)
-	maps.Copy(spec, map[string]interface{}{
+	maps.Copy(spec, map[string]any{
 		"databaseHostname":        "openstack",
 		"databaseAccount":         glanceTest.GlanceDatabaseAccount.Name,
 		"secret":                  SecretName,
 		"notificationBusInstance": glanceTest.NotificationsBusInstance,
-		"tls": map[string]interface{}{
-			"api": map[string]interface{}{
-				"internal": map[string]interface{}{
+		"tls": map[string]any{
+			"api": map[string]any{
+				"internal": map[string]any{
 					"secretName": InternalCertSecretName,
 				},
-				"public": map[string]interface{}{
+				"public": map[string]any{
 					"secretName": PublicCertSecretName,
 				},
 			},
@@ -346,26 +346,26 @@ func GetDummyBackend() string {
 
 // GetExtraMounts - Utility function that simulates extraMounts pointing
 // to a Ceph secret
-func GetExtraMounts() []map[string]interface{} {
-	return []map[string]interface{}{
+func GetExtraMounts() []map[string]any {
+	return []map[string]any{
 		{
 			"name":   glanceTest.Instance.Name,
 			"region": "az0",
-			"extraVol": []map[string]interface{}{
+			"extraVol": []map[string]any{
 				{
 					"extraVolType": GlanceCephExtraMountsSecretName,
 					"propagation": []string{
 						"GlanceAPI",
 					},
-					"volumes": []map[string]interface{}{
+					"volumes": []map[string]any{
 						{
 							"name": GlanceCephExtraMountsSecretName,
-							"secret": map[string]interface{}{
+							"secret": map[string]any{
 								"secretName": GlanceCephExtraMountsSecretName,
 							},
 						},
 					},
-					"mounts": []map[string]interface{}{
+					"mounts": []map[string]any{
 						{
 							"name":      GlanceCephExtraMountsSecretName,
 							"mountPath": GlanceCephExtraMountsPath,
@@ -389,16 +389,16 @@ func GetExtraMounts() []map[string]interface{} {
 // multi AZ, which is not applicable in this context
 func GetSampleTopologySpec(
 	label string,
-) (map[string]interface{}, []corev1.TopologySpreadConstraint) {
+) (map[string]any, []corev1.TopologySpreadConstraint) {
 	// Build the topology Spec
-	topologySpec := map[string]interface{}{
-		"topologySpreadConstraints": []map[string]interface{}{
+	topologySpec := map[string]any{
+		"topologySpreadConstraints": []map[string]any{
 			{
 				"maxSkew":           1,
 				"topologyKey":       corev1.LabelHostname,
 				"whenUnsatisfiable": "ScheduleAnyway",
-				"labelSelector": map[string]interface{}{
-					"matchLabels": map[string]interface{}{
+				"labelSelector": map[string]any{
+					"matchLabels": map[string]any{
 						"component": label,
 					},
 				},
@@ -424,10 +424,10 @@ func GetSampleTopologySpec(
 // CreateDefaultCinderInstance - Creates a default Cinder CR used as a
 // dependency when a Cinder backend is defined in glance
 func CreateDefaultCinderInstance(cinderName types.NamespacedName) client.Object {
-	raw := map[string]interface{}{
+	raw := map[string]any{
 		"apiVersion": "cinder.openstack.org/v1beta1",
 		"kind":       "Cinder",
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"name":      cinderName.Name,
 			"namespace": cinderName.Namespace,
 		},
@@ -440,7 +440,7 @@ func CreateGlanceMessageBusSecret(namespace string, name string) *corev1.Secret 
 	s := th.CreateSecret(
 		types.NamespacedName{Namespace: namespace, Name: name},
 		map[string][]byte{
-			"transport_url": []byte(fmt.Sprintf("rabbit://%s/fake", name)),
+			"transport_url": fmt.Appendf(nil, "rabbit://%s/fake", name),
 		},
 	)
 	logger.Info("Secret created", "name", name)

@@ -661,8 +661,8 @@ var _ = Describe("Glanceapi controller", func() {
 			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
 
 			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
-			serviceOverride := map[string]interface{}{}
-			serviceOverride["internal"] = map[string]interface{}{
+			serviceOverride := map[string]any{}
+			serviceOverride["internal"] = map[string]any{
 				"endpoint": "internal",
 				"metadata": map[string]map[string]string{
 					"annotations": {
@@ -676,12 +676,12 @@ var _ = Describe("Glanceapi controller", func() {
 						"service":  "glance",
 					},
 				},
-				"spec": map[string]interface{}{
+				"spec": map[string]any{
 					"type": "LoadBalancer",
 				},
 			}
 
-			spec["override"] = map[string]interface{}{
+			spec["override"] = map[string]any{
 				"service": serviceOverride,
 			}
 			glance := CreateGlanceAPI(glanceTest.GlanceInternal, spec)
@@ -744,12 +744,12 @@ var _ = Describe("Glanceapi controller", func() {
 			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
 
 			spec := CreateGlanceAPISpec(GlanceAPITypeExternal)
-			serviceOverride := map[string]interface{}{}
-			serviceOverride["public"] = map[string]interface{}{
+			serviceOverride := map[string]any{}
+			serviceOverride["public"] = map[string]any{
 				"endpoint":    "public",
 				"endpointURL": "http://glance-openstack.apps-crc.testing",
 			}
-			spec["override"] = map[string]interface{}{
+			spec["override"] = map[string]any{
 				"service": serviceOverride,
 			}
 			glance := CreateGlanceAPI(glanceTest.GlanceExternal, spec)
@@ -1117,12 +1117,12 @@ var _ = Describe("Glanceapi controller", func() {
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.InternalCertSecret))
 			DeferCleanup(k8sClient.Delete, ctx, th.CreateCertSecret(glanceTest.PublicCertSecret))
 			spec := GetTLSGlanceAPISpec(GlanceAPITypeSingle)
-			serviceOverride := map[string]interface{}{}
-			serviceOverride["public"] = map[string]interface{}{
+			serviceOverride := map[string]any{}
+			serviceOverride["public"] = map[string]any{
 				"endpoint":    "public",
 				"endpointURL": "https://glance-openstack.apps-crc.testing",
 			}
-			spec["override"] = map[string]interface{}{
+			spec["override"] = map[string]any{
 				"service": serviceOverride,
 			}
 			glance := CreateGlanceAPI(glanceTest.GlanceSingle, spec)
