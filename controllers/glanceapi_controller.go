@@ -688,6 +688,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	configVars := make(map[string]env.Setter)
 	privileged := false
 	imageConv := false
+	extConfigOptions := []util.IniOption{}
 
 	//
 	// check for required OpenStack secret holding passwords for service/admin user and add hash to the vars map
@@ -815,6 +816,16 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 			// enable image conversion by default
 			Log.Info("Ceph config detected: enable image conversion by default")
 			imageConv = true
+		case "s3":
+			Log.Info(fmt.Sprintf(
+				"s3 config detected: inject s3_store_cacert parameter to backend %s\n", backendToken[0]))
+			if instance.Spec.TLS.CaBundleSecretName != "" {
+				extConfigOptions = append(extConfigOptions, util.IniOption{
+					Section: backendToken[0],
+					Key:     "s3_store_cacert",
+					Value:   "/etc/pki/tls/certs/ca-bundle.crt",
+				})
+			}
 		}
 	}
 	// If we reach this point, it means that either Cinder is not a backend for Glance
@@ -927,7 +938,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	}
 
 	// Generate service config
-	err = r.generateServiceConfig(ctx, helper, instance, &configVars, imageConv, memcached, wsgi)
+	err = r.generateServiceConfig(ctx, helper, instance, &configVars,
+		imageConv, memcached, wsgi, extConfigOptions)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
 			condition.ServiceConfigReadyCondition,
@@ -1163,8 +1175,11 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	imageConv bool,
 	memcached *memcachedv1.Memcached,
 	wsgi bool,
+	extConfigOptions []util.IniOption,
 ) error {
+	Log := r.GetLogger(ctx)
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), GetServiceLabels(instance))
+	extendedConfig := instance.Spec.CustomServiceConfig
 
 	db, err := mariadbv1.GetDatabaseByNameAndAccount(ctx, h, glance.DatabaseName, instance.Spec.DatabaseAccount, instance.Namespace)
 	if err != nil {
@@ -1175,9 +1190,18 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	if instance.Spec.TLS.CaBundleSecretName != "" {
 		tlsCfg = &tls.Service{}
 	}
+	// extend customServiceConfig is []IniOption has elements
+	for _, opt := range extConfigOptions {
+		extendedConfig, err = util.ExtendCustomServiceConfig(extendedConfig, opt)
+		if err != nil {
+			// The error returned from this library is not blocking, but it is
+			// useful to log it for troubleshooting purposes
+			Log.Info(err.Error())
+		}
+	}
 	// 02-config.conf
 	customData := map[string]string{
-		glance.CustomServiceConfigFileName: instance.Spec.CustomServiceConfig,
+		glance.CustomServiceConfigFileName: extendedConfig,
 		"my.cnf":                           db.GetDatabaseClientConfig(tlsCfg), //(mschuppert) for now just get the default my.cnf
 	}
 
