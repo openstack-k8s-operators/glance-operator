@@ -47,6 +47,10 @@ const (
 	GlanceDummyBackend = "enabled_backends=backend1:type1 # CHANGE_ME"
 	//GlanceCinderBackend -
 	GlanceCinderBackend = "enabled_backends=default_backend:cinder"
+	//GlanceS3Backend -
+	GlanceS3Backend = "[DEFAULT]\nenabled_backends=backend1:s3\n[backend1]\ns3_store_create_bucket_on_put = True"
+	//GlanceS3BackendOverride -
+	GlanceS3BackendOverride = "[DEFAULT]\nenabled_backends=backend1:s3\n[backend1]\ns3_store_cacert = \"\""
 	// MemcachedInstance - name of the memcached instance
 	MemcachedInstance = "memcached"
 	// AccountName - name of the MariaDBAccount CR
@@ -86,6 +90,7 @@ type GlanceTestData struct {
 	GlanceService               types.NamespacedName
 	GlanceConfigMapData         types.NamespacedName
 	GlanceInternalConfigMapData types.NamespacedName
+	GlanceExternalConfigMapData types.NamespacedName
 	GlanceSingleConfigMapData   types.NamespacedName
 	GlanceConfigMapScripts      types.NamespacedName
 	InternalAPINAD              types.NamespacedName
@@ -179,6 +184,10 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 		GlanceInternalConfigMapData: types.NamespacedName{
 			Namespace: glanceName.Namespace,
 			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "default-internal-config-data"),
+		},
+		GlanceExternalConfigMapData: types.NamespacedName{
+			Namespace: glanceName.Namespace,
+			Name:      fmt.Sprintf("%s-%s", glanceName.Name, "default-external-config-data"),
 		},
 		GlanceSingleConfigMapData: types.NamespacedName{
 			Namespace: glanceName.Namespace,
