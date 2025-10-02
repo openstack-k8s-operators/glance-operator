@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -378,6 +379,42 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		return nil
 	}
 
+	// Application Credential secret watching function
+	acSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
+		name := o.GetName()
+		ns := o.GetNamespace()
+		result := []reconcile.Request{}
+
+		// Only handle Secret objects
+		if _, isSecret := o.(*corev1.Secret); !isSecret {
+			return nil
+		}
+
+		// Check if this is a glance AC secret by name pattern (ac-glance-secret)
+		expectedSecretName := keystonev1.GetACSecretName("glance")
+		if name == expectedSecretName {
+			// get all GlanceAPI CRs in this namespace
+			glanceAPIs := &glancev1.GlanceAPIList{}
+			listOpts := []client.ListOption{
+				client.InNamespace(ns),
+			}
+			if err := r.List(context.Background(), glanceAPIs, listOpts...); err != nil {
+				return nil
+			}
+
+			// Enqueue reconcile for all glance API instances
+			for _, cr := range glanceAPIs.Items {
+				objKey := client.ObjectKey{
+					Namespace: ns,
+					Name:      cr.Name,
+				}
+				result = append(result, reconcile.Request{NamespacedName: objKey})
+			}
+		}
+
+		return result
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&glancev1.GlanceAPI{}).
 		Owns(&keystonev1.KeystoneEndpoint{}).
@@ -393,6 +430,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 			handler.EnqueueRequestsFromMapFunc(r.findObjectsForSrc),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(acSecretFn)).
 		Watches(&memcachedv1.Memcached{},
 			handler.EnqueueRequestsFromMapFunc(memcachedFn)).
 		Watches(&topologyv1.Topology{},
@@ -708,6 +747,11 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	}
 	instance.Status.Conditions.MarkTrue(condition.InputReadyCondition, condition.InputReadyMessage)
 	// run check OpenStack secret - end
+
+	// Verify Application Credentials if available
+	if res, err := r.verifyApplicationCredentials(ctx, helper, instance, &configVars); err != nil || res.RequeueAfter > 0 {
+		return res, err
+	}
 
 	//
 	// Check for required memcached used for caching
@@ -1164,6 +1208,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	memcached *memcachedv1.Memcached,
 	wsgi bool,
 ) error {
+	Log := r.GetLogger(ctx)
 	labels := labels.GetLabels(instance, labels.GetGroupLabel(glance.ServiceName), GetServiceLabels(instance))
 
 	db, err := mariadbv1.GetDatabaseByNameAndAccount(ctx, h, glance.DatabaseName, instance.Spec.DatabaseAccount, instance.Namespace)
@@ -1259,6 +1304,17 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		"LogFile":      fmt.Sprintf("%s%s.log", glance.GlanceLogPath, instance.Name),
 		"VHosts":       httpdVhostConfig,
 		"Wsgi":         wsgi,
+	}
+
+	templateParameters["UseApplicationCredentials"] = false
+	// Try to get Application Credential for this service (via keystone api helper)
+	if acData, err := keystonev1.GetApplicationCredentialFromSecret(ctx, r.Client, instance.Namespace, glance.ServiceName); err != nil {
+		Log.Error(err, "Failed to get ApplicationCredential for service", "service", glance.ServiceName)
+	} else if acData != nil {
+		templateParameters["UseApplicationCredentials"] = true
+		templateParameters["ACID"] = acData.ID
+		templateParameters["ACSecret"] = acData.Secret
+		Log.Info("Using ApplicationCredentials auth", "service", glance.ServiceName)
 	}
 
 	// (OSPRH-18291)Only set EndpointID parameter when the Endpoint has been
@@ -1699,4 +1755,47 @@ func (r *GlanceAPIReconciler) GetHorizonEndpoint(
 	}
 
 	return ep, nil
+}
+
+// verifyApplicationCredentials checks if ApplicationCredential secret exists and adds it to configVars
+// The AC secret is created by the keystone-operator's AC controller when the AC is ready.
+// If the secret exists and is valid, we use AC auth. Otherwise, we fall back to password auth.
+func (r *GlanceAPIReconciler) verifyApplicationCredentials(
+	ctx context.Context,
+	_ *helper.Helper,
+	instance *glancev1.GlanceAPI,
+	configVars *map[string]env.Setter,
+) (ctrl.Result, error) {
+	log := r.GetLogger(ctx)
+
+	// Check if AC secret exists (created by keystone AC controller)
+	acSecretName := keystonev1.GetACSecretName(glance.ServiceName)
+	secretKey := types.NamespacedName{Namespace: instance.Namespace, Name: acSecretName}
+
+	hash, res, err := secret.VerifySecret(
+		ctx,
+		secretKey,
+		[]string{"AC_ID", "AC_SECRET"},
+		r.Client,
+		10*time.Second,
+	)
+
+	// VerifySecret returns res.RequeueAfter > 0 when secret not found (not an error)
+	// For AC, this is optional, so we just skip it instead of requeueing
+	if res.RequeueAfter > 0 {
+		log.Info("ApplicationCredential secret not found, using password auth")
+		return ctrl.Result{}, nil
+	}
+
+	if err != nil {
+		// Actual error (not NotFound) - log and continue with password auth
+		log.Info("ApplicationCredential secret verification failed, continuing with password auth", "error", err.Error())
+		return ctrl.Result{}, nil
+	}
+
+	// AC secret exists and is valid - add to configVars for hash tracking
+	(*configVars)["secret-"+acSecretName] = env.SetValue(hash)
+	log.Info("Using ApplicationCredential authentication")
+
+	return ctrl.Result{}, nil
 }
