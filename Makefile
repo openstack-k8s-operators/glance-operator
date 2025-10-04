@@ -127,6 +127,10 @@ vet: gowork ## Run go vet against code.
 	go vet ./...
 	go vet ./... ./api/...
 
+.PHONY: style-check
+style-check: ## Run go modernize to check latest style conventions
+	go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -fix -test ./...
+
 .PHONY: tidy
 tidy: ## Run go mod tidy on every mod file in the repo
 	go mod tidy
