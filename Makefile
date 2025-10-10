@@ -396,7 +396,7 @@ $(GINKGO): $(LOCALBIN)
 	test -s $(LOCALBIN)/ginkgo || GOBIN=$(LOCALBIN) go install github.com/onsi/ginkgo/v2/ginkgo
 
 CRD_SCHEMA_CHECKER_VERSION ?= release-4.16
-BRANCH ?= main
+BRANCH ?= 18.0-fr4
 .PHONY: force-bump
 force-bump: ## Force bump operator and lib-common dependencies
 	for dep in $$(cat go.mod | grep openstack-k8s-operators | grep -vE -- 'indirect|glance-operator|^replace' | awk '{print $$1}'); do \
