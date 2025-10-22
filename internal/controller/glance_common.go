@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package controllers implements the glance-operator Kubernetes controllers.
-package controllers
+// Package controller implements the glance-operator Kubernetes controllers.
+package controller
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
-	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"

@@ -247,7 +247,7 @@ commands:
 # Verify that Glance CRs have the containerImage defaulted from the CSV RELATED_IMAGE parameter default
   - script: |
       set -euxo pipefail
-      tupleTemplate='{{ range (index .spec.template.spec.containers 1).env }}{{ .name }}{{ "#" }}{{ .value}}{{"\n"}}{{ end }}'
+      tupleTemplate='{{ range (index .spec.template.spec.containers 0).env }}{{ .name }}{{ "#" }}{{ .value}}{{"\n"}}{{ end }}'
       imageTuples=$(oc get -n openstack-operators deployment glance-operator-controller-manager -o go-template="$tupleTemplate")
       for ITEM in $(echo $imageTuples); do
         # it is an image

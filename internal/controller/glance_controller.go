@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controller
 
 import (
 	"context"
@@ -40,7 +40,7 @@ import (
 
 	"github.com/go-logr/logr"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
-	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	rabbitmqv1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"

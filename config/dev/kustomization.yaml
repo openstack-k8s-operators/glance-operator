@@ -1,5 +1,0 @@
-namespace: openstack
-namePrefix: glance-operator-
-resources:
-- ../crd
-- ../rbac

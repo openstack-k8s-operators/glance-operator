@@ -19,7 +19,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
 	"k8s.io/apimachinery/pkg/types"
 )
 
