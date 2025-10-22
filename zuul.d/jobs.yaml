@@ -16,6 +16,7 @@
       - tests?\/functional
       - ^renovate.json$
     vars:
+      cifmw_install_yamls_sdk_version: v1.41.1
       cifmw_kuttl_tests_env_vars:
         CEPH_TIMEOUT: 90
         PV_NUM: 20
@@ -26,6 +27,7 @@
     name: glance-operator-tempest
     parent: podified-multinode-hci-deployment-crc-1comp-backends
     vars:
+      cifmw_install_yamls_sdk_version: v1.41.1
       cifmw_test_operator_tempest_concurrency: 3
       cifmw_test_operator_tempest_include_list: |
         ^tempest.api.image.

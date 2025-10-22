@@ -12,7 +12,7 @@ webhooks:
       namespace: system
       path: /mutate-glance-openstack-org-v1beta1-glance
   failurePolicy: Fail
-  name: mglance.kb.io
+  name: mglance-v1beta1.kb.io
   rules:
   - apiGroups:
     - glance.openstack.org
@@ -32,7 +32,7 @@ webhooks:
       namespace: system
       path: /mutate-glance-openstack-org-v1beta1-glanceapi
   failurePolicy: Fail
-  name: mglanceapi.kb.io
+  name: mglanceapi-v1beta1.kb.io
   rules:
   - apiGroups:
     - glance.openstack.org
@@ -58,7 +58,7 @@ webhooks:
       namespace: system
       path: /validate-glance-openstack-org-v1beta1-glance
   failurePolicy: Fail
-  name: vglance.kb.io
+  name: vglance-v1beta1.kb.io
   rules:
   - apiGroups:
     - glance.openstack.org
@@ -78,7 +78,7 @@ webhooks:
       namespace: system
       path: /validate-glance-openstack-org-v1beta1-glanceapi
   failurePolicy: Fail
-  name: vglanceapi.kb.io
+  name: vglanceapi-v1beta1.kb.io
   rules:
   - apiGroups:
     - glance.openstack.org

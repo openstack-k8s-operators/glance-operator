@@ -18,7 +18,6 @@ package v1beta1
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"fmt"
@@ -43,15 +42,6 @@ func SetupGlanceAPIDefaults(defaults GlanceAPIDefaults) {
 	glanceapilog.Info("Glance defaults initialized", "defaults", defaults)
 }
 
-// SetupWebhookWithManager sets up the webhook with the Manager
-func (r *GlanceAPI) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
-		Complete()
-}
-
-//+kubebuilder:webhook:path=/mutate-glance-openstack-org-v1beta1-glanceapi,mutating=true,failurePolicy=fail,sideEffects=None,groups=glance.openstack.org,resources=glanceapis,verbs=create;update,versions=v1beta1,name=mglanceapi.kb.io,admissionReviewVersions=v1
-
 var _ webhook.Defaulter = &GlanceAPI{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
@@ -67,8 +57,6 @@ func (spec *GlanceAPISpec) Default() {
 		spec.GlanceAPITemplate.ContainerImage = glanceAPIDefaults.ContainerImageURL
 	}
 }
-
-//+kubebuilder:webhook:path=/validate-glance-openstack-org-v1beta1-glanceapi,mutating=false,failurePolicy=fail,sideEffects=None,groups=glance.openstack.org,resources=glanceapis,verbs=create;update,versions=v1beta1,name=vglanceapi.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &GlanceAPI{}
 

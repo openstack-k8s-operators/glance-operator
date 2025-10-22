@@ -53,7 +53,8 @@ import (
 	networkv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	cinderv1 "github.com/openstack-k8s-operators/cinder-operator/api/v1beta1"
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
-	"github.com/openstack-k8s-operators/glance-operator/controllers"
+	"github.com/openstack-k8s-operators/glance-operator/internal/controller"
+	glancewebhook "github.com/openstack-k8s-operators/glance-operator/internal/webhook/v1beta1"
 	horizonv1 "github.com/openstack-k8s-operators/horizon-operator/api/v1beta1"
 	rabbitmqv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
 	infra_test "github.com/openstack-k8s-operators/infra-operator/apis/test/helpers"
@@ -207,14 +208,14 @@ var _ = BeforeSuite(func() {
 	kclient, err := kubernetes.NewForConfig(cfg)
 	Expect(err).ToNot(HaveOccurred(), "failed to create kclient")
 
-	err = (&controllers.GlanceReconciler{
+	err = (&controller.GlanceReconciler{
 		Client:  k8sManager.GetClient(),
 		Scheme:  k8sManager.GetScheme(),
 		Kclient: kclient,
 	}).SetupWithManager(context.Background(), k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&controllers.GlanceAPIReconciler{
+	err = (&controller.GlanceAPIReconciler{
 		Client:  k8sManager.GetClient(),
 		Scheme:  k8sManager.GetScheme(),
 		Kclient: kclient,
@@ -224,10 +225,10 @@ var _ = BeforeSuite(func() {
 	// Acquire environmental defaults and initialize operator defaults with them
 	glancev1.SetupDefaults()
 
-	err = (&glancev1.Glance{}).SetupWebhookWithManager(k8sManager)
+	err = glancewebhook.SetupGlanceWebhookWithManager(k8sManager)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&glancev1.GlanceAPI{}).SetupWebhookWithManager(k8sManager)
+	err = glancewebhook.SetupGlanceAPIWebhookWithManager(k8sManager)
 	Expect(err).NotTo(HaveOccurred())
 	go func() {
 		defer GinkgoRecover()
