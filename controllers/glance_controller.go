@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/v2"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -1136,7 +1136,7 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 			ResourceName: lName,
 			DefaultLimit: lValue,
 		}
-		_, err = o.CreateOrUpdateRegisteredLimit(Log, m)
+		_, err = o.CreateOrUpdateRegisteredLimit(ctx, Log, m)
 		if err != nil {
 			return err
 		}
@@ -1199,12 +1199,12 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 	if err != nil {
 		return err
 	}
-	fetchRegLimits, err := o.ListRegisteredLimitsByServiceID(Log, instance.Status.ServiceID)
+	fetchRegLimits, err := o.ListRegisteredLimitsByServiceID(ctx, Log, instance.Status.ServiceID)
 	if err != nil {
 		return err
 	}
 	for _, l := range fetchRegLimits {
-		err = o.DeleteRegisteredLimit(Log, l.ID)
+		err = o.DeleteRegisteredLimit(ctx, Log, l.ID)
 		if err != nil {
 			return err
 		}
