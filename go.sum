@@ -100,10 +100,10 @@ github.com/openshift/api v0.0.0-20250711200046-c86d80652a9e h1:E1OdwSpqWuDPCedyU
 github.com/openshift/api v0.0.0-20250711200046-c86d80652a9e/go.mod h1:Shkl4HanLwDiiBzakv+con/aMGnVE2MAGvoKp5oyYUo=
 github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20251029142955-095055d49b67 h1:xaOl38YiTch4+n93Ly164/aVvFT6DId6x+b8H9fkAYc=
 github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20251029142955-095055d49b67/go.mod h1:O/dwPQD2HMk/tXrZTNndBBBZ4pWE2tz7yRska2ZnAgA=
-github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251027072356-bf38df61afe6 h1:fL7K+qYlJaLNtp1BD1NhaI3RoxKjUjVC9+dHw8vr7B4=
-github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251027072356-bf38df61afe6/go.mod h1:2TxZDR8H2IevsXCVpsoTElr8alzL7lV31q53qZjR5LE=
-github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251027233324-053afb24d94c h1:N/7dfFsOZwQQYPtg0sSCvsurLQC1RDFArYZ6j9b2x3Y=
-github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251027233324-053afb24d94c/go.mod h1:qq8BCRxTEmLRriUsQ4HeDUzqltWg32MQPDTMhgbBGK4=
+github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251031121623-c007712c23eb h1:SwSOxIzyp5XhxECx6rH3tV9wP2JHxxwzUzTZFt7r7Yc=
+github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251031121623-c007712c23eb/go.mod h1:2TxZDR8H2IevsXCVpsoTElr8alzL7lV31q53qZjR5LE=
+github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251030184102-82d2cbaafd35 h1:QFFGu93A+XCvDUxZIgfBE4gB5hEdVQAIw+E8dF1kP/E=
+github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251030184102-82d2cbaafd35/go.mod h1:qq8BCRxTEmLRriUsQ4HeDUzqltWg32MQPDTMhgbBGK4=
 github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20251027074845-ed8154b20ad1 h1:QohvX44nxoV2GwvvOURGXYyDuCn4SCrnwubTKJtzehY=
 github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20251027074845-ed8154b20ad1/go.mod h1:FMFoO4MjEQ85JpdLtDHxYSZxvJ9KzHua+HdKhpl0KRI=
 github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20251027074416-ab5c045dbe00 h1:Xih6tYYqiDVllo4fDGHqTPL+M2biO5YLOUmbiTqrW/I=
