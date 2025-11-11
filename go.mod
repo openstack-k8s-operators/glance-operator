@@ -7,18 +7,18 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.8.0
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
-	github.com/onsi/ginkgo/v2 v2.27.1
+	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
-	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20251029142955-095055d49b67
+	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20251103073010-539c82c84aa6
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251031121623-c007712c23eb
-	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251030184102-82d2cbaafd35
+	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251109081748-39fe063e0948
+	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251110170511-c2d4a351a7c3
 	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20251027074845-ed8154b20ad1
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20251027074416-ab5c045dbe00
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20251027074416-ab5c045dbe00
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20251027074416-ab5c045dbe00
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20251027074416-ab5c045dbe00
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20251015110425-ad0381ce8cd4
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20251103072528-9eb684fef4ef
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20251103072528-9eb684fef4ef
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20251103072528-9eb684fef4ef
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20251103072528-9eb684fef4ef
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20251110170510-e669472c745c
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.31.13
@@ -65,7 +65,6 @@ require (
 	github.com/rabbitmq/cluster-operator/v2 v2.16.0 // indirect
 	github.com/spf13/pflag v1.0.7 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
