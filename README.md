@@ -1,5 +1,6 @@
 # GLANCE-OPERATOR
 
+
 The glance-operator is an OpenShift Operator built using the
 [Operator Framework for Go](https://github.com/operator-framework). The
 Operator provides a way to install and manage the OpenStack Glance
