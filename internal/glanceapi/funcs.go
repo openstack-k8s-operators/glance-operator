@@ -3,7 +3,7 @@ package glanceapi
 import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 
-	glance "github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	glance "github.com/openstack-k8s-operators/glance-operator/internal/glance"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
