@@ -59,6 +59,7 @@ spec:
   - name: Glance Operator
     url: https://github.com/openstack-k8s-operators/glance-operator
   maturity: alpha
+  minKubeVersion: 0.0.0
   provider:
     name: Red Hat
     url: https://redhat.com
