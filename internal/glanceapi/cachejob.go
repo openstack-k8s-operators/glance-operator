@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
-	"github.com/openstack-k8s-operators/glance-operator/pkg/glance"
+	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
