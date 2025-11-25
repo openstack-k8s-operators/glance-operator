@@ -4,5 +4,5 @@ commands:
   - script: |
       oc kustomize ../../../../config/samples/layout/single | oc delete -n $NAMESPACE -f -
   - script: |
-      oc get pvc -l service=glance -o custom-columns=NAME:.metadata.name --no-headers | xargs -n 1 oc -n $NAMESPACE delete pvc
-      for pv in $(oc get pv | grep "Released.*glance" | cut -f 1 -d " "); do oc patch pv $pv -p '{"spec":{"claimRef": null}}'; done
+      oc -n $NAMESPACE get pvc -l service=glance -o custom-columns=NAME:.metadata.name --no-headers | xargs -n 1 oc -n $NAMESPACE delete pvc;
+      for pv in $(oc -n $NAMESPACE get pv | grep "Released.*glance" | cut -f 1 -d " "); do oc -n $NAMESPACE patch pv $pv -p '{"spec":{"claimRef": null}}'; done
