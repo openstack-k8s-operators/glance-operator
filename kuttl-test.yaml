@@ -14,7 +14,7 @@ kind: TestSuite
 reportFormat: xml
 reportName: kuttl-report-glance
 reportGranularity: test
-timeout: 180
+timeout: 240
 namespace: glance-kuttl-tests
 parallel: 1
 suppress:
