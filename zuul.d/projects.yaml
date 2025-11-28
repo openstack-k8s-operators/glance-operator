@@ -9,8 +9,6 @@
         - glance-operator-kuttl:
             dependencies:
               - openstack-k8s-operators-content-provider
-            voting: false
         - glance-operator-tempest:
             dependencies:
               - openstack-k8s-operators-content-provider
-            voting: false
