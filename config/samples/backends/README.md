@@ -439,11 +439,12 @@ spec:
 ```
 
 **Note:**
-If s3 is consumed via `https`, the option `s3_store_cacert` must be set, pointing
-to the `ca-bundle.crt` path.
+If s3 is consumed via `https`, the option `s3_store_cacert` is automatically set by
+the glance-operator, and it points to the `ca-bundle.crt` path.
 The `OpenStackControlPlane` is usually deployed by default with tls enabled,
 and a CA certificate is mounted to the Pod in `/etc/pki/tls/certs/ca-bundle.crt`.
-GlanceAPI `customServiceConfig` must be updated to reflect the following:
+However, in case a custom certificate (mounted to Pod) is required, GlanceAPI
+`customServiceConfig` must be updated to reflect the following:
 
 ```
 customServiceConfig: |
@@ -455,7 +456,7 @@ customServiceConfig: |
   [default_backend]
   s3_store_create_bucket_on_put = True
   s3_store_bucket_url_format = "path"
-  s3_store_cacert = "/etc/pki/tls/certs/ca-bundle.crt"
+  s3_store_cacert = "<path/to/the/custom/cert>"
 ```
 
 If you are using `install_yamls` and you already have `crc` running you
