@@ -22,6 +22,7 @@
         - glance
 
 - job:
+    # Test tentacle
     name: glance-operator-tempest
     parent: podified-multinode-hci-deployment-crc-1comp-backends
     vars:
