@@ -9,16 +9,16 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
-	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20251112192940-c164f45ce16c
+	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20251204132059-3dda695e96ae
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251112183144-e1bebaa9934e
-	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251120115815-53435d6cc70a
-	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20251111091844-9106e1a75519
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20251121160130-80ba19742e15
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20251121160130-80ba19742e15
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20251121160130-80ba19742e15
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20251121160130-80ba19742e15
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20251121102837-84780d6c3078
+	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251125145341-8bc80a35f9c5
+	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251205192058-5cfbada0ab96
+	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20251128160419-8b3a77972a77
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20251122131503-b76943960b6c
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20251122131503-b76943960b6c
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20251122131503-b76943960b6c
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20251122131503-b76943960b6c
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20251202153403-32849708ca7a
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.31.14
@@ -92,10 +92,10 @@ require (
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/term v0.34.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/term v0.35.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
