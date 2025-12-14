@@ -8,7 +8,7 @@ require (
 	github.com/gophercloud/gophercloud/v2 v2.8.0
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
 	github.com/onsi/ginkgo/v2 v2.27.2
-	github.com/onsi/gomega v1.38.2
+	github.com/onsi/gomega v1.38.3
 	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20251206170410-b8260d6400b7
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
 	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251206162807-8d3838121dac
