@@ -17,9 +17,10 @@ limitations under the License.
 package v1beta1
 
 import (
+	rabbitmqv1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
-	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -138,7 +139,12 @@ type GlanceSpecCore struct {
 	// RabbitMQ instance name
 	// Needed to request a transportURL that is created and used for notification
 	// purposes
-	NotificationBusInstance *string `json:"notificationBusInstance,omitempty"`
+	// deprecated: Use NotificationsBus.Cluster instead
+	NotificationBusInstance *string `json:"notificationBusInstance,omitempty" deprecated:"NotificationsBus.Cluster"`
+
+	// +kubebuilder:validation:Optional
+	// NotificationsBus configuration (username, vhost, and cluster) for notifications
+	NotificationsBus *rabbitmqv1.RabbitMqConfig `json:"notificationsBus,omitempty"`
 }
 
 // GlanceSpec defines the desired state of Glance
