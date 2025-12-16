@@ -185,6 +185,16 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		condition.UnknownCondition(condition.RoleBindingReadyCondition, condition.InitReason, condition.RoleBindingReadyInitMessage),
 		condition.UnknownCondition(condition.CronJobReadyCondition, condition.InitReason, condition.CronJobReadyInitMessage),
 	)
+
+	// Add NotificationBusInstance condition if configured
+	if instance.Spec.NotificationBusInstance != nil {
+		c := condition.UnknownCondition(
+			condition.NotificationBusInstanceReadyCondition,
+			condition.InitReason,
+			condition.NotificationBusInstanceReadyInitMessage)
+		cl.Set(c)
+	}
+
 	instance.Status.Conditions.Init(&cl)
 	instance.Status.ObservedGeneration = instance.Generation
 
@@ -202,14 +212,6 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 	if instance.Status.GlanceAPIReadyCounts == nil {
 		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
-	}
-
-	if instance.Spec.NotificationBusInstance != nil {
-		c := condition.UnknownCondition(
-			condition.NotificationBusInstanceReadyCondition,
-			condition.InitReason,
-			condition.NotificationBusInstanceReadyInitMessage)
-		cl.Set(c)
 	}
 
 	// Handle service delete
@@ -583,7 +585,11 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// create RabbitMQ transportURL CR and get the actual URL from the associated secret that is created
 	//
 	if instance.Spec.NotificationBusInstance != nil && *instance.Spec.NotificationBusInstance != "" {
-		notificationTransportURL, op, err := r.transportURLCreateOrUpdate(ctx, instance, serviceLabels)
+		notificationsRabbitMqConfig := rabbitmqv1.RabbitMqConfig{}
+		if instance.Spec.NotificationsBus != nil {
+			notificationsRabbitMqConfig = *instance.Spec.NotificationsBus
+		}
+		notificationTransportURL, op, err := r.transportURLCreateOrUpdate(ctx, instance, serviceLabels, notificationsRabbitMqConfig)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.NotificationBusInstanceReadyCondition,
@@ -1376,6 +1382,7 @@ func (r *GlanceReconciler) transportURLCreateOrUpdate(
 	ctx context.Context,
 	instance *glancev1.Glance,
 	serviceLabels map[string]string,
+	rabbitMqConfig rabbitmqv1.RabbitMqConfig,
 ) (*rabbitmqv1.TransportURL, controllerutil.OperationResult, error) {
 	transportURL := &rabbitmqv1.TransportURL{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1387,9 +1394,13 @@ func (r *GlanceReconciler) transportURLCreateOrUpdate(
 
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, transportURL, func() error {
 		transportURL.Spec.RabbitmqClusterName = *instance.Spec.NotificationBusInstance
-
-		err := controllerutil.SetControllerReference(instance, transportURL, r.Scheme)
-		return err
+		// Always set Username and Vhost to allow clearing/resetting them
+		// The infra-operator TransportURL controller handles empty values:
+		// - Empty Username: uses default cluster admin credentials
+		// - Empty Vhost: defaults to "/" vhost
+		transportURL.Spec.Username = rabbitMqConfig.User
+		transportURL.Spec.Vhost = rabbitMqConfig.Vhost
+		return controllerutil.SetControllerReference(instance, transportURL, r.Scheme)
 	})
 
 	return transportURL, op, err
