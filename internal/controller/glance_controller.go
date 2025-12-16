@@ -583,7 +583,11 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	// create RabbitMQ transportURL CR and get the actual URL from the associated secret that is created
 	//
 	if instance.Spec.NotificationBusInstance != nil && *instance.Spec.NotificationBusInstance != "" {
-		notificationTransportURL, op, err := r.transportURLCreateOrUpdate(ctx, instance, serviceLabels)
+		notificationsRabbitMqConfig := rabbitmqv1.RabbitMqConfig{}
+		if instance.Spec.NotificationsBus != nil {
+			notificationsRabbitMqConfig = *instance.Spec.NotificationsBus
+		}
+		notificationTransportURL, op, err := r.transportURLCreateOrUpdate(ctx, instance, serviceLabels, notificationsRabbitMqConfig)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.NotificationBusInstanceReadyCondition,
@@ -1373,6 +1377,7 @@ func (r *GlanceReconciler) transportURLCreateOrUpdate(
 	ctx context.Context,
 	instance *glancev1.Glance,
 	serviceLabels map[string]string,
+	rabbitMqConfig rabbitmqv1.RabbitMqConfig,
 ) (*rabbitmqv1.TransportURL, controllerutil.OperationResult, error) {
 	transportURL := &rabbitmqv1.TransportURL{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1384,9 +1389,12 @@ func (r *GlanceReconciler) transportURLCreateOrUpdate(
 
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, transportURL, func() error {
 		transportURL.Spec.RabbitmqClusterName = *instance.Spec.NotificationBusInstance
-
-		err := controllerutil.SetControllerReference(instance, transportURL, r.Scheme)
-		return err
+		if rabbitMqConfig.User != "" {
+			transportURL.Spec.Username = rabbitMqConfig.User
+		}
+		// Always set Vhost - empty string means use default "/" vhost
+		transportURL.Spec.Vhost = rabbitMqConfig.Vhost
+		return controllerutil.SetControllerReference(instance, transportURL, r.Scheme)
 	})
 
 	return transportURL, op, err
