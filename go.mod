@@ -12,7 +12,7 @@ require (
 	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20251206170410-b8260d6400b7
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
 	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20251206162807-8d3838121dac
-	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251206161943-786269345f99
+	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20251217131115-0f117a938d4e
 	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20251206133124-593df0a7a9e1
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20251122131503-b76943960b6c
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20251122131503-b76943960b6c

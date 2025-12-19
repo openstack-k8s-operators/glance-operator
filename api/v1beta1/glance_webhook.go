@@ -21,7 +21,10 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	rabbitmqv1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
+	common_webhook "github.com/openstack-k8s-operators/lib-common/modules/common/webhook"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,9 +32,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
-
-	common_webhook "github.com/openstack-k8s-operators/lib-common/modules/common/webhook"
 )
 
 // GlanceDefaults -
@@ -110,6 +110,14 @@ func (r *GlanceSpecCore) Default() {
 
 	if r.DBPurge.Schedule == "" {
 		r.DBPurge.Schedule = glanceDefaults.DBPurgeSchedule
+	}
+
+	// Default NotificationsBus if NotificationBusInstance is specified
+	if r.NotificationBusInstance != nil && *r.NotificationBusInstance != "" {
+		if r.NotificationsBus == nil {
+			r.NotificationsBus = &rabbitmqv1.RabbitMqConfig{}
+		}
+		rabbitmqv1.DefaultRabbitMqConfig(r.NotificationsBus, *r.NotificationBusInstance)
 	}
 	// When no glanceAPI(s) are specified in the top-level CR
 	// we build one by default, but we set replicas=0 and we
@@ -351,6 +359,14 @@ func (r *GlanceSpec) ValidateUpdate(old GlanceSpec, basePath *field.Path, namesp
 // ValidateUpdate -
 func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path, namespace string) field.ErrorList {
 	var allErrs field.ErrorList
+
+	// Reject changes to deprecated NotificationBusInstance field
+	if r.NotificationBusInstance != nil && old.NotificationBusInstance != nil &&
+		*r.NotificationBusInstance != *old.NotificationBusInstance {
+		allErrs = append(allErrs, field.Forbidden(
+			basePath.Child("notificationBusInstance"),
+			"notificationBusInstance is deprecated and cannot be changed. Please use notificationsBus.cluster instead"))
+	}
 
 	// fail if a wrong topology is referenced
 	allErrs = append(allErrs, topologyv1.ValidateTopologyRef(
