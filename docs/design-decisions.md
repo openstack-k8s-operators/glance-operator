@@ -482,6 +482,7 @@ spec:
             swift_store_endpoint_type = internalURL
             swift_store_user = service:glance
             swift_store_key = {{ .ServicePassword }}
+            swift_store_region = {{ .Region }}
           preserveJobs: false
           replicas: 3
         default1:

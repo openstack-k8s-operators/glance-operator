@@ -31,5 +31,6 @@ patches:
         swift_store_key = {{ .ServicePassword }}
         swift_store_user = service:glance
         swift_store_endpoint_type = internalURL
+        swift_store_region = {{ .Region }}
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
