@@ -26,8 +26,10 @@ import (
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
+	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 
 	//revive:disable-next-line:dot-imports
@@ -1449,6 +1451,121 @@ var _ = Describe("Glanceapi controller", func() {
 				conf := string(confSecret.Data["00-config.conf"])
 				g.Expect(string(conf)).Should(
 					ContainSubstring("auth_url=%s", newInternalEndpoint))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
+	When("An ApplicationCredential is created for Glance", func() {
+		var (
+			acName                string
+			acSecretName          string
+			servicePasswordSecret string
+			passwordSelector      string
+		)
+		BeforeEach(func() {
+			servicePasswordSecret = "ac-test-osp-secret" //nolint:gosec // G101
+			passwordSelector = "GlancePassword"
+
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceSecret(glanceTest.Instance.Namespace, servicePasswordSecret))
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+
+			acName = fmt.Sprintf("ac-%s", glance.ServiceName)
+			acSecretName = acName + "-secret"
+			acSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: glanceTest.Instance.Namespace,
+					Name:      acSecretName,
+				},
+				Data: map[string][]byte{
+					keystonev1.ACIDSecretKey:     []byte("test-ac-id"),
+					keystonev1.ACSecretSecretKey: []byte("test-ac-secret"),
+				},
+			}
+			DeferCleanup(k8sClient.Delete, ctx, acSecret)
+			Expect(k8sClient.Create(ctx, acSecret)).To(Succeed())
+
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					glanceTest.GlanceDatabaseName.Name,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}}}))
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(glanceTest.Instance.Namespace, MemcachedInstance, memcachedv1.MemcachedSpec{}))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			// Create AC CR
+			ac := &keystonev1.KeystoneApplicationCredential{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: glanceTest.Instance.Namespace,
+					Name:      acName,
+				},
+				Spec: keystonev1.KeystoneApplicationCredentialSpec{
+					UserName:         glance.ServiceName,
+					Secret:           servicePasswordSecret,
+					PasswordSelector: passwordSelector,
+					Roles:            []string{"admin", "member"},
+					AccessRules:      []keystonev1.ACRule{{Service: "identity", Method: "POST", Path: "/auth/tokens"}},
+					ExpirationDays:   30,
+					GracePeriodDays:  5,
+				},
+			}
+			DeferCleanup(k8sClient.Delete, ctx, ac)
+			Expect(k8sClient.Create(ctx, ac)).To(Succeed())
+
+			// Simulate AC controller updating the status
+			fetched := &keystonev1.KeystoneApplicationCredential{}
+			key := types.NamespacedName{Namespace: ac.Namespace, Name: ac.Name}
+			Expect(k8sClient.Get(ctx, key, fetched)).To(Succeed())
+
+			fetched.Status.SecretName = acSecretName
+			now := metav1.Now()
+			readyCond := condition.Condition{
+				Type:               condition.ReadyCondition,
+				Status:             corev1.ConditionTrue,
+				Reason:             condition.ReadyReason,
+				Message:            condition.ReadyMessage,
+				LastTransitionTime: now,
+			}
+			fetched.Status.Conditions = condition.Conditions{readyCond}
+			Expect(k8sClient.Status().Update(ctx, fetched)).To(Succeed())
+
+			// Create GlanceAPI using the service password secret
+			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
+			spec["secret"] = servicePasswordSecret
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+		})
+
+		It("should render ApplicationCredential auth in 00-config.conf", func() {
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+
+			// Wait for the config to be generated and updated with AC auth
+			Eventually(func(g Gomega) {
+				cfgSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(cfgSecret).NotTo(BeNil())
+
+				conf := string(cfgSecret.Data["00-config.conf"])
+
+				// AC auth is configured
+				g.Expect(conf).To(ContainSubstring("auth_type = v3applicationcredential"))
+				g.Expect(conf).To(ContainSubstring("application_credential_id = test-ac-id"))
+				g.Expect(conf).To(ContainSubstring("application_credential_secret = test-ac-secret"))
+
+				// Password auth fields should not be present
+				g.Expect(conf).NotTo(ContainSubstring("auth_type = password"))
+				g.Expect(conf).NotTo(ContainSubstring("username = glance"))
+				g.Expect(conf).NotTo(ContainSubstring("project_name = service"))
 			}, timeout, interval).Should(Succeed())
 		})
 	})

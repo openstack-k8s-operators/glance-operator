@@ -58,6 +58,7 @@ const (
 	tlsAPIPublicField          = ".spec.tls.api.public.secretName"
 	topologyField              = ".spec.topologyRef.Name"
 	notificationBusSecretField = ".spec.notificationBusSecret"
+	authAppCredSecretField     = ".spec.auth.applicationCredentialSecret" // #nosec G101
 )
 
 var (
@@ -71,6 +72,7 @@ var (
 		tlsAPIPublicField,
 		topologyField,
 		notificationBusSecretField,
+		authAppCredSecretField,
 	}
 )
 

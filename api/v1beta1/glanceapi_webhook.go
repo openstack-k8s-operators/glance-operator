@@ -17,13 +17,15 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
+	"github.com/google/go-cmp/cmp"
+	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"fmt"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	"github.com/google/go-cmp/cmp"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // GlanceAPIDefaults -
@@ -55,6 +57,10 @@ func (r *GlanceAPI) Default() {
 func (spec *GlanceAPISpec) Default() {
 	if spec.GlanceAPITemplate.ContainerImage == "" {
 		spec.GlanceAPITemplate.ContainerImage = glanceAPIDefaults.ContainerImageURL
+	}
+	// Default ApplicationCredentialSecret to standard AC secret name if not specified
+	if spec.GlanceAPITemplate.Auth.ApplicationCredentialSecret == "" {
+		spec.GlanceAPITemplate.Auth.ApplicationCredentialSecret = keystonev1.GetACSecretName("glance")
 	}
 }
 
