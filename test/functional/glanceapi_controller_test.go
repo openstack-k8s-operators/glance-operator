@@ -215,10 +215,10 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(section).ShouldNot(BeNil(), "Should find [oslo_limit] section")
 			Expect(section.Key("endpoint_region_name").String()).Should(Equal(testRegion))
 
-			// Verify region_name in [barbican]
+			// Verify barbican_region_name in [barbican]
 			section = cfg.Section("barbican")
 			Expect(section).ShouldNot(BeNil(), "Should find [barbican] section")
-			Expect(section.Key("region_name").String()).Should(Equal(testRegion))
+			Expect(section.Key("barbican_region_name").String()).Should(Equal(testRegion))
 		})
 	})
 	When("the Secret is created with quorum queues enabled", func() {
