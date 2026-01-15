@@ -18,6 +18,7 @@ spec:
         swift_store_endpoint_type = internalURL
         swift_store_user = service:glance
         swift_store_key = {{ .ServicePassword }}
+        swift_store_region = {{ .Region }}
         [image_format]
         disk_formats=raw,iso
       glanceAPIs:

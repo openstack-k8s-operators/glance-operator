@@ -28,7 +28,10 @@ import (
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
+	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	"gopkg.in/ini.v1"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	//revive:disable-next-line:dot-imports
 	. "github.com/openstack-k8s-operators/lib-common/modules/common/test/helpers"
@@ -155,6 +158,67 @@ var _ = Describe("Glanceapi controller", func() {
 				glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
 				g.Expect(glanceAPI.Status.Hash).Should(HaveKeyWithValue("input", Not(BeEmpty())))
 			}, timeout, interval).Should(Succeed())
+		})
+		It("includes region_name in config when KeystoneAPI has region set and endpointID exists", func() {
+			const testRegion = "regionTwo"
+			// Find the KeystoneAPI created in BeforeEach
+			keystoneAPIList := &keystonev1.KeystoneAPIList{}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.List(ctx, keystoneAPIList, client.InNamespace(glanceTest.Instance.Namespace))).Should(Succeed())
+				g.Expect(keystoneAPIList.Items).ShouldNot(BeEmpty())
+			}, timeout, interval).Should(Succeed())
+			keystoneAPIName := types.NamespacedName{
+				Namespace: keystoneAPIList.Items[0].Namespace,
+				Name:      keystoneAPIList.Items[0].Name,
+			}
+			// Update KeystoneAPI status to include region
+			keystoneAPI := keystone.GetKeystoneAPI(keystoneAPIName)
+			keystoneAPI.Status.Region = testRegion
+			keystoneAPI.Status.APIEndpoints = map[string]string{
+				"internal": "http://keystone-internal-openstack.testing",
+				"public":   "http://keystone-public-openstack.testing",
+			}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Status().Update(ctx, keystoneAPI.DeepCopy())).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			// Create a KeystoneEndpoint so that endpointID is available
+			// This is needed because Region is only set when endpointID exists
+			keystone.CreateKeystoneEndpoint(glanceTest.GlanceSingle)
+			DeferCleanup(keystone.DeleteKeystoneEndpoint, glanceTest.GlanceSingle)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
+
+			// Trigger reconciliation
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+
+			secretDataMap := th.GetSecret(glanceTest.GlanceSingleConfigMapData)
+			Expect(secretDataMap).ShouldNot(BeNil())
+			Expect(secretDataMap.Data).Should(HaveKey("00-config.conf"))
+			configData := string(secretDataMap.Data["00-config.conf"])
+
+			// Parse the INI file to properly access sections
+			cfg, err := ini.Load([]byte(configData))
+			Expect(err).ShouldNot(HaveOccurred(), "Should be able to parse config as INI")
+
+			// Verify region_name in [keystone_authtoken]
+			section := cfg.Section("keystone_authtoken")
+			Expect(section).ShouldNot(BeNil(), "Should find [keystone_authtoken] section")
+			Expect(section.Key("region_name").String()).Should(Equal(testRegion))
+
+			// Verify endpoint_region_name in [oslo_limit]
+			section = cfg.Section("oslo_limit")
+			Expect(section).ShouldNot(BeNil(), "Should find [oslo_limit] section")
+			Expect(section.Key("endpoint_region_name").String()).Should(Equal(testRegion))
+
+			// Verify barbican_region_name in [barbican]
+			section = cfg.Section("barbican")
+			Expect(section).ShouldNot(BeNil(), "Should find [barbican] section")
+			Expect(section.Key("barbican_region_name").String()).Should(Equal(testRegion))
 		})
 	})
 	When("the Secret is created with quorum queues enabled", func() {
