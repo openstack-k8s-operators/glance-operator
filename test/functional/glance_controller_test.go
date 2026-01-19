@@ -127,12 +127,7 @@ var _ = Describe("Glance controller", func() {
 			// (Updates) We let the Glance webhooks override the top-level CR
 			// ContainerImage, but we pass an override for each glanceAPI
 			// instance, so we can manage them independently
-			Expect(glance.Spec.ContainerImage).To(Equal(glancev1.GlanceAPIContainerImage))
-			for _, api := range glance.Spec.GlanceAPIs {
-				// We expect the containerImage enforced in the Spec by GlanceAPI()
-				// function
-				Expect(api.ContainerImage).To(Equal(glanceTest.ContainerImage))
-			}
+			Expect(glance.Spec.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
 		})
 		It("should not have a pvc yet", func() {
 			AssertPVCDoesNotExist(glanceTest.Instance)
@@ -253,12 +248,6 @@ var _ = Describe("Glance controller", func() {
 			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
 			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
-		})
-		It("has the expected container image defaults", func() {
-			glanceDefault := GetGlance(glanceTest.Instance)
-			for _, api := range glanceDefault.Spec.GlanceAPIs {
-				Expect(api.ContainerImage).To(Equal(util.GetEnvVar("RELATED_IMAGE_GLANCE_API_IMAGE_URL_DEFAULT", glancev1.GlanceAPIContainerImage)))
-			}
 		})
 		It("has a dummy backend set when and empty spec is passed", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)

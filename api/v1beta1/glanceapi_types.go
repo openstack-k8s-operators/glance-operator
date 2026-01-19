@@ -38,6 +38,10 @@ type GlanceAPISpec struct {
 	// Input parameter coming from glance template
 	GlanceAPITemplate `json:",inline"`
 
+	// +kubebuilder:validation:Required
+	// ContainerImage - GlanceAPI Container Image URL
+	ContainerImage string `json:"containerImage"`
+
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=internal;external;single;edge
 	// +kubebuilder:default=external
