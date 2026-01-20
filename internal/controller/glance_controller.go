@@ -269,7 +269,7 @@ func (r *GlanceReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manage
 	// TransportURL created and used by Glance CRs.
 	transportURLSecretFn := func(_ context.Context, o client.Object) []reconcile.Request {
 		result := []reconcile.Request{}
-		// get all Manila CRs
+		// get all Glance CRs
 		glances := &glancev1.GlanceList{}
 		listOpts := []client.ListOption{
 			client.InNamespace(o.GetNamespace()),
@@ -950,6 +950,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	apiSpec := glancev1.GlanceAPISpec{
 		GlanceAPITemplate:     apiTemplate,
 		APIType:               apiType,
+		ContainerImage:        instance.Spec.ContainerImage,
 		DatabaseHostname:      instance.Status.DatabaseHostname,
 		DatabaseAccount:       instance.Spec.DatabaseAccount,
 		Secret:                instance.Spec.Secret,

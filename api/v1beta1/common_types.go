@@ -54,10 +54,6 @@ type GlanceAPITemplate struct {
 	// Replicas of glance API to run
 	Replicas *int32 `json:"replicas"`
 
-	// +kubebuilder:validation:Required
-	// Glance Container Image URL (will be set to environmental default if empty)
-	ContainerImage string `json:"containerImage"`
-
 	// +kubebuilder:validation:Optional
 	// NodeSelector to target subset of worker nodes running this service
 	NodeSelector *map[string]string `json:"nodeSelector,omitempty"`

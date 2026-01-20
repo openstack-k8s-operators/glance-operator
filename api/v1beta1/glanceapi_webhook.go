@@ -53,8 +53,8 @@ func (r *GlanceAPI) Default() {
 
 // Default - set defaults for this Glance spec
 func (spec *GlanceAPISpec) Default() {
-	if spec.GlanceAPITemplate.ContainerImage == "" {
-		spec.GlanceAPITemplate.ContainerImage = glanceAPIDefaults.ContainerImageURL
+	if spec.ContainerImage == "" {
+		spec.ContainerImage = glanceAPIDefaults.ContainerImageURL
 	}
 }
 

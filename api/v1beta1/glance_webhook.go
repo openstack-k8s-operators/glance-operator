@@ -66,6 +66,9 @@ var _ webhook.Defaulter = &Glance{}
 func (r *Glance) Default() {
 	glancelog.Info("default", "name", r.Name)
 
+	// .Spec.ContainerImage is inherited by all the GlanceAPI instances.
+	// It's not supported to deploy different ContainerImages for different
+	// instances.
 	if len(r.Spec.ContainerImage) == 0 {
 		r.Spec.ContainerImage = glanceDefaults.ContainerImageURL
 	}
@@ -116,7 +119,7 @@ func (r *GlanceSpecCore) Default() {
 	// build a "CustomServiceConfig" template that should be
 	// customized: by doing this we force to provide the
 	// required parameters
-	if r.GlanceAPIs == nil || len(r.GlanceAPIs) == 0 {
+	if len(r.GlanceAPIs) == 0 {
 		// keystoneEndpoint will match with the only instance
 		// deployed by default
 		r.KeystoneEndpoint = "default"
@@ -129,11 +132,6 @@ func (r *GlanceSpecCore) Default() {
 	}
 
 	for key, glanceAPI := range r.GlanceAPIs {
-		// Check the sub-cr ContainerImage parameter
-		if glanceAPI.ContainerImage == "" {
-			glanceAPI.ContainerImage = glanceDefaults.ContainerImageURL
-			r.GlanceAPIs[key] = glanceAPI
-		}
 		if glanceAPI.ImageCache.CleanerScheduler == "" {
 			glanceAPI.ImageCache.CleanerScheduler = glanceDefaults.CleanerSchedule
 			r.GlanceAPIs[key] = glanceAPI
