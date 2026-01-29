@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/ginkgo/v2" //revive:disable:dot-imports
 	. "github.com/onsi/gomega"    //revive:disable:dot-imports
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
@@ -1513,6 +1514,162 @@ var _ = Describe("Glanceapi controller", func() {
 				conf := string(confSecret.Data["00-config.conf"])
 				g.Expect(string(conf)).Should(
 					ContainSubstring("auth_url=%s", newInternalEndpoint))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
+	When("An ApplicationCredential is created for Glance", func() {
+		var (
+			acName       string
+			acSecretName string
+		)
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceSecret(glanceTest.Instance.Namespace, ACTestServicePasswordSecret))
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(glanceTest.Instance.Namespace, MemcachedInstance, memcachedv1.MemcachedSpec{}))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					glanceTest.GlanceDatabaseName.Name,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}}}))
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+
+			acName = fmt.Sprintf("ac-%s", glance.ServiceName)
+			acSecretName = acName + "-secret"
+			DeferCleanup(k8sClient.Delete, ctx, CreateACSecret(glanceTest.Instance.Namespace, acSecretName))
+
+			// Create AC CR using helper
+			ac := GetDefaultGlanceAC(glanceTest.Instance.Namespace, acName)
+			DeferCleanup(k8sClient.Delete, ctx, ac)
+			Expect(k8sClient.Create(ctx, ac)).To(Succeed())
+
+			// Simulate AC controller updating the status
+			fetched := &keystonev1.KeystoneApplicationCredential{}
+			key := types.NamespacedName{Namespace: ac.Namespace, Name: ac.Name}
+			Expect(k8sClient.Get(ctx, key, fetched)).To(Succeed())
+
+			fetched.Status.SecretName = acSecretName
+			now := metav1.Now()
+			readyCond := condition.Condition{
+				Type:               condition.ReadyCondition,
+				Status:             corev1.ConditionTrue,
+				Reason:             condition.ReadyReason,
+				Message:            condition.ReadyMessage,
+				LastTransitionTime: now,
+			}
+			fetched.Status.Conditions = condition.Conditions{readyCond}
+			Expect(k8sClient.Status().Update(ctx, fetched)).To(Succeed())
+
+			// Create standalone GlanceAPI CR with AC secret using helper
+			spec := GetGlanceAPISpecWithAC(GlanceAPITypeInternal, acSecretName)
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+		})
+
+		It("should render ApplicationCredential auth in 00-config.conf", func() {
+			// Wait for the config to be generated and updated with AC auth
+			Eventually(func(g Gomega) {
+				cfgSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(cfgSecret).NotTo(BeNil())
+
+				conf := string(cfgSecret.Data["00-config.conf"])
+
+				// AC auth is configured
+				g.Expect(conf).To(ContainSubstring("auth_type = v3applicationcredential"))
+				g.Expect(conf).To(ContainSubstring("application_credential_id = test-ac-id"))
+				g.Expect(conf).To(ContainSubstring("application_credential_secret = test-ac-secret"))
+
+				// Password auth fields should not be present
+				g.Expect(conf).NotTo(ContainSubstring("auth_type = password"))
+				g.Expect(conf).NotTo(ContainSubstring("username = glance"))
+				g.Expect(conf).NotTo(ContainSubstring("project_name = service"))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("should update config when AC secret is updated", func() {
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+
+			// Wait for initial AC config
+			Eventually(func(g Gomega) {
+				cfgSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(cfgSecret).NotTo(BeNil())
+				conf := string(cfgSecret.Data["00-config.conf"])
+				g.Expect(conf).To(ContainSubstring("application_credential_id = test-ac-id"))
+			}, timeout, interval).Should(Succeed())
+
+			// Update the AC secret with new values
+			secret := th.GetSecret(types.NamespacedName{
+				Namespace: glanceTest.Instance.Namespace,
+				Name:      acSecretName,
+			})
+			secret.Data[keystonev1.ACIDSecretKey] = []byte("updated-ac-id")
+			secret.Data[keystonev1.ACSecretSecretKey] = []byte("updated-ac-secret")
+			Expect(k8sClient.Update(ctx, &secret)).Should(Succeed())
+
+			// Wait for GlanceAPI ServiceConfig update
+			Eventually(func(_ Gomega) {
+				th.ExpectCondition(
+					glanceTest.GlanceInternal,
+					ConditionGetterFunc(GlanceAPIConditionGetter),
+					condition.InputReadyCondition,
+					corev1.ConditionTrue,
+				)
+			}, timeout, interval).Should(Succeed())
+
+			// Verify config is updated with new values
+			Eventually(func(g Gomega) {
+				cfgSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(cfgSecret).NotTo(BeNil())
+				conf := string(cfgSecret.Data["00-config.conf"])
+				g.Expect(conf).To(ContainSubstring("application_credential_id = updated-ac-id"))
+				g.Expect(conf).To(ContainSubstring("application_credential_secret = updated-ac-secret"))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("should fallback to password auth when AC is removed", func() {
+			// Wait for initial AC config
+			Eventually(func(g Gomega) {
+				cfgSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(cfgSecret).NotTo(BeNil())
+				conf := string(cfgSecret.Data["00-config.conf"])
+				g.Expect(conf).To(ContainSubstring("auth_type = v3applicationcredential"))
+			}, timeout, interval).Should(Succeed())
+
+			// Remove AC secret reference from GlanceAPI CR
+			Eventually(func(g Gomega) {
+				glanceAPIInstance := GetGlanceAPI(glanceTest.GlanceInternal)
+				glanceAPIInstance.Spec.Auth.ApplicationCredentialSecret = ""
+				g.Expect(k8sClient.Update(ctx, glanceAPIInstance)).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			// Wait for GlanceAPI ServiceConfig update
+			Eventually(func(_ Gomega) {
+				th.ExpectCondition(
+					glanceTest.GlanceInternal,
+					ConditionGetterFunc(GlanceAPIConditionGetter),
+					condition.InputReadyCondition,
+					corev1.ConditionTrue,
+				)
+			}, timeout, interval).Should(Succeed())
+
+			// Verify config falls back to password auth
+			Eventually(func(g Gomega) {
+				cfgSecret := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(cfgSecret).NotTo(BeNil())
+				conf := string(cfgSecret.Data["00-config.conf"])
+				g.Expect(conf).To(ContainSubstring("auth_type = password"))
+				g.Expect(conf).To(ContainSubstring("username = glance"))
 			}, timeout, interval).Should(Succeed())
 		})
 	})

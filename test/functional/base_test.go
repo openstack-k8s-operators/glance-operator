@@ -26,6 +26,8 @@ import (
 
 	. "github.com/onsi/gomega" //revive:disable:dot-imports
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
+	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -445,4 +447,53 @@ func CreateGlanceMessageBusSecret(namespace string, name string) *corev1.Secret 
 	)
 	logger.Info("Secret created", "name", name)
 	return s
+}
+
+// GetGlanceAPISpecWithAC returns a GlanceAPI spec with Application Credential configured
+func GetGlanceAPISpecWithAC(apiType APIType, acSecretName string) map[string]interface{} {
+	spec := CreateGlanceAPISpec(apiType)
+	spec["secret"] = ACTestServicePasswordSecret
+	spec["auth"] = map[string]interface{}{
+		"applicationCredentialSecret": acSecretName,
+	}
+	return spec
+}
+
+// GetDefaultGlanceAC returns a default KeystoneApplicationCredential spec for testing
+func GetDefaultGlanceAC(namespace string, acName string) *keystonev1.KeystoneApplicationCredential {
+	return &keystonev1.KeystoneApplicationCredential{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      acName,
+		},
+		Spec: keystonev1.KeystoneApplicationCredentialSpec{
+			UserName:         glance.ServiceName,
+			Secret:           ACTestServicePasswordSecret,
+			PasswordSelector: ACTestPasswordSelector,
+			Roles:            []string{"admin", "member"},
+			AccessRules:      []keystonev1.ACRule{{Service: "identity", Method: "POST", Path: "/auth/tokens"}},
+			ExpirationDays:   30,
+			GracePeriodDays:  5,
+		},
+	}
+}
+
+// CreateACSecret creates an Application Credential secret for testing
+func CreateACSecret(namespace string, secretName string) *corev1.Secret {
+	return th.CreateSecret(
+		types.NamespacedName{Namespace: namespace, Name: secretName},
+		map[string][]byte{
+			keystonev1.ACIDSecretKey:     []byte("test-ac-id"),
+			keystonev1.ACSecretSecretKey: []byte("test-ac-secret"),
+		},
+	)
+}
+
+// GetKeystoneAC fetches a KeystoneApplicationCredential by name
+func GetKeystoneAC(name types.NamespacedName) *keystonev1.KeystoneApplicationCredential {
+	instance := &keystonev1.KeystoneApplicationCredential{}
+	Eventually(func(g Gomega) {
+		g.Expect(k8sClient.Get(ctx, name, instance)).Should(Succeed())
+	}, timeout, interval).Should(Succeed())
+	return instance
 }

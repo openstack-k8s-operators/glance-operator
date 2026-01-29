@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,7 +30,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 
 	common_webhook "github.com/openstack-k8s-operators/lib-common/modules/common/webhook"
 )
@@ -156,7 +156,6 @@ func (r *GlanceSpecCore) Default() {
 		}
 	}
 }
-
 
 // Check if File is used as a backend for Glance
 func isFileBackend(customServiceConfig string, topLevel bool) bool {
