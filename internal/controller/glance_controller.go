@@ -1124,6 +1124,7 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 		return err
 	}
 	scope := &gophercloud.AuthScope{System: true}
+	//nolint:staticcheck // SA1019: Using deprecated function until migration is complete
 	o, _, err := keystonev1.GetScopedAdminServiceClient(ctx, h, keystoneAPI, scope)
 	if err != nil {
 		return err
@@ -1196,6 +1197,7 @@ func (r *GlanceReconciler) registeredLimitsDelete(
 		return err
 	}
 	scope := &gophercloud.AuthScope{System: true}
+	//nolint:staticcheck // SA1019: Using deprecated function until migration is complete
 	o, _, err := keystonev1.GetScopedAdminServiceClient(ctx, h, keystoneAPI, scope)
 	if err != nil {
 		return err
