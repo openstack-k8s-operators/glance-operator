@@ -801,6 +801,93 @@ var _ = Describe("Glance controller", func() {
 		})
 	})
 
+	When("Glance is created with RabbitMQ user and vhost", func() {
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			spec := GetGlanceDefaultSpec()
+			spec["notificationBusInstance"] = glanceTest.NotificationsBusInstance
+			spec["notificationsBus"] = map[string]interface{}{
+				"cluster": "rabbitmq",
+				"user":    "glance-user",
+				"vhost":   "glance-vhost",
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, spec))
+		})
+		It("sets custom RabbitMQ user and vhost in TransportURL", func() {
+			Eventually(func(g Gomega) {
+				transportURL := infra.GetTransportURL(glanceTest.GlanceTransportURL)
+				g.Expect(transportURL.Spec.Username).To(Equal("glance-user"))
+				g.Expect(transportURL.Spec.Vhost).To(Equal("glance-vhost"))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
+	When("Glance is created without custom RabbitMQ config", func() {
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			spec := GetGlanceDefaultSpec()
+			spec["notificationBusInstance"] = glanceTest.NotificationsBusInstance
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, spec))
+		})
+		It("uses default RabbitMQ configuration in TransportURL", func() {
+			Eventually(func(g Gomega) {
+				transportURL := infra.GetTransportURL(glanceTest.GlanceTransportURL)
+				g.Expect(transportURL.Spec.Username).To(BeEmpty())
+				g.Expect(transportURL.Spec.Vhost).To(BeEmpty())
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
+	When("Glance starts with notifications enabled and then disables them", func() {
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			spec := GetGlanceDefaultSpec()
+			spec["notificationBusInstance"] = glanceTest.NotificationsBusInstance
+			spec["notificationsBus"] = map[string]interface{}{
+				"cluster": "rabbitmq",
+				"user":    "glance-notifications",
+				"vhost":   "glance-notifications-vhost",
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, spec))
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
+		})
+
+		It("should initially have notifications enabled", func() {
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				g.Expect(glance.Status.NotificationBusSecret).ToNot(BeEmpty())
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("should disable notifications when notificationBusInstance and notificationsBus are removed", func() {
+			// Verify notifications are initially enabled
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				g.Expect(glance.Status.NotificationBusSecret).ToNot(BeEmpty())
+			}, timeout, interval).Should(Succeed())
+
+			// Update the Glance spec to remove notifications
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				glance.Spec.NotificationBusInstance = nil
+				glance.Spec.NotificationsBus = nil
+				g.Expect(k8sClient.Update(ctx, glance)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			// Wait for notifications to be disabled
+			Eventually(func(g Gomega) {
+				glance := GetGlance(glanceTest.Instance)
+				g.Expect(glance.Status.NotificationBusSecret).To(BeEmpty())
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
 	// Run MariaDBAccount suite tests.  these are pre-packaged ginkgo tests
 	// that exercise standard account create / update patterns that should be
 	// common to all controllers that ensure MariaDBAccount CRs.
