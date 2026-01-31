@@ -5,7 +5,7 @@
     attempts: 1
     required-projects:
       - github.com/openstack-k8s-operators/glance-operator
-    irrelevant-files:
+    irrelevant-files: &common-irrelevant-files
       - .*/*.md
       - ^\..*$
       - ^LICENSE$
@@ -15,6 +15,7 @@
       - ^README.md$
       - tests?\/functional
       - ^renovate.json$
+      - ^docs/
     vars:
       cifmw_install_yamls_sdk_version: v1.41.1
       cifmw_cls_pv_count: 20
@@ -24,6 +25,7 @@
 - job:
     name: glance-operator-tempest
     parent: podified-multinode-hci-deployment-crc-1comp-backends
+    irrelevant-files: *common-irrelevant-files
     vars:
       cifmw_ceph_daemons_layout:
         rgw_enabled: false
