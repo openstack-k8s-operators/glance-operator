@@ -59,6 +59,10 @@ const (
 	GlanceCephExtraMountsPath = "/etc/ceph"
 	// GlanceCephExtraMountsSecretName -
 	GlanceCephExtraMountsSecretName = "ceph"
+	// ACTestServicePasswordSecret - secret name for AC test service password
+	ACTestServicePasswordSecret = "ac-test-osp-secret" // #nosec G101
+	// ACTestPasswordSelector - password selector for AC test
+	ACTestPasswordSelector = "GlancePassword"
 )
 
 // GlanceTestData is the data structure used to provide input data to envTest

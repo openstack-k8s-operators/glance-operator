@@ -48,6 +48,8 @@ import (
 // Common static errors for glance controllers
 var (
 	ErrNetworkAttachmentConfig = errors.New("not all pods have interfaces with ips as configured in NetworkAttachments")
+	ErrACSecretNotFound        = errors.New("ApplicationCredential secret not found")
+	ErrACSecretMissingKeys     = errors.New("ApplicationCredential secret missing required keys")
 )
 
 // fields to index to reconcile when change
@@ -58,6 +60,7 @@ const (
 	tlsAPIPublicField          = ".spec.tls.api.public.secretName"
 	topologyField              = ".spec.topologyRef.Name"
 	notificationBusSecretField = ".spec.notificationBusSecret"
+	authAppCredSecretField     = ".spec.auth.applicationCredentialSecret" // #nosec G101
 )
 
 var (
@@ -71,6 +74,7 @@ var (
 		tlsAPIPublicField,
 		topologyField,
 		notificationBusSecretField,
+		authAppCredSecretField,
 	}
 )
 
