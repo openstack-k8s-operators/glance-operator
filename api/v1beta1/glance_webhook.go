@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
+	common_webhook "github.com/openstack-k8s-operators/lib-common/modules/common/webhook"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,8 +31,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-
-	common_webhook "github.com/openstack-k8s-operators/lib-common/modules/common/webhook"
 )
 
 // GlanceDefaults -
@@ -114,6 +113,10 @@ func (r *GlanceSpecCore) Default() {
 	if r.DBPurge.Schedule == "" {
 		r.DBPurge.Schedule = glanceDefaults.DBPurgeSchedule
 	}
+
+	// NotificationsBus.Cluster is not defaulted - it must be explicitly set if NotificationsBus is configured
+	// Migration from deprecated fields is handled by openstack-operator
+	// This ensures users make a conscious choice about which cluster to use for notifications
 	// When no glanceAPI(s) are specified in the top-level CR
 	// we build one by default, but we set replicas=0 and we
 	// build a "CustomServiceConfig" template that should be
@@ -202,12 +205,64 @@ func (r *GlanceSpecCore) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel 
 	return false, ""
 }
 
+// getDeprecatedFields returns the centralized list of deprecated fields for GlanceSpecCore
+func (spec *GlanceSpecCore) getDeprecatedFields(old *GlanceSpecCore) []common_webhook.DeprecatedFieldUpdate {
+	// Get new field value (handle nil NotificationsBus)
+	var newNotifBusCluster *string
+	if spec.NotificationsBus != nil {
+		newNotifBusCluster = &spec.NotificationsBus.Cluster
+	}
+
+	deprecatedFields := []common_webhook.DeprecatedFieldUpdate{
+		{
+			DeprecatedFieldName: "notificationBusInstance",
+			NewFieldPath:        []string{"notificationsBus", "cluster"},
+			NewDeprecatedValue:  spec.NotificationBusInstance,
+			NewValue:            newNotifBusCluster,
+		},
+	}
+
+	// If old spec is provided (UPDATE operation), add old values
+	if old != nil {
+		deprecatedFields[0].OldDeprecatedValue = old.NotificationBusInstance
+	}
+
+	return deprecatedFields
+}
+
+// validateDeprecatedFieldsCreate validates deprecated fields during CREATE operations
+func (spec *GlanceSpecCore) validateDeprecatedFieldsCreate(basePath *field.Path) ([]string, field.ErrorList) {
+	// Get deprecated fields list (without old values for CREATE)
+	deprecatedFieldsUpdate := spec.getDeprecatedFields(nil)
+
+	// Convert to DeprecatedField list for CREATE validation
+	deprecatedFields := make([]common_webhook.DeprecatedField, len(deprecatedFieldsUpdate))
+	for i, df := range deprecatedFieldsUpdate {
+		deprecatedFields[i] = common_webhook.DeprecatedField{
+			DeprecatedFieldName: df.DeprecatedFieldName,
+			NewFieldPath:        df.NewFieldPath,
+			DeprecatedValue:     df.NewDeprecatedValue,
+			NewValue:            df.NewValue,
+		}
+	}
+
+	return common_webhook.ValidateDeprecatedFieldsCreate(deprecatedFields, basePath), nil
+}
+
+// validateDeprecatedFieldsUpdate validates deprecated fields during UPDATE operations
+func (spec *GlanceSpecCore) validateDeprecatedFieldsUpdate(old GlanceSpecCore, basePath *field.Path) ([]string, field.ErrorList) {
+	// Get deprecated fields list with old values
+	deprecatedFields := spec.getDeprecatedFields(&old)
+	return common_webhook.ValidateDeprecatedFieldsUpdate(deprecatedFields, basePath)
+}
+
 var _ webhook.Validator = &Glance{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 	glancelog.Info("validate create", "name", r.Name)
 	var allErrs field.ErrorList
+	var allWarns []string
 	basePath := field.NewPath("spec")
 
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
@@ -229,28 +284,34 @@ func (r *Glance) ValidateCreate() (admission.Warnings, error) {
 		allErrs = append(allErrs, err...)
 	}
 
-	if err := r.Spec.ValidateCreate(basePath, r.Namespace); err != nil {
-		allErrs = append(allErrs, err...)
-	}
+	warns, errs := r.Spec.ValidateCreate(basePath, r.Namespace)
+	allWarns = append(allWarns, warns...)
+	allErrs = append(allErrs, errs...)
 
 	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
+		return allWarns, apierrors.NewInvalid(
 			schema.GroupKind{Group: "glance.openstack.org", Kind: "Glance"},
 			r.Name, allErrs)
 	}
 
-	return nil, nil
+	return allWarns, nil
 }
 
 // ValidateCreate - Exported function wrapping non-exported validate functions,
 // this function can be called externally to validate an ironic spec.
-func (r *GlanceSpec) ValidateCreate(basePath *field.Path, namespace string) field.ErrorList {
+func (r *GlanceSpec) ValidateCreate(basePath *field.Path, namespace string) ([]string, field.ErrorList) {
 	return r.GlanceSpecCore.ValidateCreate(basePath, namespace)
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) field.ErrorList {
+func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) ([]string, field.ErrorList) {
 	var allErrs field.ErrorList
+	var allWarns []string
+
+	// Validate deprecated fields using shared helper
+	warns, errs := r.validateDeprecatedFieldsCreate(basePath)
+	allWarns = append(allWarns, warns...)
+	allErrs = append(allErrs, errs...)
 
 	// Check if the top-level CR has a "customServiceConfig" with an explicit
 	// "backend:file || empty string" and save the result into topLevel var.
@@ -293,7 +354,7 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) 
 			path, r.KeystoneEndpoint, KeystoneEndpointErrorMessage))
 	}
 
-	return allErrs
+	return allWarns, allErrs
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
@@ -305,6 +366,7 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 	glancelog.Info("validate update", "diff", cmp.Diff(old, r))
 
 	var allErrs field.ErrorList
+	var allWarns []string
 	basePath := field.NewPath("spec")
 
 	for key, glanceAPI := range r.Spec.GlanceAPIs {
@@ -326,28 +388,34 @@ func (r *Glance) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 		allErrs = append(allErrs, err...)
 	}
 
-	if err := r.Spec.ValidateUpdate(o.Spec, basePath, r.Namespace); err != nil {
-		allErrs = append(allErrs, err...)
-	}
+	warns, errs := r.Spec.ValidateUpdate(o.Spec, basePath, r.Namespace)
+	allWarns = append(allWarns, warns...)
+	allErrs = append(allErrs, errs...)
 
 	if len(allErrs) != 0 {
-		return nil, apierrors.NewInvalid(
+		return allWarns, apierrors.NewInvalid(
 			schema.GroupKind{Group: "glance.openstack.org", Kind: "Glance"},
 			r.Name, allErrs)
 	}
 
-	return nil, nil
+	return allWarns, nil
 }
 
 // ValidateUpdate - Exported function wrapping non-exported validate functions,
 // this function can be called externally to validate an glance spec.
-func (r *GlanceSpec) ValidateUpdate(old GlanceSpec, basePath *field.Path, namespace string) field.ErrorList {
+func (r *GlanceSpec) ValidateUpdate(old GlanceSpec, basePath *field.Path, namespace string) ([]string, field.ErrorList) {
 	return r.GlanceSpecCore.ValidateUpdate(old.GlanceSpecCore, basePath, namespace)
 }
 
 // ValidateUpdate -
-func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path, namespace string) field.ErrorList {
+func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path, namespace string) ([]string, field.ErrorList) {
 	var allErrs field.ErrorList
+	var allWarns []string
+
+	// Validate deprecated fields using shared helper
+	warns, errs := r.validateDeprecatedFieldsUpdate(old, basePath)
+	allWarns = append(allWarns, warns...)
+	allErrs = append(allErrs, errs...)
 
 	// fail if a wrong topology is referenced
 	allErrs = append(allErrs, topologyv1.ValidateTopologyRef(
@@ -399,7 +467,7 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 			path, r.KeystoneEndpoint, KeystoneEndpointErrorMessage))
 	}
 
-	return allErrs
+	return allWarns, allErrs
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type

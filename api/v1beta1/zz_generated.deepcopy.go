@@ -21,6 +21,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	rabbitmqv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
 	topologyv1beta1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
@@ -445,6 +446,11 @@ func (in *GlanceSpecCore) DeepCopyInto(out *GlanceSpecCore) {
 	if in.NotificationBusInstance != nil {
 		in, out := &in.NotificationBusInstance, &out.NotificationBusInstance
 		*out = new(string)
+		**out = **in
+	}
+	if in.NotificationsBus != nil {
+		in, out := &in.NotificationsBus, &out.NotificationsBus
+		*out = new(rabbitmqv1beta1.RabbitMqConfig)
 		**out = **in
 	}
 }
