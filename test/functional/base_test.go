@@ -497,3 +497,13 @@ func GetKeystoneAC(name types.NamespacedName) *keystonev1.KeystoneApplicationCre
 	}, timeout, interval).Should(Succeed())
 	return instance
 }
+
+// CreateGlanceInvalidSecret creates a secret with an invalid password for testing
+func CreateGlanceInvalidSecret(namespace string, name string) *corev1.Secret {
+	return th.CreateSecret(
+		types.NamespacedName{Namespace: namespace, Name: name},
+		map[string][]byte{
+			"GlancePassword": []byte(glanceTest.GlanceInvalidPassword),
+		},
+	)
+}

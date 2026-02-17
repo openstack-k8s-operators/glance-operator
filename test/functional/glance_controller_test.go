@@ -253,7 +253,29 @@ var _ = Describe("Glance controller", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)
 			Expect(glanceDefault.Spec.CustomServiceConfig).To((ContainSubstring(GlanceDummyBackend)))
 		})
-
+	})
+	When("Glance CR is created with an invalid password", func() {
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceInvalidSecret(glanceName.Namespace, glanceTest.GlanceInvalidSecretName))
+			spec := GetGlanceEmptySpec()
+			spec["secret"] = glanceTest.GlanceInvalidSecretName
+			// Remove notificationBusInstance to avoid dependency on RabbitMQ setup
+			delete(spec, "notificationBusInstance")
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, spec))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+		})
+		It("rejects the password and reports InputReadyCondition as False", func() {
+			expectedErrMsg := "Input data error occurred password does not meet the requirements"
+			th.ExpectConditionWithDetails(
+				glanceName,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.InputReadyCondition,
+				corev1.ConditionFalse,
+				condition.ErrorReason,
+				expectedErrMsg,
+			)
+		})
 	})
 	When("All the Resources are ready", func() {
 		BeforeEach(func() {
