@@ -497,3 +497,14 @@ func GetKeystoneAC(name types.NamespacedName) *keystonev1.KeystoneApplicationCre
 	}, timeout, interval).Should(Succeed())
 	return instance
 }
+
+// GetProbeConfOverrides returns a set of parameters to override the default
+// probes values
+func GetProbeConfOverrides() map[string]any {
+	return map[string]any{
+		"path":                "/healthcheck",
+		"initialDelaySeconds": int32(20),
+		"timeoutSeconds":      int32(30),
+		"periodSeconds":       int32(10),
+	}
+}

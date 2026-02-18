@@ -253,7 +253,6 @@ var _ = Describe("Glance controller", func() {
 			glanceDefault := GetGlance(glanceTest.Instance)
 			Expect(glanceDefault.Spec.CustomServiceConfig).To((ContainSubstring(GlanceDummyBackend)))
 		})
-
 	})
 	When("All the Resources are ready", func() {
 		BeforeEach(func() {
@@ -266,7 +265,7 @@ var _ = Describe("Glance controller", func() {
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
-					GetGlance(glanceName).Spec.DatabaseInstance,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
 						Ports: []corev1.ServicePort{{Port: 3306}},
 					},
@@ -329,7 +328,7 @@ var _ = Describe("Glance controller", func() {
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
-					GetGlance(glanceName).Spec.DatabaseInstance,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
 						Ports: []corev1.ServicePort{{Port: 3306}},
 					},
@@ -478,7 +477,7 @@ var _ = Describe("Glance controller", func() {
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
-					GetGlance(glanceName).Spec.DatabaseInstance,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
 						Ports: []corev1.ServicePort{{Port: 3306}},
 					},
@@ -548,7 +547,7 @@ var _ = Describe("Glance controller", func() {
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
-					GetGlance(glanceName).Spec.DatabaseInstance,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
 						Ports: []corev1.ServicePort{{Port: 3306}},
 					},
@@ -591,7 +590,6 @@ var _ = Describe("Glance controller", func() {
 			}
 		})
 	})
-
 	When("Glance CR instance is built with extraMounts", func() {
 		BeforeEach(func() {
 			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
@@ -613,7 +611,7 @@ var _ = Describe("Glance controller", func() {
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
-					GetGlance(glanceName).Spec.DatabaseInstance,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
 						Ports: []corev1.ServicePort{{Port: 3306}},
 					},
@@ -650,7 +648,6 @@ var _ = Describe("Glance controller", func() {
 			}
 		})
 	})
-
 	When("Glance CR references a topology", func() {
 		var topologyRef, topologyRefAlt *topologyv1.TopoRef
 		BeforeEach(func() {
@@ -683,7 +680,7 @@ var _ = Describe("Glance controller", func() {
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
 					glanceTest.Instance.Namespace,
-					GetGlance(glanceName).Spec.DatabaseInstance,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
 					corev1.ServiceSpec{
 						Ports: []corev1.ServicePort{{Port: 3306}},
 					},
@@ -800,7 +797,6 @@ var _ = Describe("Glance controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
-
 	When("Glance is created with RabbitMQ user and vhost", func() {
 		BeforeEach(func() {
 			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
@@ -823,7 +819,6 @@ var _ = Describe("Glance controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
-
 	When("Glance is created without custom RabbitMQ config", func() {
 		BeforeEach(func() {
 			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
@@ -841,7 +836,6 @@ var _ = Describe("Glance controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
-
 	When("Glance starts with notifications enabled and then disables them", func() {
 		BeforeEach(func() {
 			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
@@ -887,7 +881,6 @@ var _ = Describe("Glance controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 	})
-
 	// Run MariaDBAccount suite tests.  these are pre-packaged ginkgo tests
 	// that exercise standard account create / update patterns that should be
 	// common to all controllers that ensure MariaDBAccount CRs.
@@ -954,6 +947,65 @@ var _ = Describe("Glance controller", func() {
 			th.DeleteInstance(GetGlance(glanceTest.Instance))
 		},
 	}
-
 	mariadbSuite.RunBasicSuite()
+
+	When("Glance CR instance is built with custom probes", func() {
+		stsOverride := GetProbeConfOverrides()
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			rawSpec := map[string]any{
+				"secret":              SecretName,
+				"databaseInstance":    "openstack",
+				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+				"keystoneEndpoint":    "default",
+				"customServiceConfig": GlanceDummyBackend,
+				"glanceAPIs": map[string]any{
+					"default": map[string]any{
+						"override": map[string]any{
+							"probes": map[string]any{
+								"livenessProbes":  stsOverride,
+								"readinessProbes": stsOverride,
+							},
+						},
+					},
+				},
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+		})
+		It("Check the resulting probes generated in the statefulSet", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
+			// Check GlanceAPI
+			Eventually(func(g Gomega) {
+				ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet).Spec.Template.Spec.Containers[1]
+				g.Expect(ssExternal.LivenessProbe).ToNot(BeNil())
+				g.Expect(ssExternal.StartupProbe).To(BeNil())
+				g.Expect(ssExternal.LivenessProbe.HTTPGet.Path).To(Equal(stsOverride["path"]))
+				g.Expect(ssExternal.LivenessProbe.InitialDelaySeconds).To(Equal(stsOverride["initialDelaySeconds"]))
+				g.Expect(ssExternal.LivenessProbe.TimeoutSeconds).To(Equal(stsOverride["timeoutSeconds"]))
+				g.Expect(ssExternal.LivenessProbe.PeriodSeconds).To(Equal(stsOverride["periodSeconds"]))
+				g.Expect(ssExternal.ReadinessProbe.InitialDelaySeconds).To(Equal(stsOverride["initialDelaySeconds"]))
+				g.Expect(ssExternal.ReadinessProbe.TimeoutSeconds).To(Equal(stsOverride["timeoutSeconds"]))
+				g.Expect(ssExternal.ReadinessProbe.PeriodSeconds).To(Equal(stsOverride["periodSeconds"]))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
 })
