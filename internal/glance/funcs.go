@@ -1,8 +1,10 @@
 package glance
 
 import (
+	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+	"math"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -81,6 +83,37 @@ func APISecurityContext(userID int64, privileged bool) *corev1.SecurityContext {
 		Privileged:               &privileged,
 		SeccompProfile: &corev1.SeccompProfile{
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
+	}
+}
+
+// GetDefaultProbesAPI -
+func GetDefaultProbesAPI(apiTimeout int) probes.OverrideSpec {
+	const failureCount = 3
+	period := int32(math.Floor(float64(apiTimeout) / float64(failureCount)))
+	// For startup probes, use shorter period for faster startup detection
+	startupPeriod := int32(math.Max(5, float64(period)/2))
+
+	// Default values applied to CinderAPI StatefulSets when no
+	// overrides are provided
+	return probes.OverrideSpec{
+		LivenessProbes: &probes.ProbeConf{
+			Path:                "/healthcheck",
+			TimeoutSeconds:      period,
+			PeriodSeconds:       period,
+			InitialDelaySeconds: 5,
+		},
+		ReadinessProbes: &probes.ProbeConf{
+			Path:                "/healthcheck",
+			TimeoutSeconds:      period,
+			PeriodSeconds:       period,
+			InitialDelaySeconds: 5,
+		},
+		StartupProbes: &probes.ProbeConf{
+			TimeoutSeconds:      5,
+			PeriodSeconds:       startupPeriod,
+			InitialDelaySeconds: 5,
+			FailureThreshold:    12,
 		},
 	}
 }
