@@ -2,4 +2,6 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
     - script: |
+        oc -n $NAMESPACE wait glance/glance --for condition=Ready --timeout=60s
+    - script: |
         sleep 20; oc -n $NAMESPACE exec -it openstackclient --stdin=false -- /bin/sh -c "DOMAIN=glance-default-external-api.$NAMESPACE.svc REPLICA=glance-default-external-api- ./scripts/cache_and_delete_image.sh"
