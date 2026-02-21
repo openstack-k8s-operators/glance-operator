@@ -9,7 +9,7 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
-	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20260211123751-9ad026e7dc2d
+	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20260214081619-f47bd7381165
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
 	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20260211124823-0873344e2797
 	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260211124824-847755eac6ea
