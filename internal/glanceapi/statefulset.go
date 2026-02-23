@@ -25,6 +25,7 @@ import (
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
@@ -35,7 +36,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 )
 
@@ -56,25 +56,10 @@ func StatefulSet(
 	memcached *memcachedv1.Memcached,
 ) (*appsv1.StatefulSet, error) {
 	userID := glance.GlanceUID
-	startupProbe := &corev1.Probe{
-		FailureThreshold: 6,
-		PeriodSeconds:    10,
-	}
-	livenessProbe := &corev1.Probe{
-		TimeoutSeconds:      30,
-		PeriodSeconds:       30,
-		InitialDelaySeconds: 5,
-	}
-	readinessProbe := &corev1.Probe{
-		TimeoutSeconds:      30,
-		PeriodSeconds:       30,
-		InitialDelaySeconds: 5,
-	}
 
 	//
 	// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 	//
-
 	port := int32(glance.GlancePublicPort)
 	glanceURIScheme := corev1.URISchemeHTTP
 	tlsEnabled := instance.Spec.TLS.API.Enabled(service.EndpointPublic)
@@ -85,25 +70,20 @@ func StatefulSet(
 		tlsEnabled = instance.Spec.TLS.API.Enabled(service.EndpointInternal)
 	}
 
-	// Probes
-	livenessProbe.HTTPGet = &corev1.HTTPGetAction{
-		Path: "/healthcheck",
-		Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
-	}
-	readinessProbe.HTTPGet = &corev1.HTTPGetAction{
-		Path: "/healthcheck",
-		Port: intstr.IntOrString{Type: intstr.Int, IntVal: port},
-	}
-
 	if tlsEnabled {
-		livenessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
-		readinessProbe.HTTPGet.Scheme = corev1.URISchemeHTTPS
 		glanceURIScheme = corev1.URISchemeHTTPS
 	}
-	startupProbe.Exec = &corev1.ExecAction{
-		Command: []string{
-			"/bin/true",
-		},
+
+	// Create ProbeSet
+	probes, err := probes.CreateProbeSet(
+		int32(port),
+		&glanceURIScheme,
+		instance.Spec.Override.Probes,
+		glance.DefaultProbeConf,
+	)
+	// Could not process probes config
+	if err != nil {
+		return nil, err
 	}
 
 	// envVars
@@ -216,9 +196,6 @@ func StatefulSet(
 							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts:    glance.GetLogVolumeMount(),
 							Resources:       instance.Spec.Resources,
-							StartupProbe:    startupProbe,
-							ReadinessProbe:  readinessProbe,
-							LivenessProbe:   livenessProbe,
 						},
 						{
 							Name: glance.ServiceName + "-httpd",
@@ -246,9 +223,8 @@ func StatefulSet(
 								apiVolumeMounts...,
 							),
 							Resources:      instance.Spec.Resources,
-							StartupProbe:   startupProbe,
-							ReadinessProbe: readinessProbe,
-							LivenessProbe:  livenessProbe,
+							ReadinessProbe: probes.Readiness,
+							LivenessProbe:  probes.Liveness,
 						},
 					},
 				},
@@ -285,15 +261,13 @@ func StatefulSet(
 					apiVolumeMounts...,
 				),
 				Resources:      instance.Spec.Resources,
-				StartupProbe:   startupProbe,
-				ReadinessProbe: readinessProbe,
-				LivenessProbe:  livenessProbe,
+				ReadinessProbe: probes.Readiness,
+				LivenessProbe:  probes.Liveness,
 			},
 		}
 		statefulset.Spec.Template.Spec.Containers = append(statefulset.Spec.Template.Spec.Containers, apiContainer...)
 	}
 
-	var err error
 	if !instance.Spec.Storage.External {
 		localPvc, err := glance.GetPvc(instance, labels, glance.PvcLocal)
 		if err != nil {

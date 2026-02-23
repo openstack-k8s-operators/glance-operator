@@ -344,6 +344,10 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) 
 		allErrs = append(allErrs, service.ValidateRoutedOverrides(
 			path.Child("override").Child("service"),
 			glanceAPI.Override.Service)...)
+
+		// Probes validation
+		probeErrs := r.ValidateProbes(path)
+		allErrs = append(allErrs, probeErrs...)
 	}
 
 	// At creation time, if the CR has an invalid keystoneEndpoint value (that
@@ -456,6 +460,10 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 		allErrs = append(allErrs, service.ValidateRoutedOverrides(
 			path.Child("override").Child("service"),
 			glanceAPI.Override.Service)...)
+
+		// Probes validation
+		probeErrs := r.ValidateProbes(path)
+		allErrs = append(allErrs, probeErrs...)
 	}
 
 	// At update time, if the CR has an invalid keystoneEndpoint set
@@ -515,4 +523,16 @@ func GetCrMaxLengthCorrection(name string, apiType string) int {
 	// crMaxLengthCorrection = defaultCrMaxLengthCorrection + len(<glance name>) + "-" + "-" + len(<api type>)
 
 	return (defaultCrMaxLengthCorrection + len(name) + len(apiType) + 2)
+}
+
+// ValidateProbes -
+func (spec *GlanceSpecCore) ValidateProbes(basePath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+	// CinderVolumes probes validation
+	for name, api := range spec.GlanceAPIs {
+		apiProbeErrs := api.Override.Probes.ValidateProbes(
+			basePath.Child(name).Child("override"))
+		allErrs = append(allErrs, apiProbeErrs...)
+	}
+	return allErrs
 }

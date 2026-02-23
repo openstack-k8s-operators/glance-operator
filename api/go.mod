@@ -5,7 +5,7 @@ go 1.24.4
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260212124933-d2541a526cd3
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260205083029-d03e9df035ef
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260223092744-98182426140f
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260205083029-d03e9df035ef
 	k8s.io/api v0.31.14
 	k8s.io/apimachinery v0.31.14
@@ -98,3 +98,5 @@ replace k8s.io/component-base => k8s.io/component-base v0.31.14 //allow-merging
 replace github.com/rabbitmq/cluster-operator/v2 => github.com/openstack-k8s-operators/rabbitmq-cluster-operator/v2 v2.6.1-0.20250929174222-a0d328fa4dec //allow-merging
 
 replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250627150254-e9823e99808e //allow-merging
+
+replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/fmount/lib-common/modules/common v0.0.0-20260223104530-7c4fd4ec084f

@@ -19,6 +19,7 @@ package glance
 import (
 	"time"
 
+	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -122,3 +123,24 @@ var GlanceAPIPropagation = []storage.PropagationType{Glance, GlanceAPI}
 
 // ResultRequeue - Used to requeue a request
 var ResultRequeue = ctrl.Result{RequeueAfter: NormalDuration}
+
+// DefaultProbeConf - Default values applied to GlanceAPI StatefulSets when no
+// overrides are provided
+var DefaultProbeConf = probes.OverrideSpec{
+	LivenessProbes: &probes.ProbeConf{
+		Path:                "/healthcheck",
+		TimeoutSeconds:      30,
+		PeriodSeconds:       30,
+		InitialDelaySeconds: 5,
+	},
+	ReadinessProbes: &probes.ProbeConf{
+		Path:                "/healthcheck",
+		TimeoutSeconds:      30,
+		PeriodSeconds:       30,
+		InitialDelaySeconds: 5,
+	},
+	StartupProbes: &probes.ProbeConf{
+		FailureThreshold: 6,
+		PeriodSeconds:    10,
+	},
+}
