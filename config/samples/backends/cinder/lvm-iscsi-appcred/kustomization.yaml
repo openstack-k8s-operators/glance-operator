@@ -1,0 +1,17 @@
+# ATTENTION: After applying this OpenShift nodes will reboot, because of the `MachineConfig` changes and will take a while to recover.
+  # Whole OpenStack deployment using a Cinder iSCSI LVM backend with application credential authentication
+resources:
+- https://github.com/openstack-k8s-operators/cinder-operator/config/samples/backends/lvm/iscsi
+components:
+- ../glance-common-appcred
+patches:
+- target:
+    kind: OpenStackControlPlane
+    name: .*
+  patch: |-
+    - op: add
+      path: /spec/applicationCredential
+      value:
+        enabled: true
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization

@@ -21,20 +21,21 @@ Currently available samples are:
 - NFS
 - CEPH + NFS
 - CEPH + Sparse Image Upload
-- Cinder backends
-- Swift
+- Cinder backends (with user/pwd and application credentials variations)
+- Swift (with user/pwd and application credentials variation)
 - s3
 
 The following Cinder backend examples are available:
 
-- Cinder using LVM iSCSI
-- Cinder backend using LVM NVMe-TCP
+- Cinder using LVM iSCSI (username/password: `lvm-iscsi`, app credentials: `lvm-iscsi-appcred`)
+- Cinder backend using LVM NVMe-TCP (username/password: `lvm-nvmeof`, app credentials: `lvm-nvmeof-appcred`)
 
 For these the file structure is different, as the glance configuration is the
 same for them all and only the Cinder configuration changes.
 
 The base Glance configuration to use Cinder is stored in
-`./cinder/glance-common` and the different Cinder configurations will be in
+`./cinder/glance-common` (username/pwd auth) or `./cinder/glance-common-appcred`
+(application credential auth). The different Cinder configurations will be in
 the other directories under `./cinder`.
 
 ## Ceph example
@@ -476,6 +477,88 @@ apply -f -`. from the current directory to apply the s3 backend.
 
 More information around s3 configuration can be found in the [upstream](https://docs.openstack.org/glance/latest/configuration/configuring.html#configuring-the-s3-storage-backend)
 documentation.
+
+## Application Credentials
+
+For enhanced security, application credentials can be used instead of
+username/password authentication for both Swift and Cinder backends. This
+approach eliminates the need to store and manage service user passwords.
+
+Application credentials provide several advantages:
+- **Enhanced Security**: No need to store service user passwords
+- **Scoped Access**: Credentials can be limited to specific projects and roles
+- **Rotation Support**: Easier to rotate without affecting service accounts
+
+### Creating Application Credential CRs
+
+To create application credentials for Glance backends, refer to the [Keystone
+Operator Application Credentials documentation](https://github.com/openstack-k8s-operators/keystone-operator/blob/main/docs/applicationcredentials.md)
+which provides detailed instructions on creating and managing
+`KeystoneApplicationCredential` custom resources.
+
+### Swift with Application Credentials
+
+Use the `swift/appcred` directory for Swift backend configuration with
+application credentials:
+
+```yaml
+[default_backend]
+swift_store_create_container_on_put = True
+swift_store_auth_version = 3
+swift_store_auth_address = {{ .KeystoneInternalURL }}
+swift_store_endpoint_type = internalURL
+swift_store_application_credential_id = {{ .ApplicationCredentialID }}
+swift_store_application_credential_secret = {{ .ApplicationCredentialSecret }}
+```
+
+### Cinder with Application Credentials
+
+For Cinder backends, use the `-appcred` variant directories (e.g.,
+`cinder/lvm-iscsi-appcred`) which use the `glance-common-appcred` component.
+In general, this is the minimal common configuration required when cinder is
+set as a backend:
+
+```yaml
+[default_backend]
+cinder_store_auth_address = {{ .KeystoneInternalURL }}
+cinder_store_project_name = service
+cinder_catalog_info = volumev3::internalURL
+cinder_store_auth_type = v3applicationcredential
+cinder_store_application_credential_id = {{ .ApplicationCredentialID }}
+cinder_store_application_credential_secret = {{ .ApplicationCredentialSecret }}
+```
+
+Application credentials provide a more secure authentication method and are the
+recommended approach for production deployments.
+
+#### Deploying Swift or Cinder with Application Credentials
+
+To deploy Swift with application credentials:
+```bash
+$ cd install_yamls
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/swift/appcred > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
+
+To deploy Cinder LVM iSCSI with application credentials:
+```bash
+$ cd install_yamls
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/cinder/lvm-iscsi-appcred > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
+
+To deploy Cinder LVM NVMe-TCP with application credentials:
+```bash
+$ cd install_yamls
+$ make crc_storage openstack
+$ oc kustomize ../glance-operator/config/samples/backends/cinder/lvm-nvmeof-appcred > ~/openstack-deployment.yaml
+$ export OPENSTACK_CR=`realpath ~/openstack-deployment.yaml`
+$ make openstack_deploy
+```
 
 ## Multistore
 
