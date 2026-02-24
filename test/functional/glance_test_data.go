@@ -71,6 +71,8 @@ type GlanceTestData struct {
 	GlanceDatabaseName          types.NamespacedName
 	GlanceDatabaseAccount       types.NamespacedName
 	GlancePassword              string
+	GlanceInvalidPassword       string
+	GlanceInvalidSecretName     string
 	GlanceServiceUser           string
 	GlancePVCSize               string
 	GlancePort                  string
@@ -224,7 +226,9 @@ func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 			Name:      AccountName,
 		},
 		// Password used for both db and service
+		GlanceInvalidPassword:    "c^sometext02%text%text02$someText&",
 		GlancePassword:           "12345678",
+		GlanceInvalidSecretName:  "test-osp-secret-invalid",
 		GlanceServiceUser:        "glance",
 		GlancePVCSize:            "10G",
 		ContainerImage:           "test://glance",

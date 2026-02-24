@@ -96,7 +96,17 @@ func verifyServiceSecret(
 	envVars *map[string]env.Setter,
 ) (ctrl.Result, error) {
 
-	hash, res, err := secret.VerifySecret(ctx, secretName, expectedFields, reader, requeueTimeout)
+	validateFields := map[string]secret.Validator{}
+	for _, f := range expectedFields {
+		validateFields[f] = secret.PasswordValidator{}
+	}
+	hash, res, err := secret.VerifySecretFields(
+		ctx,
+		secretName,
+		validateFields,
+		reader,
+		requeueTimeout,
+	)
 	if err != nil {
 		conditionUpdater.Set(condition.FalseCondition(
 			condition.InputReadyCondition,
