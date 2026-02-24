@@ -1,0 +1,15 @@
+resources:
+- ../../base/openstack
+
+patches:
+- path: glance.yaml
+- target:
+    kind: OpenStackControlPlane
+    name: openstack
+  patch: |-
+    - op: add
+      path: /spec/applicationCredential
+      value:
+        enabled: true
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization

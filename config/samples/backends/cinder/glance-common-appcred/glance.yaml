@@ -1,0 +1,33 @@
+# Requires a running cinder volume service and the credentials to access it
+# Uses application credentials for authentication instead of user/password
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:cinder
+        debug = true
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        store_description = Default cinder backend
+        cinder_store_auth_address = {{ .KeystoneInternalURL }}
+        cinder_store_project_name = service
+        cinder_catalog_info = volumev3::internalURL
+        cinder_use_multipath = true
+        cinder_store_auth_type = v3applicationcredential
+        cinder_store_application_credential_id = {{ .ApplicationCredentialID }}
+        cinder_store_application_credential_secret = {{ .ApplicationCredentialSecret }}
+      databaseInstance: openstack
+      storage:
+        storageClass: ""
+        storageRequest: 1G
+      glanceAPIs:
+        default:
+          preserveJobs: false
+          replicas: 1
+          type: split
