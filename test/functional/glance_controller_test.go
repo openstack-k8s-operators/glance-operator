@@ -32,7 +32,6 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -555,8 +554,9 @@ var _ = Describe("Glance controller", func() {
 				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
 				"keystoneEndpoint":    "default",
 				"customServiceConfig": GlanceDummyBackend,
-				"glanceAPIs": map[string]any{
-					"default": map[string]any{
+				"glanceAPIs": map[string]interface{}{
+					"default": map[string]interface{}{
+						"type":               "split",
 						"containerImage":     glancev1.GlanceAPIContainerImage,
 						"networkAttachments": []string{"internalapi"},
 						"override": map[string]any{
@@ -576,7 +576,6 @@ var _ = Describe("Glance controller", func() {
 					},
 				),
 			)
-			//infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
 			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
 			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
 			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
@@ -649,27 +648,21 @@ var _ = Describe("Glance controller", func() {
 			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
 		})
 		It("Check the extraMounts of the resulting StatefulSets", func() {
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
-			// Retrieve the generated resources and the two internal/external
-			// instances that are split behind the scenes
-			ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
-			ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
-
-			for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
-				// Check the resulting deployment fields
-				Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(6))
-				Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
-				// Get the glance-httpd container
-				container := ss.Spec.Template.Spec.Containers[1]
-				// Fail if glance-httpd doesn't have the right number of VolumeMounts
-				// entries
-				Expect(container.VolumeMounts).To(HaveLen(8))
-				// Inspect VolumeMounts and make sure we have the Ceph MountPath
-				// provided through extraMounts
-				th.AssertVolumeMountPathExists(GlanceCephExtraMountsSecretName,
-					GlanceCephExtraMountsPath, "", container.VolumeMounts)
-			}
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
+			// Retrieve the generated resources and the glanceAPI StatefulSet
+			ss := th.GetStatefulSet(glanceTest.GlanceSingle)
+			// Check the resulting deployment fields
+			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(6))
+			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
+			// Get the glance-httpd container
+			container := ss.Spec.Template.Spec.Containers[1]
+			// Fail if glance-httpd doesn't have the right number of VolumeMounts
+			// entries
+			Expect(container.VolumeMounts).To(HaveLen(8))
+			// Inspect VolumeMounts and make sure we have the Ceph MountPath
+			// provided through extraMounts
+			th.AssertVolumeMountPathExists(GlanceCephExtraMountsSecretName,
+				GlanceCephExtraMountsPath, "", container.VolumeMounts)
 		})
 	})
 
@@ -721,8 +714,7 @@ var _ = Describe("Glance controller", func() {
 		})
 
 		It("Check the topology has been applied to the resulting StatefulSets", func() {
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
 			Eventually(func(g Gomega) {
 				tp := infra.GetTopology(types.NamespacedName{
 					Name:      topologyRef.Name,
@@ -730,16 +722,12 @@ var _ = Describe("Glance controller", func() {
 				})
 				finalizers := tp.GetFinalizers()
 				g.Expect(finalizers).To(HaveLen(1))
-				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
-				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-				g.Expect(internalAPI.Status.LastAppliedTopology).ToNot(BeNil())
-				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(topologyRef))
+				glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
+				g.Expect(glanceAPI.Status.LastAppliedTopology).ToNot(BeNil())
+				g.Expect(glanceAPI.Status.LastAppliedTopology).To(Equal(topologyRef))
 				g.Expect(finalizers).To(ContainElement(
-					fmt.Sprintf("openstack.org/glanceapi-%s", internalAPI.APIName())))
-				g.Expect(externalAPI.Status.LastAppliedTopology).ToNot(BeNil())
-				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(topologyRef))
-				g.Expect(finalizers).To(ContainElement(
-					fmt.Sprintf("openstack.org/glanceapi-%s", externalAPI.APIName())))
+					fmt.Sprintf("openstack.org/glanceapi-%s", glanceAPI.APIName())))
+
 			}, timeout, interval).Should(Succeed())
 		})
 
@@ -750,8 +738,7 @@ var _ = Describe("Glance controller", func() {
 				g.Expect(k8sClient.Update(ctx, glance)).To(Succeed())
 			}, timeout, interval).Should(Succeed())
 
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
 
 			Eventually(func(g Gomega) {
 				tp := infra.GetTopology(types.NamespacedName{
@@ -761,16 +748,11 @@ var _ = Describe("Glance controller", func() {
 				finalizers := tp.GetFinalizers()
 				g.Expect(finalizers).To(HaveLen(1))
 
-				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
-				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-				g.Expect(internalAPI.Status.LastAppliedTopology).ToNot(BeNil())
-				g.Expect(internalAPI.Status.LastAppliedTopology).To(Equal(topologyRefAlt))
+				glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
+				g.Expect(glanceAPI.Status.LastAppliedTopology).ToNot(BeNil())
+				g.Expect(glanceAPI.Status.LastAppliedTopology).To(Equal(topologyRefAlt))
 				g.Expect(finalizers).To(ContainElement(
-					fmt.Sprintf("openstack.org/glanceapi-%s", internalAPI.APIName())))
-				g.Expect(externalAPI.Status.LastAppliedTopology).ToNot(BeNil())
-				g.Expect(externalAPI.Status.LastAppliedTopology).To(Equal(topologyRefAlt))
-				g.Expect(finalizers).To(ContainElement(
-					fmt.Sprintf("openstack.org/glanceapi-%s", externalAPI.APIName())))
+					fmt.Sprintf("openstack.org/glanceapi-%s", glanceAPI.APIName())))
 				// Verify the previous referenced topology has no finalizers
 				tp = infra.GetTopology(types.NamespacedName{
 					Name:      topologyRef.Name,
@@ -781,7 +763,7 @@ var _ = Describe("Glance controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 
-		It("Remove the topology reference", func() {
+		It("Remove topology reference", func() {
 			Eventually(func(g Gomega) {
 				glance := GetGlance(glanceTest.Instance)
 				// Remove the TopologyRef from the existing Glance .Spec
@@ -790,23 +772,18 @@ var _ = Describe("Glance controller", func() {
 			}, timeout, interval).Should(Succeed())
 
 			Eventually(func(g Gomega) {
-				internalAPI := GetGlanceAPI(glanceTest.GlanceInternal)
-				externalAPI := GetGlanceAPI(glanceTest.GlanceExternal)
-				g.Expect(internalAPI.Status.LastAppliedTopology).Should(BeNil())
-				g.Expect(externalAPI.Status.LastAppliedTopology).Should(BeNil())
+				glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
+				g.Expect(glanceAPI.Status.LastAppliedTopology).Should(BeNil())
 			}, timeout, interval).Should(Succeed())
 
 			// Check the statefulSet has a default Affinity and no TopologySpreadConstraints:
 			// Affinity is applied by DistributePods function provided by lib-common, while
 			// TopologySpreadConstraints is part of the sample Topology used to test Glance
 			Eventually(func(g Gomega) {
-				ssInternal := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
-				ssExternal := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
-				for _, ss := range []*appsv1.StatefulSet{ssInternal, ssExternal} {
-					// Check the resulting deployment fields
-					g.Expect(ss.Spec.Template.Spec.Affinity).ToNot(BeNil())
-					g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(BeNil())
-				}
+				ss := th.GetStatefulSet(glanceTest.GlanceSingle)
+				// Check the resulting deployment fields
+				g.Expect(ss.Spec.Template.Spec.Affinity).ToNot(BeNil())
+				g.Expect(ss.Spec.Template.Spec.TopologySpreadConstraints).To(BeNil())
 			}, timeout, interval).Should(Succeed())
 
 			// Verify the existing topologies have no finalizer anymore
