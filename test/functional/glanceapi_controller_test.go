@@ -42,6 +42,7 @@ import (
 
 var _ = Describe("Glanceapi controller", func() {
 	var memcachedSpec memcachedv1.MemcachedSpec
+	var annotations map[string]string
 
 	BeforeEach(func() {
 		// lib-common uses OPERATOR_TEMPLATES env var to locate the "templates"
@@ -54,6 +55,9 @@ var _ = Describe("Glanceapi controller", func() {
 		acc, accSecret := mariadb.CreateMariaDBAccountAndSecret(glanceTest.GlanceDatabaseAccount, mariadbv1.MariaDBAccountSpec{})
 		DeferCleanup(k8sClient.Delete, ctx, accSecret)
 		DeferCleanup(k8sClient.Delete, ctx, acc)
+		annotations = map[string]string{
+			"glance.openstack.org/location-api": "true",
+		}
 	})
 
 	When("GlanceAPI CR is created", func() {
@@ -1403,7 +1407,7 @@ var _ = Describe("Glanceapi controller", func() {
 			}
 
 			rawSpec := CreateGlanceAPIWithTopologySpec()
-			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec, annotations))
 			DeferCleanup(
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
@@ -1488,7 +1492,7 @@ var _ = Describe("Glanceapi controller", func() {
 			th.ExpectCondition(
 				glanceTest.GlanceInternal,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
-				condition.ReadyCondition,
+				condition.DeploymentReadyCondition,
 				corev1.ConditionTrue,
 			)
 		})

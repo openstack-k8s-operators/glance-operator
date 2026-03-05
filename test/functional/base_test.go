@@ -155,14 +155,15 @@ func GetGlanceAPIDefaultSpec() map[string]any {
 	}
 }
 
-func CreateGlance(name types.NamespacedName, spec map[string]any) client.Object {
+func CreateGlance(name types.NamespacedName, spec map[string]any, annotations map[string]string) client.Object {
 
 	raw := map[string]any{
 		"apiVersion": "glance.openstack.org/v1beta1",
 		"kind":       "Glance",
 		"metadata": map[string]any{
-			"name":      name.Name,
-			"namespace": name.Namespace,
+			"name":        name.Name,
+			"namespace":   name.Namespace,
+			"annotations": annotations,
 		},
 		"spec": spec,
 	}
@@ -241,6 +242,7 @@ func CreateGlanceAPIWithTopologySpec() map[string]any {
 	// Override topologyRef for the subCR
 	rawSpec["glanceAPIs"] = map[string]any{
 		"default": map[string]any{
+			"type": "single",
 			"topologyRef": map[string]any{
 				"name": glanceTest.GlanceAPITopologies[1].Name,
 			},

@@ -46,5 +46,5 @@ const (
 	// InvalidBackendErrorMessageSplit
 	InvalidBackendErrorMessageSplit = "The GlanceAPI layout type: split cannot be used in combination with File and NFS backend"
 	// InvalidBackendErrorMessageSingle
-	InvalidBackendErrorMessageSingle = "The GlanceAPI layout type: single can only be used in combination with File and NFS backend"
+	InvalidBackendErrorMessageSingle = "glanceAPI layout type: single can only be used in combination with File and NFS backend"
 )

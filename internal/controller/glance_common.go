@@ -50,6 +50,7 @@ var (
 	ErrNetworkAttachmentConfig = errors.New("not all pods have interfaces with ips as configured in NetworkAttachments")
 	ErrACSecretNotFound        = errors.New("ApplicationCredential secret not found")
 	ErrACSecretMissingKeys     = errors.New("ApplicationCredential secret missing required keys")
+	ErrInvalidBackend          = errors.New(glancev1.InvalidBackendErrorMessageSingle)
 )
 
 // fields to index to reconcile when change
