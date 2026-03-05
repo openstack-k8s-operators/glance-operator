@@ -20,6 +20,7 @@ import (
 	rabbitmqv1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -37,6 +38,8 @@ const (
 	APIEdge = "edge"
 	// GlanceWSGILabel -
 	GlanceWSGILabel = "glance.openstack.org/wsgi"
+	// GlanceLocationAPILabel -
+	GlanceLocationAPILabel = "glance.openstack.org/location-api"
 )
 
 // GlanceSpecCore defines the desired state of Glance
@@ -311,4 +314,19 @@ func (instance Glance) GetQuotaLimits() map[string]int {
 		"image_stage_total":     instance.Spec.Quotas.ImageStageTotal,
 		"image_size_total":      instance.Spec.Quotas.ImageSizeTotal,
 	}
+}
+
+// GetLocationAPI - if location API is explicitly disabled
+func (instance Glance) GetLocationAPI() (bool, error) {
+
+	locAPI, exists, err := annotations.GetBoolFromAnnotation(
+		instance.GetAnnotations(), GlanceLocationAPILabel)
+	if err != nil {
+		return false, err
+	}
+	// By default location API is enabled
+	if !exists {
+		return true, nil
+	}
+	return locAPI, nil
 }
