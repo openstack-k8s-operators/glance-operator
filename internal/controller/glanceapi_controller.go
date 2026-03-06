@@ -52,6 +52,7 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/backup"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	cronjob "github.com/openstack-k8s-operators/lib-common/modules/common/cronjob"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/endpoint"
@@ -90,6 +91,7 @@ func (r *GlanceAPIReconciler) GetLogger(ctx context.Context) logr.Logger {
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
 // +kubebuilder:rbac:groups=keystone.openstack.org,resources=keystoneapis,verbs=get;list;watch;
@@ -1125,6 +1127,17 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	}
 	// create StatefulSet - end
 
+	// Reconcile PVC labels for backup/restore
+	// Note: We reconcile PVC labels here in addition to setting them in VolumeClaimTemplates
+	// because VolumeClaimTemplates are immutable on existing StatefulSets. This allows
+	// updating labels on PVCs in existing environments without recreating the StatefulSet.
+	if !instance.Spec.Storage.External {
+		err = r.reconcilePVCLabels(ctx, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// create ImageCache cronJobs
 
 	if len(instance.Spec.ImageCache.Size) > 0 {
@@ -1760,4 +1773,37 @@ func (r *GlanceAPIReconciler) GetHorizonEndpoint(
 	}
 
 	return ep, nil
+}
+
+// reconcilePVCLabels ensures backup/restore labels are set on Glance PVCs
+// for upgrades where VolumeClaimTemplate labels were not set at creation time.
+func (r *GlanceAPIReconciler) reconcilePVCLabels(
+	ctx context.Context,
+	instance *glancev1.GlanceAPI,
+) error {
+	pvcList := &corev1.PersistentVolumeClaimList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(instance.Namespace),
+		client.MatchingLabels{
+			common.OwnerSelector:     instance.Name,
+			common.ComponentSelector: glance.Component,
+		},
+	}
+	if err := r.List(ctx, pvcList, listOpts...); err != nil {
+		return fmt.Errorf("listing PVCs for %s: %w", instance.Name, err)
+	}
+	for i := range pvcList.Items {
+		// Skip cache PVCs — they are ephemeral and don't need backup
+		if _, isCache := pvcList.Items[i].Annotations["image-cache"]; isCache {
+			continue
+		}
+		if _, err := backup.EnsureBackupLabels(ctx, r.Client, &pvcList.Items[i],
+			util.MergeMaps(
+				backup.GetBackupLabels(backup.CategoryControlPlane),
+				backup.GetRestoreLabels(backup.RestoreOrder00, backup.CategoryControlPlane),
+			)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
