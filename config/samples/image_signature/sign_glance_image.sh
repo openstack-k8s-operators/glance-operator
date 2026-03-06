@@ -2,6 +2,8 @@
 #
 # This is based on: https://docs.openstack.org/glance/latest/user/signature.html
 # and it must be executed from the openstackClient POD
+# WARNING: RSA-1024 is classically insecure (NIST deprecated 2023)
+# and quantum-vulnerable; do not use in production.
 
 openssl genrsa -out private_key.pem 1024
 openssl rsa -pubout -in private_key.pem -out public_key.pem

@@ -145,3 +145,10 @@ it works properly with key length 2048 with openSSL 3.0.2.
 
 - For the same reason of the previous item, the image signature verification fails
   if sha256 is used to build the digest.
+
+- The RSA-1024 key used in this example is classically insecure and was deprecated
+  by NIST in 2023; do not use it in production. The `img_signature_key_type` values
+  currently supported by Glance (`RSA-PSS`, `DSA`, `ECC_*`) are all quantum-vulnerable
+  (Shor's algorithm). Migration to `ML-DSA-65` (NIST FIPS 204) requires upstream
+  changes to Glance, Barbican, and the `cursive` verification library before this
+  sample can be updated.
