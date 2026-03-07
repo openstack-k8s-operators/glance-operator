@@ -738,8 +738,20 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// Reconcile the GlanceAPI deployment
 	//
+
+	locationAPI, err := instance.GetLocationAPI()
+	if err != nil {
+		// Failed to get LocationAPI annotation
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			glancev1.GlanceAPIReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			glancev1.GlanceAPIReadyErrorMessage,
+			err.Error()))
+	}
+
 	for name, glanceAPI := range instance.Spec.GlanceAPIs {
-		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels)
+		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels, locationAPI)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -797,6 +809,7 @@ func (r *GlanceReconciler) apiDeployment(
 	current glancev1.GlanceAPITemplate,
 	helper *helper.Helper,
 	serviceLabels map[string]string,
+	locationAPI bool,
 ) error {
 	Log := r.GetLogger(ctx)
 
@@ -807,6 +820,21 @@ func (r *GlanceReconciler) apiDeployment(
 	var internal = glancev1.APIInternal
 	var external = glancev1.APIExternal
 	var wsgi bool
+
+	// location-api disabled
+	// type: single
+	// backend != File
+	// we must split the API in this case, hence we should raise an error and
+	// do not allow the reconciliation to continue
+	topLevelFileBackend := glancev1.IsFileBackend(instance.Spec.CustomServiceConfig, true)
+	if !locationAPI && current.Type == glancev1.APISingle && !glancev1.IsFileBackend(current.CustomServiceConfig, topLevelFileBackend) {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			glancev1.GlanceAPIReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			glancev1.InvalidBackendErrorMessageSingle))
+		return ErrInvalidBackend
+	}
 
 	// We deploy:
 	// - an internal + external instances if layout is Split

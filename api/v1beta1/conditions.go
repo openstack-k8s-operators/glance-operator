@@ -37,6 +37,8 @@ const (
 	CinderCondition = "CinderReady"
 	// GlanceLayoutUpdateErrorMessage
 	GlanceLayoutUpdateErrorMessage = "The GlanceAPI layout (type) cannot be modified. To proceed, please add a new API with the desired layout and then decommission the previous API"
+	//GlanceWarnSplitDeprecateMsg
+	GlanceWarnSplitDeprecateMsg = "The GlanceAPI split layout is deprecated. It is recommended to remove this parameter and rely on the default single layout"
 	// KeystoneEndpointErrorMessage
 	KeystoneEndpointErrorMessage = "KeystoneEndpoint is assigned to an invalid GlanceAPI instance"
 	// InvalidBackendErrorMessageGeneric
@@ -44,5 +46,5 @@ const (
 	// InvalidBackendErrorMessageSplit
 	InvalidBackendErrorMessageSplit = "The GlanceAPI layout type: split cannot be used in combination with File and NFS backend"
 	// InvalidBackendErrorMessageSingle
-	InvalidBackendErrorMessageSingle = "The GlanceAPI layout type: single can only be used in combination with File and NFS backend"
+	InvalidBackendErrorMessageSingle = "the GlanceAPI layout type: single can only be used in combination with File and NFS backend"
 )

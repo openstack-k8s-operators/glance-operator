@@ -161,7 +161,7 @@ func (r *GlanceSpecCore) Default() {
 }
 
 // Check if File is used as a backend for Glance
-func isFileBackend(customServiceConfig string, topLevel bool) bool {
+func IsFileBackend(customServiceConfig string, topLevel bool) bool {
 	availableBackends := GetEnabledBackends(customServiceConfig)
 	// if we have "enabled_backends=backend1:type1,backend2:type2 ..
 	// we need to iterate over this list and look for type=file
@@ -194,13 +194,8 @@ func (r *GlanceSpecCore) isInvalidBackend(glanceAPI GlanceAPITemplate, topLevel 
 	// For the current glanceAPI instance, detect an invalid configuration
 	// made by "type: split && backend: file": raise an issue if this config
 	// is found.
-	if glanceAPI.Type == "split" && isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
+	if glanceAPI.Type == "split" && IsFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
 		return true, InvalidBackendErrorMessageSplit
-	}
-	// Do not allow to deploy a glanceAPI with "type: single" and a backend
-	// different than File (Cinder, Swift, Ceph): we must split in that case
-	if glanceAPI.Type == APISingle && !isFileBackend(glanceAPI.CustomServiceConfig, topLevel) {
-		return true, InvalidBackendErrorMessageSingle
 	}
 	return false, ""
 }
@@ -321,7 +316,7 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) 
 	// should play a role in the backedn evaluation. To save the result of
 	// top-level using the same function, "true" as the second parameter, as it
 	// represents an invariant for the top-level CR.
-	topLevelFileBackend := isFileBackend(r.CustomServiceConfig, true)
+	topLevelFileBackend := IsFileBackend(r.CustomServiceConfig, true)
 
 	// When a TopologyRef CR is referenced, fail if a different Namespace is
 	// referenced because is not supported
@@ -332,6 +327,10 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) 
 	for key, glanceAPI := range r.GlanceAPIs {
 		path := basePath.Child("glanceAPIs").Key(key)
 
+		// From 19 onwards we always raise a warning if "split" is used
+		if glanceAPI.Type == "split" {
+			allWarns = append(allWarns, GlanceWarnSplitDeprecateMsg)
+		}
 		// fail if a wrong topology is referenced
 		allErrs = append(allErrs, glanceAPI.ValidateTopology(path, namespace)...)
 
@@ -424,10 +423,13 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 	// Type can either be "split" or "single": we do not support changing layout
 	// because there's no logic in the operator to scale down the existing statefulset
 	// and scale up the new one, hence updating the Spec.GlanceAPI.Type is not supported
-	topLevelFileBackend := isFileBackend(r.CustomServiceConfig, true)
+	topLevelFileBackend := IsFileBackend(r.CustomServiceConfig, true)
 	for key, glanceAPI := range r.GlanceAPIs {
 		path := basePath.Child("glanceAPIs").Key(key)
-
+		// From 19 onwards we always raise a warning if "split" is used
+		if glanceAPI.Type == "split" {
+			allWarns = append(allWarns, GlanceWarnSplitDeprecateMsg)
+		}
 		// fail if a wrong topology is referenced
 		allErrs = append(allErrs, glanceAPI.ValidateTopology(path, namespace)...)
 
