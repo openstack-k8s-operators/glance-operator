@@ -2,12 +2,19 @@
 
 ## Umbrella Glance Service (Split API deployment)
 
+> **Note**: Starting with RHOSO 19, the split API layout is deprecated. The
+> security vulnerability described in
+> [OSSN-0090](https://wiki.openstack.org/wiki/OSSN/OSSN-0090) has been resolved
+> with Glance's new location API, which is now supported by Nova and Cinder.
+> For new deployments, use the default single layout. For migration guidance,
+> see [Location API Migration Guide](location-api.md).
+
 As mentioned in [OSSN-0090](https://wiki.openstack.org/wiki/OSSN/OSSN-0090),
 when deploying Glance in a popular configuration where Glance shares a
-common storage backend with Nova and/or Cinder, it is possible to open some
-known attack vectors by which malicious data modification can occur. If you
-choose to deploy a glance operator with Ceph as a backend then by default you
-will get a split API (Internal Vs External Glance API) deployed.
+common storage backend with Nova and/or Cinder, it was possible to open some
+known attack vectors by which malicious data modification could occur. The
+split API deployment was implemented as a security workaround before the
+location API was available.
 
 - A ``user facing`` glance-api service, accessible via the Public and Admin
 keystone endpoints.
