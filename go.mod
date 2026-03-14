@@ -12,13 +12,13 @@ require (
 	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20260304071337-63312061d576
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
 	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20260228155252-bb17197b83a6
-	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260302112901-11ab59789dd7
+	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260313075911-3b17118b2447
 	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260228160423-41bde73701b8
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260224071535-c6fd98c589ad
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260224071535-c6fd98c589ad
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260224071535-c6fd98c589ad
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20260224071535-c6fd98c589ad
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20260304143130-8d2b38f77616
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260310070607-b96da8dd520e
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260310070607-b96da8dd520e
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260310070607-b96da8dd520e
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20260310070607-b96da8dd520e
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20260312161300-a8a323f4d30c
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
 	gopkg.in/ini.v1 v1.67.1
 	gopkg.in/yaml.v3 v3.0.1
