@@ -14,6 +14,8 @@ detailed guides and examples, refer to the provided
 
 - [Design decisions](design-decisions.md): Understanding the architecture and
   deployment layout
+- [Probes Configuration](probes.md): Health check configuration and timing
+  best practices
 - [Configuring Image Service backends](../config/samples/backends): supported
   backends examples
 - [Copy Image](../config/samples/copy_image): Enable copy-image import method
