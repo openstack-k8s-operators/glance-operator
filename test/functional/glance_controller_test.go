@@ -1109,7 +1109,7 @@ var _ = Describe("Glance controller", func() {
 					},
 				},
 			}
-			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec))
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec, annotations))
 			DeferCleanup(
 				mariadb.DeleteDBService,
 				mariadb.CreateDBService(
