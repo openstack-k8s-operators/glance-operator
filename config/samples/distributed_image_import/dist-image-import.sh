@@ -59,6 +59,23 @@ STATE=$($glance image-show "$ID" | awk '/status/{print $4}')
 echo "Image Status => $STATE"
 sleep "$TIME"
 
+# Wait for pod DNS entries to be resolvable before staging
+DNS_TIMEOUT=30
+for i in 0 1; do
+    HOST="${REPLICA}${i}.${DOMAIN}"
+    echo "Waiting for DNS resolution of ${HOST} (timeout: ${DNS_TIMEOUT}s)..."
+    retries=$DNS_TIMEOUT
+    until getent hosts "${HOST}" > /dev/null 2>&1; do
+        retries=$((retries - 1))
+        if [[ $retries -le 0 ]]; then
+            echo "ERROR: DNS resolution for ${HOST} timed out after ${DNS_TIMEOUT}s"
+            exit 1
+        fi
+        sleep 1
+    done
+    echo "Resolved ${HOST}"
+done
+
 # Stage 2 - Stage the image
 [[ "$DEBUG" -gt 0 ]] && echo "$glance image-stage --progress --file myimage $ID"
 $glance --os-image-url "http://${REPLICA}""0.$DOMAIN:9292" image-stage --progress --file "${IMAGE_NAME}" "$ID"
