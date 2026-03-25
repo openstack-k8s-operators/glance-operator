@@ -16,9 +16,11 @@ limitations under the License.
 package glance
 
 import (
-	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
-
 	"fmt"
+	"maps"
+	"slices"
+
+	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -94,8 +96,9 @@ func DBPurgeJob(
 		},
 	}
 
-	// add CA cert if defined from the first api
-	for _, api := range instance.Spec.GlanceAPIs {
+	// add CA cert if defined from the first api (sorted for deterministic selection)
+	for _, name := range slices.Sorted(maps.Keys(instance.Spec.GlanceAPIs)) {
+		api := instance.Spec.GlanceAPIs[name]
 		if api.TLS.CaBundleSecretName != "" {
 			cronJobVolume = append(cronJobVolume, api.TLS.CreateVolume())
 			cronJobVolumeMounts = append(cronJobVolumeMounts, api.TLS.CreateVolumeMounts(nil)...)

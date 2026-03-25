@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -524,7 +526,8 @@ func (r *GlanceAPIReconciler) reconcileInit(
 	glanceEndpoints := glanceapi.GetGlanceEndpoints(instance.Spec.APIType)
 	apiEndpoints := make(map[string]string)
 
-	for endpointType, data := range glanceEndpoints {
+	for _, endpointType := range slices.Sorted(maps.Keys(glanceEndpoints)) {
+		data := glanceEndpoints[endpointType]
 		endpointTypeStr := string(endpointType)
 		apiName := instance.APIName()
 		endpointName := fmt.Sprintf("%s-%s-%s", glance.ServiceName, apiName, endpointTypeStr)
@@ -1224,8 +1227,8 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		if err != nil {
 			return err
 		}
-		for _, data := range secret.Data {
-			customSecrets += string(data) + "\n"
+		for _, key := range slices.Sorted(maps.Keys(secret.Data)) {
+			customSecrets += string(secret.Data[key]) + "\n"
 		}
 	}
 	customData[glance.CustomServiceConfigSecretsFileName] = customSecrets
@@ -1263,7 +1266,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 		endptName = fmt.Sprintf("%s-api", instance.Name)
 	}
 	httpdVhostConfig := map[string]any{}
-	for endpt := range glanceEndpoints {
+	for _, endpt := range slices.Sorted(maps.Keys(glanceEndpoints)) {
 		endptConfig := map[string]any{}
 		endptConfig["ServerName"] = fmt.Sprintf("glance-%s.%s.svc", endpt.String(), instance.Namespace)
 		endptConfig["ServerAlias"] = fmt.Sprintf("%s.%s.svc", endptName, instance.Namespace)

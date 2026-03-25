@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 
 	"github.com/gophercloud/gophercloud/v2"
@@ -395,7 +397,7 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 	}
 
 	// Remove the finalizer on each GlanceAPI CR
-	for name := range instance.Spec.GlanceAPIs {
+	for _, name := range slices.Sorted(maps.Keys(instance.Spec.GlanceAPIs)) {
 		err = r.removeAPIFinalizer(ctx, instance, helper, name)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -721,8 +723,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 
 	var serviceAnnotations map[string]string
 	// networks to attach to
-	for _, glanceAPI := range instance.Spec.GlanceAPIs {
-		serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, glanceAPI.NetworkAttachments, helper)
+	for _, name := range slices.Sorted(maps.Keys(instance.Spec.GlanceAPIs)) {
+		serviceAnnotations, ctrlResult, err = ensureNAD(ctx, &instance.Status.Conditions, instance.Spec.GlanceAPIs[name].NetworkAttachments, helper)
 		if err != nil {
 			return ctrlResult, err
 		}
@@ -738,8 +740,8 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// Reconcile the GlanceAPI deployment
 	//
-	for name, glanceAPI := range instance.Spec.GlanceAPIs {
-		err = r.apiDeployment(ctx, instance, name, glanceAPI, helper, serviceLabels)
+	for _, name := range slices.Sorted(maps.Keys(instance.Spec.GlanceAPIs)) {
+		err = r.apiDeployment(ctx, instance, name, instance.Spec.GlanceAPIs[name], helper, serviceLabels)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -1099,8 +1101,8 @@ func (r *GlanceReconciler) generateServiceConfig(
 	}
 
 	var tlsCfg *tls.Service
-	for _, api := range instance.Spec.GlanceAPIs {
-		if api.TLS.CaBundleSecretName != "" {
+	for _, name := range slices.Sorted(maps.Keys(instance.Spec.GlanceAPIs)) {
+		if instance.Spec.GlanceAPIs[name].TLS.CaBundleSecretName != "" {
 			tlsCfg = &tls.Service{}
 			break
 		}
@@ -1135,7 +1137,8 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 	if err != nil {
 		return err
 	}
-	for lName, lValue := range quota {
+	for _, lName := range slices.Sorted(maps.Keys(quota)) {
+		lValue := quota[lName]
 		defaultRegion := o.GetRegion()
 		m := openstack.RegisteredLimit{
 			RegionID:     defaultRegion,
