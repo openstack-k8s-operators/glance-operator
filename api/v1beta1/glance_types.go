@@ -20,6 +20,7 @@ import (
 	rabbitmqv1 "github.com/openstack-k8s-operators/infra-operator/apis/rabbitmq/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	condition "github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/annotations"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -37,6 +38,8 @@ const (
 	APIEdge = "edge"
 	// GlanceWSGILabel -
 	GlanceWSGILabel = "glance.openstack.org/wsgi"
+	// GlanceLocationAPILabel -
+	GlanceLocationAPILabel = "glance.openstack.org/location-api"
 )
 
 // GlanceSpecCore defines the desired state of Glance
@@ -311,4 +314,23 @@ func (instance Glance) GetQuotaLimits() map[string]int {
 		"image_stage_total":     instance.Spec.Quotas.ImageStageTotal,
 		"image_size_total":      instance.Spec.Quotas.ImageSizeTotal,
 	}
+}
+
+// GetLocationAPI - return the value associated to the location-api annotation
+// If the annotation does not exist, it currently return false to preserve
+// the existing behavior
+func (instance Glance) GetLocationAPI() (bool, error) {
+	// (NOTE): If the annotation does not exist or there's an error getting it,
+	// return false and act like location API is disabled.
+	// This allows to keep the existing behavior until the annotation is
+	// enforced by openstack-operator through OpenStackVersion CR
+	locAPI, exists, err := annotations.GetBoolFromAnnotation(
+		instance.GetAnnotations(), GlanceLocationAPILabel)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+	return locAPI, nil
 }

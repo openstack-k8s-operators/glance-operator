@@ -23,7 +23,7 @@
 
 set -x
 
-TIME=3
+TIME=6
 CACHE_TIME=6
 DOMAIN=${DOMAIN:-"glance-default-single.openstack.svc"}
 REPLICA=${REPLICA:-"glance-default-single-"}

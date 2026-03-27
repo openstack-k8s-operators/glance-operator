@@ -40,7 +40,7 @@ func ReadSample(sampleFileName string) map[string]any {
 
 func CreateGlanceFromSample(sampleFileName string, name types.NamespacedName) types.NamespacedName {
 	raw := ReadSample(sampleFileName)
-	instance := CreateGlance(name, raw["spec"].(map[string]any))
+	instance := CreateGlance(name, raw["spec"].(map[string]any), map[string]string{})
 	DeferCleanup(th.DeleteInstance, instance)
 	return types.NamespacedName{Name: instance.GetName(), Namespace: instance.GetNamespace()}
 }
