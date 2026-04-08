@@ -106,6 +106,8 @@ const (
 	GlanceCacheCleaner = "/usr/bin/glance-cache-cleaner"
 	// GlanceCachePruner -
 	GlanceCachePruner = "/usr/bin/glance-cache-pruner"
+	// ACConsumerFinalizer is added to AC secrets that GlanceAPI is actively consuming
+	ACConsumerFinalizer = "openstack.org/glanceapi-ac-consumer"
 	// ShortDuration -
 	ShortDuration = time.Duration(5) * time.Second
 	// NormalDuration -
