@@ -494,6 +494,12 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 		return ctrlResult, err
 	}
 
+	// Remove consumer finalizer from the AC secret GlanceAPI was consuming.
+	if err := keystonev1.RemoveACSecretConsumerFinalizer(ctx, helper, instance.Namespace,
+		instance.Status.ApplicationCredentialSecret, glance.ACConsumerFinalizer); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// Remove finalizer on the Topology CR
 	if ctrlResult, err := topologyv1.EnsureDeletedTopologyRef(
 		ctx,
@@ -988,6 +994,15 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// At this point the config is generated and the inputHash is computed
 	// we can mark the ServiceConfigReady as True and rollout the new pods
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
+
+	// Manage AC consumer finalizer, the AC data was already read and rendered to the service config
+	if err := keystonev1.ManageACSecretFinalizer(ctx, helper, instance.Namespace,
+		instance.Spec.Auth.ApplicationCredentialSecret,
+		instance.Status.ApplicationCredentialSecret,
+		glance.ACConsumerFinalizer); err != nil {
+		return ctrl.Result{}, err
+	}
+	instance.Status.ApplicationCredentialSecret = instance.Spec.Auth.ApplicationCredentialSecret
 
 	//
 	// Handle Topology
