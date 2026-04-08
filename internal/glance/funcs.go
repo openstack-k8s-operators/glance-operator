@@ -1,10 +1,19 @@
 package glance
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// ACConsumerFinalizerName returns a per-GlanceAPI finalizer name so that
+// multiple GlanceAPI instances (e.g. internal, external) sharing the same
+// AC secret each get their own distinct finalizer on the secret.
+func ACConsumerFinalizerName(apiName string) string {
+	return fmt.Sprintf("%s%s-ac-consumer", ACConsumerFinalizerPrefix, apiName)
+}
 
 // GetOwningGlanceName - Given a GlanceAPI (both internal and external)
 // object, return the parent Glance object that created it (if any)
