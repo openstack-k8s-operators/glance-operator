@@ -29,10 +29,13 @@ import (
 	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
+	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
+	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -1142,6 +1145,100 @@ var _ = Describe("Glance controller", func() {
 				g.Expect(ssExternal.ReadinessProbe.InitialDelaySeconds).To(Equal(stsOverride["initialDelaySeconds"]))
 				g.Expect(ssExternal.ReadinessProbe.TimeoutSeconds).To(Equal(stsOverride["timeoutSeconds"]))
 				g.Expect(ssExternal.ReadinessProbe.PeriodSeconds).To(Equal(stsOverride["periodSeconds"]))
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
+	When("Multiple GlanceAPI instances share the same AC secret", func() {
+		var acSecretName string
+
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceSecret(glanceTest.Instance.Namespace, ACTestServicePasswordSecret))
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(glanceTest.Instance.Namespace, MemcachedInstance, memcachedv1.MemcachedSpec{}))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					glanceTest.GlanceDatabaseName.Name,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}}}))
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+			acc, accSecret := mariadb.CreateMariaDBAccountAndSecret(glanceTest.GlanceDatabaseAccount, mariadbv1.MariaDBAccountSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, accSecret)
+			DeferCleanup(k8sClient.Delete, ctx, acc)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+
+			acSecretName = "ac-glance-shared-secret" //nolint:gosec // G101
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: glanceTest.Instance.Namespace,
+					Name:      acSecretName,
+				},
+				Data: map[string][]byte{
+					keystonev1.ACIDSecretKey:     []byte("shared-ac-id"),
+					keystonev1.ACSecretSecretKey: []byte("shared-ac-secret"),
+				},
+			}
+			DeferCleanup(k8sClient.Delete, ctx, secret)
+			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
+
+			// Create internal GlanceAPI with AC
+			spec := GetGlanceAPISpecWithAC(GlanceAPITypeInternal, acSecretName)
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceInternal)
+
+			// Create external GlanceAPI with the same AC secret
+			specExt := GetGlanceAPISpecWithAC(GlanceAPITypeExternal, acSecretName)
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, specExt))
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
+		})
+
+		It("should add distinct per-instance finalizers to the shared secret", func() {
+			internalFinalizer := glancev1.ACConsumerFinalizerPrefix + "default-internal-ac-consumer"
+			externalFinalizer := glancev1.ACConsumerFinalizerPrefix + "default-external-ac-consumer"
+
+			Eventually(func(g Gomega) {
+				secret := th.GetSecret(types.NamespacedName{
+					Namespace: glanceTest.Instance.Namespace,
+					Name:      acSecretName,
+				})
+				g.Expect(secret.Finalizers).To(ContainElement(internalFinalizer))
+				g.Expect(secret.Finalizers).To(ContainElement(externalFinalizer))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("should only remove the deleted instance's finalizer while the other stays", func() {
+			internalFinalizer := glancev1.ACConsumerFinalizerPrefix + "default-internal-ac-consumer"
+			externalFinalizer := glancev1.ACConsumerFinalizerPrefix + "default-external-ac-consumer"
+
+			// Verify both finalizers are present
+			Eventually(func(g Gomega) {
+				secret := th.GetSecret(types.NamespacedName{
+					Namespace: glanceTest.Instance.Namespace,
+					Name:      acSecretName,
+				})
+				g.Expect(secret.Finalizers).To(ContainElement(internalFinalizer))
+				g.Expect(secret.Finalizers).To(ContainElement(externalFinalizer))
+			}, timeout, interval).Should(Succeed())
+
+			// Delete the internal instance
+			th.DeleteInstance(GetGlanceAPI(glanceTest.GlanceInternal))
+
+			// Internal finalizer should be removed, external should remain
+			Eventually(func(g Gomega) {
+				secret := th.GetSecret(types.NamespacedName{
+					Namespace: glanceTest.Instance.Namespace,
+					Name:      acSecretName,
+				})
+				g.Expect(secret.Finalizers).NotTo(ContainElement(internalFinalizer))
+				g.Expect(secret.Finalizers).To(ContainElement(externalFinalizer))
 			}, timeout, interval).Should(Succeed())
 		})
 	})

@@ -1,10 +1,11 @@
 package glance
 
 import (
+	"math"
+
 	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
-	"math"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

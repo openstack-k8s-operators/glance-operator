@@ -496,6 +496,19 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 		return ctrlResult, err
 	}
 
+	// Remove consumer finalizer from AC secrets GlanceAPI was consuming.
+	// Check both status and spec to handle the edge case where the reconciler
+	// crashed after adding the finalizer but before updating the status.
+	for _, secretName := range []string{
+		instance.Status.ApplicationCredentialSecret,
+		instance.Spec.Auth.ApplicationCredentialSecret,
+	} {
+		if err := keystonev1.RemoveACSecretConsumerFinalizer(ctx, helper, instance.Namespace,
+			secretName, instance.ACConsumerFinalizerName()); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Remove finalizer on the Topology CR
 	if ctrlResult, err := topologyv1.EnsureDeletedTopologyRef(
 		ctx,
@@ -987,6 +1000,24 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		return ctrl.Result{}, err
 	}
 
+	// Add consumer finalizer to the new AC secret early, before deployment.
+	// The old secret's finalizer is removed later (after all services deploy)
+	// so that rapid rotations don't revoke a credential still in use by pods.
+	if instance.Spec.Auth.ApplicationCredentialSecret != "" {
+		if err := keystonev1.ManageACSecretFinalizer(ctx, helper, instance.Namespace,
+			instance.Spec.Auth.ApplicationCredentialSecret,
+			"",
+			instance.ACConsumerFinalizerName()); err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.ServiceConfigReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				condition.ServiceConfigReadyErrorMessage,
+				err.Error()))
+			return ctrl.Result{}, err
+		}
+	}
+
 	// At this point the config is generated and the inputHash is computed
 	// we can mark the ServiceConfigReady as True and rollout the new pods
 	instance.Status.Conditions.MarkTrue(condition.ServiceConfigReadyCondition, condition.ServiceConfigReadyMessage)
@@ -1183,6 +1214,25 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		condition.CronJobReadyMessage,
 	)
 	// create ImageCache cronJobs - end
+
+	// Manage the old AC secret's finalizer and status tracking.
+	// On rotation (old != new), only remove the old secret's finalizer after
+	// all sub-services are ready with the new credentials. This prevents
+	// premature revocation during rapid rotations.
+	isRotation := instance.Status.ApplicationCredentialSecret != "" && instance.Status.ApplicationCredentialSecret != instance.Spec.Auth.ApplicationCredentialSecret
+
+	if isRotation {
+		allServicesReady := instance.Status.Conditions.AllSubConditionIsTrue()
+		if allServicesReady {
+			if err := keystonev1.RemoveACSecretConsumerFinalizer(ctx, helper, instance.Namespace,
+				instance.Status.ApplicationCredentialSecret, instance.ACConsumerFinalizerName()); err != nil {
+				return ctrl.Result{}, err
+			}
+			instance.Status.ApplicationCredentialSecret = instance.Spec.Auth.ApplicationCredentialSecret
+		}
+	} else {
+		instance.Status.ApplicationCredentialSecret = instance.Spec.Auth.ApplicationCredentialSecret
+	}
 
 	// We reached the end of the Reconcile, update the Ready condition based on
 	// the sub conditions

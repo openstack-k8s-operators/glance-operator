@@ -131,6 +131,9 @@ type GlanceAPIStatus struct {
 	// NotificationBusSecret - Secret containing RabbitMQ transportURL for
 	// notification purposes
 	NotificationBusSecret string `json:"notificationBusSecret,omitempty"`
+
+	// ApplicationCredentialSecret - Secret that GlanceAPI is actively consuming (AC consumer finalizer present)
+	ApplicationCredentialSecret string `json:"applicationCredentialSecret,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -178,4 +181,11 @@ func (instance GlanceAPI) IsReady() bool {
 func (instance GlanceAPI) APIName() string {
 	// The information is stored as a label
 	return instance.Labels[APINameLabel]
+}
+
+// ACConsumerFinalizerName returns a per-GlanceAPI finalizer name so that
+// multiple GlanceAPI instances (e.g. internal, external) sharing the same
+// AC secret each get their own distinct finalizer on the secret.
+func (instance GlanceAPI) ACConsumerFinalizerName() string {
+	return fmt.Sprintf("%s%s-%s-ac-consumer", ACConsumerFinalizerPrefix, instance.APIName(), instance.Spec.APIType)
 }
