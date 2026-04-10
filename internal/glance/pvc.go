@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/backup"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +30,12 @@ func GetPvc(api *glancev1.GlanceAPI, labels map[string]string, pvcType PvcType) 
 	default:
 		pvcName = ServiceName
 		requestSize = api.Spec.Storage.StorageRequest
+		// Add backup and restore labels for local PVC (image storage)
+		labels = util.MergeStringMaps(
+			labels,
+			backup.GetBackupLabels(backup.CategoryControlPlane),
+			backup.GetRestoreLabels(backup.RestoreOrder00, backup.CategoryControlPlane),
+		)
 	}
 	// Build the basic pvc object
 	pvc := corev1.PersistentVolumeClaim{
