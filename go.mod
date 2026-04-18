@@ -9,16 +9,16 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
-	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20260404082646-db49275ac8a0
+	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20260413123643-7d895a78aba4
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20260405154745-d9bfca240899
-	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260409082149-b98bf2f881a4
-	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260409110902-ab20b25961e7
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260410120633-3e1007da0cbd
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260410120633-3e1007da0cbd
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260410120633-3e1007da0cbd
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20260410120633-3e1007da0cbd
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20260403163210-0e5eb2ea6a9c
+	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20260413092200-e2ac36066192
+	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260416122644-5476763a36b6
+	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260414133946-c146da0da0d6
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260417092244-81c71b39e981
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260417092244-81c71b39e981
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260417092244-81c71b39e981
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20260417092244-81c71b39e981
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20260413152655-564a51226a2a
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
 	gopkg.in/ini.v1 v1.67.1
 	gopkg.in/yaml.v3 v3.0.1
