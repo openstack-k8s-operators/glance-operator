@@ -16,6 +16,8 @@ detailed guides and examples, refer to the provided
   deployment layout
 - [Location API Migration Guide](location-api.md): Migrating from split to
   single layout with the new location API
+- [Probes Configuration](probes.md): Health check configuration and timing
+  best practices
 - [Configuring Image Service backends](../config/samples/backends): supported
   backends examples
 - [Copy Image](../config/samples/copy_image): Enable copy-image import method
