@@ -131,6 +131,9 @@ type GlanceAPIStatus struct {
 	// NotificationBusSecret - Secret containing RabbitMQ transportURL for
 	// notification purposes
 	NotificationBusSecret string `json:"notificationBusSecret,omitempty"`
+
+	// ApplicationCredentialSecret - Secret that GlanceAPI is actively consuming (AC consumer finalizer present)
+	ApplicationCredentialSecret string `json:"applicationCredentialSecret,omitempty"`
 }
 
 // +kubebuilder:object:root=true

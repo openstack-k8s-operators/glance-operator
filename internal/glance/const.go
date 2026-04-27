@@ -106,6 +106,8 @@ const (
 	GlanceCacheCleaner = "/usr/bin/glance-cache-cleaner"
 	// GlanceCachePruner -
 	GlanceCachePruner = "/usr/bin/glance-cache-pruner"
+	// ACConsumerFinalizerPrefix is the base prefix for the per-GlanceAPI AC consumer finalizer
+	ACConsumerFinalizerPrefix = "openstack.org/glanceapi-"
 	// ShortDuration -
 	ShortDuration = time.Duration(5) * time.Second
 	// NormalDuration -
