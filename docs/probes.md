@@ -148,17 +148,6 @@ spec:
         failureThreshold: 20
 ```
 
-### Disabling Startup Probes
-
-Set to `nil` to disable startup probes (not recommended):
-
-```yaml
-spec:
-  override:
-    probes:
-      startupProbes: null
-```
-
 ## Probe Validation
 
 The operator validates probe configurations via admission webhooks using
