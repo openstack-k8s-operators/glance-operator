@@ -194,6 +194,16 @@ func GenerateConfigsGeneric(
 	scripts bool,
 ) error {
 
+	commonTemplates, err := util.GetCommonTemplates(templateParameters)
+	if err != nil {
+		return err
+	}
+	for k, v := range commonTemplates {
+		if _, exists := customData[k]; !exists {
+			customData[k] = v
+		}
+	}
+
 	cms := []util.Template{
 		// Templates where the GlanceAPI config is stored
 		{
