@@ -14,6 +14,7 @@ github.com/evanphx/json-patch v5.9.11+incompatible h1:ixHHqfcGvxhWkniF1tWxBHA0yb
 github.com/evanphx/json-patch v5.9.11+incompatible/go.mod h1:50XU6AFN0ol/bzJsmQLiYLvXMP4fmwYFNcr97nuDLSk=
 github.com/evanphx/json-patch/v5 v5.9.11 h1:/8HVnzMq13/3x9TPvjG08wUGqBTmZBsCWzjTM0wiaDU=
 github.com/evanphx/json-patch/v5 v5.9.11/go.mod h1:3j+LviiESTElxA4p3EMKAB9HXj3/XEtnUf6OZxqIQTM=
+github.com/fmount/lib-common/modules/common v0.0.0-20260515130426-6d4d25732d75 h1:1T68oVhypdvJkwkFqKS73Xs7S6izBKHTCXGOrX1mmTY=
 github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
 github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sapM=
@@ -82,8 +83,6 @@ github.com/openshift/api v0.0.0-20250711200046-c86d80652a9e h1:E1OdwSpqWuDPCedyU
 github.com/openshift/api v0.0.0-20250711200046-c86d80652a9e/go.mod h1:Shkl4HanLwDiiBzakv+con/aMGnVE2MAGvoKp5oyYUo=
 github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260513130700-78e1a15a8289 h1:c7jcPJt1jINUqWcYhmpeUDzeesOd0SfrFOpxEHHoJ7c=
 github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260513130700-78e1a15a8289/go.mod h1:1FRevwpKwNgNjDcd8Rz+mxlRleFsi7gNS0BC09x+oYE=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260515134210-2e2a0d06648c h1:tTESojEnTyj5EZ1IlHiTncHqN6Az7iWLBd7sbMDSsEY=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260515134210-2e2a0d06648c/go.mod h1:aIuG6lx3aS0vnXweRNdR/Q0SlfOsLIo0OzrqKK7C6xs=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260515134210-2e2a0d06648c h1:yEjjh0YObWmY0lKqrvBOZpStS832nUrOHvRfDc+t3d0=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260515134210-2e2a0d06648c/go.mod h1:tft3oDiN+v6wX3ILPXGUM/gCLJz6QtrPN63hxpJ3E24=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
