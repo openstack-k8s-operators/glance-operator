@@ -25,6 +25,8 @@ github.com/evanphx/json-patch/v5 v5.9.11 h1:/8HVnzMq13/3x9TPvjG08wUGqBTmZBsCWzjT
 github.com/evanphx/json-patch/v5 v5.9.11/go.mod h1:3j+LviiESTElxA4p3EMKAB9HXj3/XEtnUf6OZxqIQTM=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
+github.com/fmount/lib-common/modules/common v0.0.0-20260515130426-6d4d25732d75 h1:1T68oVhypdvJkwkFqKS73Xs7S6izBKHTCXGOrX1mmTY=
+github.com/fmount/lib-common/modules/common v0.0.0-20260515130426-6d4d25732d75/go.mod h1:aIuG6lx3aS0vnXweRNdR/Q0SlfOsLIo0OzrqKK7C6xs=
 github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
 github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sapM=
@@ -126,8 +128,6 @@ github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260513130700-7
 github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260513130700-78e1a15a8289/go.mod h1:1FRevwpKwNgNjDcd8Rz+mxlRleFsi7gNS0BC09x+oYE=
 github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260513130126-175a0958de92 h1:9brYhCAbx+Cwfq8cEtn/g4xF0w6FlyM7CSuDqertxNQ=
 github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260513130126-175a0958de92/go.mod h1:/nxao9LzRStCZPOpyY61Sbfzcogy5BrEP5nExUwFYZ0=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260515134210-2e2a0d06648c h1:tTESojEnTyj5EZ1IlHiTncHqN6Az7iWLBd7sbMDSsEY=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260515134210-2e2a0d06648c/go.mod h1:aIuG6lx3aS0vnXweRNdR/Q0SlfOsLIo0OzrqKK7C6xs=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260515134210-2e2a0d06648c h1:8g+abN6RBDOVf8y8qA9IGqDgpAPYduc+T3DuHvQMh2w=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260515134210-2e2a0d06648c/go.mod h1:7yqbVpg0k0vW+kZks+TMU/cd1ovoejyHfVPWcyGYLHI=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260515134210-2e2a0d06648c h1:yEjjh0YObWmY0lKqrvBOZpStS832nUrOHvRfDc+t3d0=

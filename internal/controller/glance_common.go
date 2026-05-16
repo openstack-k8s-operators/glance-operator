@@ -197,13 +197,14 @@ func GenerateConfigsGeneric(
 	cms := []util.Template{
 		// Templates where the GlanceAPI config is stored
 		{
-			Name:          fmt.Sprintf("%s-config-data", instance.GetName()),
-			Namespace:     instance.GetNamespace(),
-			Type:          util.TemplateTypeConfig,
-			InstanceType:  instance.GetObjectKind().GroupVersionKind().Kind,
-			ConfigOptions: templateParameters,
-			CustomData:    customData,
-			Labels:        cmLabels,
+			Name:            fmt.Sprintf("%s-config-data", instance.GetName()),
+			Namespace:       instance.GetNamespace(),
+			Type:            util.TemplateTypeConfig,
+			InstanceType:    instance.GetObjectKind().GroupVersionKind().Kind,
+			ConfigOptions:   templateParameters,
+			CustomData:      customData,
+			CommonTemplates: []string{"ssl.conf"},
+			Labels:          cmLabels,
 		},
 	}
 	// TODO: Scripts have no reason to be secrets, should move to configmap
