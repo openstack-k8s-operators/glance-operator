@@ -29,6 +29,10 @@ import (
 )
 
 const (
+	// ACConsumerFinalizerPrefix is the base prefix for the per-GlanceAPI AC consumer finalizer.
+	// Each GlanceAPI instance gets its own finalizer: <prefix><apiName>-<apiType>-ac-consumer
+	ACConsumerFinalizerPrefix = "openstack.org/glance-"
+
 	// Container image fall-back defaults
 
 	// GlanceAPIContainerImage is the fall-back container image for GlanceAPI
