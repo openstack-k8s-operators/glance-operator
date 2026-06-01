@@ -1583,7 +1583,7 @@ func (r *GlanceAPIReconciler) ensureImageCacheJob(
 		cacheAnnotations := vc.GetAnnotations()
 		if _, ok := cacheAnnotations["image-cache"]; ok {
 			cronSpec := glance.CronJobSpec{
-				Name:        fmt.Sprintf("%s-%s", pvcName, cjType),
+				Name:        fmt.Sprintf("%s-%s", strings.TrimPrefix(pvcName, glance.CachePVCPrefix), cjType),
 				PvcClaim:    &pvcName,
 				Command:     command,
 				CjType:      cjType,
@@ -1638,7 +1638,7 @@ func (r *GlanceAPIReconciler) cleanupImageCacheJob(
 			// Get the pod (by name) associated to the current pvc
 			var pod corev1.Pod
 			if err := r.Get(ctx, types.NamespacedName{
-				Name:      strings.TrimPrefix(pvcName, "glance-cache-"),
+				Name:      strings.TrimPrefix(pvcName, glance.CachePVCPrefix),
 				Namespace: instance.Namespace,
 			}, &pod); err != nil && k8s_errors.IsNotFound(err) || instance.Spec.ImageCache.Size == "" {
 				// if we have no pod Running with the associated cache pvc,
@@ -1674,7 +1674,7 @@ func (r *GlanceAPIReconciler) deleteJob(
 		if err = r.Get(
 			ctx,
 			types.NamespacedName{
-				Name:      fmt.Sprintf("%s-%s", pvcName, cj),
+				Name:      fmt.Sprintf("%s-%s", strings.TrimPrefix(pvcName, glance.CachePVCPrefix), cj),
 				Namespace: instance.Namespace},
 			&cronJob,
 		); err != nil {

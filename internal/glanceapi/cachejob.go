@@ -18,6 +18,7 @@ package glanceapi
 
 import (
 	"fmt"
+	"strings"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
@@ -103,7 +104,7 @@ func ImageCacheJob(
 							SecurityContext: &corev1.PodSecurityContext{
 								FSGroup: ptr.To(glance.GlanceUID),
 							},
-							Affinity: GetGlanceAPIPodAffinity(instance),
+							Affinity: ColocateWithPod(strings.TrimPrefix(*cronSpec.PvcClaim, glance.CachePVCPrefix)),
 							Containers: []corev1.Container{
 								{
 									Name:  cronSpec.Name,

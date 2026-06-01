@@ -100,7 +100,7 @@ spec:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: glance-cache-glance-default-external-api-0-cleaner
+  name: glance-default-external-api-0-cleaner
 spec:
   concurrencyPolicy: Forbid
   failedJobsHistoryLimit: 1
@@ -122,7 +122,7 @@ spec:
             - /usr/bin/glance-cache-cleaner --config-dir /etc/glance/glance.conf.d
             command:
             - /bin/bash
-            name: glance-cache-glance-default-external-api-0-cleaner
+            name: glance-default-external-api-0-cleaner
             volumeMounts:
             - mountPath: /etc/glance/glance.conf.d
               name: image-cache-config-data
@@ -147,7 +147,7 @@ spec:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: glance-cache-glance-default-external-api-0-pruner
+  name: glance-default-external-api-0-pruner
 spec:
   concurrencyPolicy: Forbid
   failedJobsHistoryLimit: 1
@@ -167,7 +167,7 @@ spec:
             - /usr/bin/glance-cache-pruner --config-dir /etc/glance/glance.conf.d
             command:
             - /bin/bash
-            name: glance-cache-glance-default-external-api-0-pruner
+            name: glance-default-external-api-0-pruner
             volumeMounts:
             - mountPath: /etc/glance/glance.conf.d
               name: image-cache-config-data

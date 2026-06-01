@@ -41,9 +41,9 @@ metadata:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: glance-cache-glance-default-single-0-cleaner
+  name: glance-default-single-0-cleaner
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: glance-cache-glance-default-single-0-pruner
+  name: glance-default-single-0-pruner
