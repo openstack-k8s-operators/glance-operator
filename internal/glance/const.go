@@ -97,6 +97,9 @@ const (
 	CachePruner CronJobType = "pruner"
 	//ImageCacheDir -
 	ImageCacheDir = "/var/lib/glance/image-cache"
+	// CachePVCPrefix is the VolumeClaimTemplate name prefix used by
+	// StatefulSets for image-cache PVCs (format: <prefix>-<sts-pod-name>)
+	CachePVCPrefix = ServiceName + "-cache-"
 
 	// GlanceDBSyncCommand -
 	GlanceDBSyncCommand = "/usr/local/bin/kolla_start"
