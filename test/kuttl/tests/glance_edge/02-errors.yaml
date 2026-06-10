@@ -1,0 +1,114 @@
+#
+# Check for:
+# - No Glance CR
+# - No GlanceAPI glance-default-external CR
+# - No GlanceAPI glance-default-internal CR
+# - No GlanceAPI glance-az1-edge CR
+# - No GlanceAPI glance-az2-edge CR
+# - No GlanceAPI glance-default-external-api StatefulSet
+# - No GlanceAPI glance-default-internal-api StatefulSet
+# - No GlanceAPI glance-az1-edge-api StatefulSet
+# - No GlanceAPI glance-az2-edge-api StatefulSet
+# - No glance-default-internal service
+# - No glance-default-public service
+# - No glance-default-external-headless service
+# - No glance-default-internal-headless service
+# - No glance-az1-internal service
+# - No glance-az1-headless service
+# - No glance-az2-internal service
+# - No glance-az2-headless service
+
+apiVersion: glance.openstack.org/v1beta1
+kind: Glance
+metadata:
+  name: glance
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-external
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-default-internal
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-az1-edge
+---
+apiVersion: glance.openstack.org/v1beta1
+kind: GlanceAPI
+metadata:
+  name: glance-az2-edge
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-external-api
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-default-internal-api
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-az1-edge-api
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: glance-az2-edge-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-public
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-internal-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-default-external-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az1-internal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az1-public
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az1-edge-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az2-public
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az2-internal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glance-az2-edge-api
