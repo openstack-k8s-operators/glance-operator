@@ -1,0 +1,21 @@
+# ** FOR DEVELOPMENT PURPOSES ONLY**
+# Sample using File as a glance backend
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        enabled_backends = default_backend:file
+        [glance_store]
+        default_backend = default_backend
+        [default_backend]
+        filesystem_store_datadir = /var/lib/glance/images/
+      databaseInstance: openstack
+      glanceAPIs:
+        default:
+          replicas: 1
+          type: single
