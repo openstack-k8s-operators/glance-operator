@@ -17,7 +17,7 @@
       - ^renovate.json$
       - ^docs/
     vars:
-      cifmw_install_yamls_sdk_version: v1.41.1
+      cifmw_install_yamls_sdk_version: v1.42.3
       cifmw_cls_pv_count: 20
       cifmw_kuttl_tests_operator_list:
         - glance
@@ -32,7 +32,7 @@
         dashboard_enabled: false
         cephfs_enabled: true
         ceph_nfs_enabled: false
-      cifmw_install_yamls_sdk_version: v1.41.1
+      cifmw_install_yamls_sdk_version: v1.42.3
       cifmw_test_operator_tempest_concurrency: 3
       cifmw_test_operator_tempest_include_list: |
         ^tempest.api.image.

@@ -119,7 +119,7 @@ type GlanceTestData struct {
 func GetGlanceTestData(glanceName types.NamespacedName) GlanceTestData {
 
 	m := glanceName
-	return GlanceTestData{
+	return GlanceTestData{ //nolint:gosec
 		Instance: m,
 
 		CinderName: types.NamespacedName{
