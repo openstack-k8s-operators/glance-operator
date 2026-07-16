@@ -23,7 +23,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -43,8 +42,6 @@ func SetupGlanceAPIDefaults(defaults GlanceAPIDefaults) {
 	glanceapilog.Info("Glance defaults initialized", "defaults", defaults)
 }
 
-var _ webhook.Defaulter = &GlanceAPI{}
-
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *GlanceAPI) Default() {
 	glanceapilog.Info("default", "name", r.Name)
@@ -58,8 +55,6 @@ func (spec *GlanceAPISpec) Default() {
 		spec.ContainerImage = glanceAPIDefaults.ContainerImageURL
 	}
 }
-
-var _ webhook.Validator = &GlanceAPI{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *GlanceAPI) ValidateCreate() (admission.Warnings, error) {
