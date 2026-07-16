@@ -163,20 +163,20 @@ func (r *GlanceSpecCore) Default() {
 // Check if File is used as a backend for Glance
 func IsFileBackend(customServiceConfig string, topLevel bool) bool {
 	availableBackends := GetEnabledBackends(customServiceConfig)
-	// if we have "enabled_backends=backend1:type1,backend2:type2 ..
-	// we need to iterate over this list and look for type=file
-	for i := 0; i < len(availableBackends); i++ {
-		backendToken := strings.SplitN(availableBackends[i], ":", 2)
-		if backendToken[1] == "file" {
-			return true
-		}
-	}
+
 	// If the iteration over the list has not produced file, we have yet another
 	// possible scenario to evaluate:
 	// - availableBackends is []
 	// - the topLevel CR is [] or has File has backend (topLevel is true)
 	if len(availableBackends) == 0 && topLevel {
 		return true
+	}
+
+	if len(availableBackends) == 1 {
+		backendToken := strings.SplitN(availableBackends[0], ":", 2)
+		if len(backendToken) == 2 && backendToken[1] == "file" {
+			return true
+		}
 	}
 	return false
 }
