@@ -348,6 +348,22 @@ func GetDummyBackend() string {
 	return fmt.Sprintf("%s\n%s", section, dummyBackend)
 }
 
+// GetFileBackend - Utility function that simulates a customServiceConfig
+// where a single File (NFS) backend has been set
+func GetFileBackend() string {
+	section := "[DEFAULT]"
+	fileBackend := "enabled_backends=nfs:file"
+	return fmt.Sprintf("%s\n%s", section, fileBackend)
+}
+
+// GetMultistoreBackendWithFile - Utility function that simulates a
+// customServiceConfig with a multistore config that includes File (NFS)
+func GetMultistoreBackendWithFile() string {
+	section := "[DEFAULT]"
+	multiBackend := "enabled_backends=default_backend:rbd,nfs:file"
+	return fmt.Sprintf("%s\n%s", section, multiBackend)
+}
+
 // GetExtraMounts - Utility function that simulates extraMounts pointing
 // to a Ceph secret
 func GetExtraMounts() []map[string]any {
