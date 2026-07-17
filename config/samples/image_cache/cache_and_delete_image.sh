@@ -46,7 +46,7 @@ exec 0<&-
 echo This is a dodgy image > $HOME/"${IMAGE_NAME}"
 
 # Stage 0 - Delete any pre-existing image
-openstack image list -c ID -f value | xargs -n 1 openstack image delete
+openstack image list -c ID -f value | xargs -r -n 1 openstack image delete
 
 # Stage 1 - Verify no image is cached on replica 0 and replica 1
 CACHED_ID=$($glance --os-image-url "http://${REPLICA}""0.$DOMAIN:9292" cache-list | awk -v state=cached '$0 ~ state {print $2}')

@@ -44,7 +44,7 @@ exec 0<&-
 echo This is a dodgy image > "${IMAGE_NAME}"
 
 # Stage 0 - Delete any pre-existing image
-openstack image list -c ID -f value | xargs -n 1 openstack image delete
+openstack image list -c ID -f value | xargs -r -n 1 openstack image delete
 
 # Stage 1 - Create an empty box
 $glance --verbose image-create \
@@ -90,7 +90,7 @@ status=$($glance image-show "$ID" | awk '/status/{print $4}')
 printf "Image Status: %s\n" "$status"
 
 # Stage 5 - Clean up images
-openstack image list -c ID -f value | xargs -n 1 openstack image delete
+openstack image list -c ID -f value | xargs -r -n 1 openstack image delete
 
 if [[ $status == "active" ]]; then
     exit 0
