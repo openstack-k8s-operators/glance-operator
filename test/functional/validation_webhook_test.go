@@ -91,6 +91,73 @@ var _ = Describe("Glance validation", func() {
 		)
 	})
 
+	It("webhooks reject split with single file backend", func() {
+		spec := GetGlanceDefaultSpec()
+		gapis := map[string]any{
+			"default": map[string]any{
+				"replicas":            1,
+				"type":                "split",
+				"customServiceConfig": GetFileBackend(),
+			},
+		}
+
+		spec["keystoneEndpoint"] = "default"
+		spec["glanceAPIs"] = gapis
+
+		raw := map[string]any{
+			"apiVersion": "glance.openstack.org/v1beta1",
+			"kind":       "Glance",
+			"metadata": map[string]any{
+				"name":      glanceTest.Instance.Name,
+				"namespace": glanceTest.Instance.Namespace,
+			},
+			"spec": spec,
+		}
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			ctx, k8sClient, unstructuredObj, func() error { return nil })
+
+		Expect(err).Should(HaveOccurred())
+		var statusError *k8s_errors.StatusError
+		Expect(errors.As(err, &statusError)).To(BeTrue())
+		Expect(statusError.ErrStatus.Message).To(
+			ContainSubstring(glancev1.InvalidBackendErrorMessageSplit),
+		)
+	})
+
+	It("webhooks accept split with multistore including file backend", func() {
+		spec := GetGlanceDefaultSpec()
+		gapis := map[string]any{
+			"default": map[string]any{
+				"replicas":            1,
+				"type":                "split",
+				"customServiceConfig": GetMultistoreBackendWithFile(),
+			},
+		}
+
+		spec["keystoneEndpoint"] = "default"
+		spec["glanceAPIs"] = gapis
+
+		raw := map[string]any{
+			"apiVersion": "glance.openstack.org/v1beta1",
+			"kind":       "Glance",
+			"metadata": map[string]any{
+				"name":      glanceTest.Instance.Name,
+				"namespace": glanceTest.Instance.Namespace,
+			},
+			"spec": spec,
+		}
+		unstructuredObj := &unstructured.Unstructured{Object: raw}
+		_, err := controllerutil.CreateOrPatch(
+			ctx, k8sClient, unstructuredObj, func() error { return nil })
+
+		Expect(err).ShouldNot(HaveOccurred())
+
+		DeferCleanup(func() {
+			_ = k8sClient.Delete(ctx, unstructuredObj)
+		})
+	})
+
 	It("webhooks reject the request - invalid instance", func() {
 		spec := GetGlanceDefaultSpec()
 
