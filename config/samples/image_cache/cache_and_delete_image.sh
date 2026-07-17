@@ -17,10 +17,6 @@
 #
 #    oc get cm openstack-config -o json | jq -r '.data["clouds.yaml"]'
 #
-# 5. pass the password via environment variable, for example:
-#
-#    export PASSWORD=12345678
-
 set -x
 
 TIME=6
@@ -29,7 +25,7 @@ DOMAIN=${DOMAIN:-"glance-default-single.openstack.svc"}
 REPLICA=${REPLICA:-"glance-default-single-"}
 IMAGE_NAME="myimage"
 KEYSTONE=$(awk '/auth_url/ {print $2}' "/etc/openstack/clouds.yaml")
-ADMIN_PWD=${1:-12345678}
+ADMIN_PWD=${1:-$(awk '/password/ {gsub(/"/, "", $2); print $2}' "/etc/openstack/secure.yaml")}
 ADMIN_USER=${ADMIN_USER:-"admin"}
 
 # this method uses distributed image import and relies on the glance cli
