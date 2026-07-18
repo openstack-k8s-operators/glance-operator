@@ -9,16 +9,16 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
 	github.com/onsi/ginkgo/v2 v2.28.2
 	github.com/onsi/gomega v1.42.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20260704141815-99fbbf4dc2af
+	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20260711072837-b967a0642c84
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20260704173219-63db517c7327
-	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260710164830-340f812c81ca
-	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260704172639-4075e9e6846e
+	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20260717102017-1d103589d141
+	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260714061029-2a213855a69a
+	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260714171609-17efb11fedd9
 	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260618132757-fe8e60d1d8a6
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260618132757-fe8e60d1d8a6
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260618132757-fe8e60d1d8a6
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20260618132757-fe8e60d1d8a6
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20260709184332-657df1dee07b
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20260711151836-598dad120d26
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
 	gopkg.in/ini.v1 v1.67.3
 	gopkg.in/yaml.v3 v3.0.1
