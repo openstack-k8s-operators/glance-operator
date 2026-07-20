@@ -33,7 +33,7 @@ function create_signed_image {
         --property img_signature_hash_method='SHA-512' --property img_signature_key_type='RSA-PSS' < myimage
 }
 
-admin_pwd=${1:-12345678}
+admin_pwd=${1:-$(awk '/password/ {gsub(/"/, "", $2); print $2}' "/etc/openstack/secure.yaml")}
 build_image_signature
 image_signature=$(cat myimage.signature.b64)
 create_signed_image "$image_signature" "$cert_uuid" "$admin_pwd"
