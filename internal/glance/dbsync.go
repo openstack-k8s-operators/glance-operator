@@ -21,10 +21,17 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
+	"github.com/openstack-k8s-operators/lib-common/modules/users"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
+
+// DBSyncCommand - direct glance-manage command without kolla wrapper
+const DBSyncCommand = "glance-manage --config-dir /etc/glance/glance.conf.d db sync glance && " +
+	"glance-manage db_load_metadefs"
 
 // DbSyncJob func
 func DbSyncJob(
@@ -32,8 +39,6 @@ func DbSyncJob(
 	labels map[string]string,
 	annotations map[string]string,
 ) *batchv1.Job {
-	var config0644AccessMode int32 = 0644
-
 	// Unlike the individual glanceAPI services, the DbSyncJob doesn't need a
 	// secret that contains all of the config snippets required by every
 	// service, The two snippet files that it does need (DefaultsConfigFileName
@@ -44,7 +49,7 @@ func DbSyncJob(
 			Name: "db-sync-config-data",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
+					DefaultMode: &configMode,
 					SecretName:  instance.Name + "-config-data",
 					Items: []corev1.KeyToPath{
 						{
@@ -63,7 +68,7 @@ func DbSyncJob(
 			Name: "config-data",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
+					DefaultMode: &configMode,
 					SecretName:  instance.Name + "-config-data",
 				},
 			},
@@ -82,12 +87,6 @@ func DbSyncJob(
 			SubPath:   "my.cnf",
 			ReadOnly:  true,
 		},
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "db-sync-config.json",
-			ReadOnly:  true,
-		},
 	}
 
 	// add CA cert if defined from the first api (sorted for deterministic selection)
@@ -101,10 +100,8 @@ func DbSyncJob(
 		}
 	}
 
-	args := []string{"-c", GlanceDBSyncCommand}
+	args := []string{"-c", DBSyncCommand}
 	envVars := map[string]env.Setter{}
-	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
-	envVars["KOLLA_BOOTSTRAP"] = env.SetValue("true")
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -118,8 +115,10 @@ func DbSyncJob(
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:      corev1.RestartPolicyOnFailure,
-					ServiceAccountName: instance.RbacResourceName(),
+					RestartPolicy:                corev1.RestartPolicyOnFailure,
+					ServiceAccountName:           instance.RbacResourceName(),
+					AutomountServiceAccountToken: ptr.To(false),
+					SecurityContext:              pod.RestrictivePodSecurityContext(users.GlanceUID, users.GlanceGID),
 					Containers: []corev1.Container{
 						{
 							Name: ServiceName + "-db-sync",
@@ -128,7 +127,7 @@ func DbSyncJob(
 							},
 							Args:            args,
 							Image:           instance.Spec.ContainerImage,
-							SecurityContext: dbSyncSecurityContext(),
+							SecurityContext: pod.RestrictiveSecurityContext(users.GlanceUID, users.GlanceGID),
 							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts:    dbSyncMounts,
 						},

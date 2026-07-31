@@ -18,7 +18,7 @@ It results in a duplicated pod, where the designed command is not run, and it
 returns an interactive shell that can be used to start the troubleshooting.
 
 ```bash
-Starting pod/glance-default-external-api-0-debug-fz4hz, command was: /bin/bash -c /usr/local/bin/kolla_set_configs && /usr/local/bin/kolla_start
+Starting pod/glance-default-external-api-0-debug-fz4hz, command was: /bin/bash -c exec /usr/sbin/httpd -DFOREGROUND
 Pod IP: --
 If you don't see a command prompt, try pressing enter.
 sh-5.1#
@@ -36,48 +36,19 @@ glance-default-external-api-0-debug-fz4hz   1/3     Running
 glance-default-external-api-0-debug-fz4hz   1/3     NotReady
 ```
 
-To start the service in debug mode, we should first configure the service
-accordingly:
-
+Config files are already mounted directly at their final locations (see
+`internal/glance/volumes.go`) -- there's no kolla-style copy step to run
+anymore. `/etc/glance/glance.conf.d/01-config.conf` (the runtime-only
+`worker_self_reference_url` snippet, only relevant when `GLANCE_DOMAIN` is
+set for distributed image import) is the one file not pre-populated from a
+Secret; write it by hand if you need it for troubleshooting:
 
 ```bash
-sh-5.1# kolla_set_configs
-INFO:__main__:Loading config file at /var/lib/kolla/config_files/config.json
-INFO:__main__:Validating config file
-INFO:__main__:Kolla config strategy set to: COPY_ALWAYS
-INFO:__main__:Copying service configuration files
-INFO:__main__:Copying /var/lib/config-data/default/00-config.conf to /etc/glance/glance.conf.d/00-config.conf
-INFO:__main__:Setting permission for /etc/glance/glance.conf.d/00-config.conf
-INFO:__main__:Copying /var/lib/config-data/default/02-config.conf to /etc/glance/glance.conf.d/02-config.conf
-INFO:__main__:Setting permission for /etc/glance/glance.conf.d/02-config.conf
-INFO:__main__:Copying /var/lib/config-data/default/03-config.conf to /etc/glance/glance.conf.d/03-config.conf
-INFO:__main__:Setting permission for /etc/glance/glance.conf.d/03-config.conf
-INFO:__main__:Deleting /usr/sbin/multipath
-INFO:__main__:Copying /usr/local/bin/container-scripts/run-on-host to /usr/sbin/multipath
-INFO:__main__:Setting permission for /usr/sbin/multipath
-INFO:__main__:Deleting /usr/sbin/multipathd
-INFO:__main__:Copying /usr/local/bin/container-scripts/run-on-host to /usr/sbin/multipathd
-INFO:__main__:Setting permission for /usr/sbin/multipathd
-INFO:__main__:Deleting /usr/sbin/iscsiadm
-INFO:__main__:Copying /usr/local/bin/container-scripts/run-on-host to /usr/sbin/iscsiadm
-INFO:__main__:Setting permission for /usr/sbin/iscsiadm
-INFO:__main__:Deleting /lib/udev/scsi_id
-INFO:__main__:Copying /usr/local/bin/container-scripts/run-on-host to /lib/udev/scsi_id
-INFO:__main__:Setting permission for /lib/udev/scsi_id
-INFO:__main__:Deleting /usr/sbin/nvme
-INFO:__main__:Copying /usr/local/bin/container-scripts/run-on-host to /usr/sbin/nvme
-INFO:__main__:Setting permission for /usr/sbin/nvme
-INFO:__main__:Deleting /usr/local/bin/kolla_extend_start
-INFO:__main__:Copying /usr/local/bin/container-scripts/kolla_extend_start to /usr/local/bin/kolla_extend_start
-INFO:__main__:Setting permission for /usr/local/bin/kolla_extend_start
-INFO:__main__:Writing out command to execute
-INFO:__main__:Setting permission for /var/log/glance
-...
-...
-sh-5.1# kolla_extend_start
-sh-5.1# cp /var/lib/config-data/default/httpd.conf /etc/httpd/conf.d/
-sh-5.1# cp /var/lib/config-data/default/ssl.conf /etc/httpd/conf.d/
-sh-5.1# cp /var/lib/config-data/default/10-glance-httpd.conf /etc/httpd/conf.d/10-glance.conf
+sh-5.1# if [ -n "$GLANCE_DOMAIN" ]; then cat > /etc/glance/glance.conf.d/01-config.conf <<EOF
+[DEFAULT]
+worker_self_reference_url=${URISCHEME,,}://$(hostname).${GLANCE_DOMAIN}:${GLANCE_PORT}
+EOF
+fi
 ```
 
 Verify the configuration files before starting the service:
@@ -85,9 +56,11 @@ Verify the configuration files before starting the service:
 
 ```bash
 sh-5.1# ls -l /etc/glance/glance.conf.d
-00-config.conf  01-config.conf  02-config.conf  03-config.conf
+00-config.conf  02-config.conf  03-config.conf
 sh-5.1# ls -l /etc/httpd/conf.d
-10-glance.conf  autoindex.conf  httpd.conf  README  ssl.conf  userdir.conf  welcome.conf
+10-glance-wsgi.conf  autoindex.conf  README  ssl.conf  userdir.conf  welcome.conf
+sh-5.1# ls -l /etc/httpd/conf
+httpd.conf  ...
 ```
 
 Run the glance-api in background:
@@ -166,15 +139,12 @@ sh-5.1# glance --os-image-url "http://localhost:9293" image-list
 **Note**:
 
 It is possible to point to port `9292` provided that `httpd` is running.
-If you want to run `httpd` in the same container, you must copy the
-configuration provided by kolla to `/etc/httpd/conf.d` and run the
-related process:
+`httpd.conf` and the wsgi/proxypass vhost config are already mounted at
+their final locations (`/etc/httpd/conf/httpd.conf`, `/etc/httpd/conf.d/`),
+so `httpd` can be started directly, no copy step required:
 
 
 ```bash
-sh-5.1# cp /var/lib/config-data/default/httpd.conf /etc/httpd/conf.d/
-sh-5.1# cp /var/lib/config-data/default/ssl.conf /etc/httpd/conf.d/
-sh-5.1# cp /var/lib/config-data/default/10-glance-httpd.conf /etc/httpd/conf.d/10-glance.conf
 sh-5.1# httpd -DFOREGROUND &
 ```
 

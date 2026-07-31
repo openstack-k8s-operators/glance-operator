@@ -781,7 +781,7 @@ var _ = Describe("Glance controller", func() {
 			container := ss.Spec.Template.Spec.Containers[1]
 			// Fail if glance-httpd doesn't have the right number of VolumeMounts
 			// entries
-			Expect(container.VolumeMounts).To(HaveLen(8))
+			Expect(container.VolumeMounts).To(HaveLen(13))
 			// Inspect VolumeMounts and make sure we have the Ceph MountPath
 			// provided through extraMounts
 			th.AssertVolumeMountPathExists(GlanceCephExtraMountsSecretName,

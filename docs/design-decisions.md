@@ -108,10 +108,12 @@ namespace and running the commands on the host namespace using `nsenter`. Even
 if this may look nasty/weird, this is the recommended way by the storage
 OpenShift team and what CSI plugins do.
 
-We are using `nsenter` through the `templates/glance/bin/run-on-host` script.
+We are using `nsenter` through the `templates/common/bin/run-on-host` script.
 This `run-on-host` script supports 2 ways of replacing commands: being copied
-or symlinked. In our case we instruct kolla to use the copying mechanism in
-`templates/glance/config/glance-api-config.json`.
+or symlinked. In our case we mount the `scripts` Secret's `run-on-host` entry
+directly at each destination path (e.g. `/usr/sbin/multipath`,
+`/usr/sbin/iscsiadm`) via `SubPath`, one `VolumeMount` per binary -- see
+`runOnHostVolumeMount` in `internal/glance/volumes.go`.
 
 To be able to use `nsenter` the pod needs to share the PID namespace with the
 host.
