@@ -102,7 +102,7 @@ const (
 	CachePVCPrefix = ServiceName + "-cache-"
 
 	// GlanceDBSyncCommand -
-	GlanceDBSyncCommand = "/usr/local/bin/kolla_start"
+	GlanceDBSyncCommand = "glance-manage --config-dir /etc/glance/glance.conf.d db sync glance && glance-manage db_load_metadefs"
 	// GlanceManage base command (required for DBPurge)
 	GlanceManage = "/usr/bin/glance-manage"
 	// GlanceCacheCleaner -

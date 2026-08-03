@@ -20,24 +20,6 @@ func GetOwningGlanceName(instance client.Object) string {
 	return ""
 }
 
-// dbSyncSecurityContext - currently used to make sure we don't run db-sync as
-// root user
-func dbSyncSecurityContext() *corev1.SecurityContext {
-
-	return &corev1.SecurityContext{
-		RunAsUser:  ptr.To(GlanceUID),
-		RunAsGroup: ptr.To(GlanceGID),
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{
-				"MKNOD",
-			},
-		},
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
-	}
-}
-
 // BaseSecurityContext - currently used to make sure we don't run cronJob and Log
 // Pods as root user, and we drop privileges and Capabilities we don't need
 func BaseSecurityContext() *corev1.SecurityContext {

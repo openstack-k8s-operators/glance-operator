@@ -65,6 +65,12 @@ func DbSyncJob(
 				Secret: &corev1.SecretVolumeSource{
 					DefaultMode: &config0644AccessMode,
 					SecretName:  instance.Name + "-config-data",
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "my.cnf",
+							Path: "my.cnf",
+						},
+					},
 				},
 			},
 		},
@@ -82,12 +88,6 @@ func DbSyncJob(
 			SubPath:   "my.cnf",
 			ReadOnly:  true,
 		},
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   "db-sync-config.json",
-			ReadOnly:  true,
-		},
 	}
 
 	// add CA cert if defined from the first api (sorted for deterministic selection)
@@ -103,8 +103,6 @@ func DbSyncJob(
 
 	args := []string{"-c", GlanceDBSyncCommand}
 	envVars := map[string]env.Setter{}
-	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
-	envVars["KOLLA_BOOTSTRAP"] = env.SetValue("true")
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -128,7 +126,7 @@ func DbSyncJob(
 							},
 							Args:            args,
 							Image:           instance.Spec.ContainerImage,
-							SecurityContext: dbSyncSecurityContext(),
+							SecurityContext: BaseSecurityContext(),
 							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts:    dbSyncMounts,
 						},
