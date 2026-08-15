@@ -140,4 +140,4 @@ replace k8s.io/component-base => k8s.io/component-base v0.33.13 //allow-merging
 replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff //allow-merging
 
 // pin gnostic-models to v0.6.9 to avoid go.yaml.in/yaml/v3 vs gopkg.in/yaml.v3 type conflict with kube-openapi
-replace github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9 //allow-merging
+replace github.com/google/gnostic-models => github.com/google/gnostic-models v0.7.1 //allow-merging
