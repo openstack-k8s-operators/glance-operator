@@ -55,6 +55,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/job"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/object"
 	common_rbac "github.com/openstack-k8s-operators/lib-common/modules/common/rbac"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	"github.com/openstack-k8s-operators/lib-common/modules/openstack"
@@ -69,8 +70,9 @@ import (
 // GlanceReconciler reconciles a Glance object
 type GlanceReconciler struct {
 	client.Client
-	Kclient kubernetes.Interface
-	Scheme  *runtime.Scheme
+	Kclient   kubernetes.Interface
+	Scheme    *runtime.Scheme
+	APIReader client.Reader
 }
 
 // GetLogger returns a logger object with a prefix of "controller.name" and additional controller context fields
@@ -132,7 +134,6 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		Log.Error(err, fmt.Sprintf("could not instantiate helper for instance %s", instance.Name))
 		return ctrl.Result{}, err
 	}
-
 	// initialize status if Conditions is nil, but do not reset if it already
 	// exists
 	isNewInstance := instance.Status.Conditions == nil
@@ -188,7 +189,8 @@ func (r *GlanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	)
 
 	// Add NotificationBusInstance condition if configured
-	if instance.Spec.NotificationBusInstance != nil {
+	if (instance.Spec.NotificationBusInstance != nil) ||
+		(instance.Spec.NotificationsBus != nil && instance.Spec.NotificationsBus.Cluster != "") {
 		c := condition.UnknownCondition(
 			condition.NotificationBusInstanceReadyCondition,
 			condition.InitReason,
@@ -419,6 +421,29 @@ func (r *GlanceReconciler) reconcileDelete(ctx context.Context, instance *glance
 		}
 	}
 
+	// Remove consumer finalizer from transport secrets glance was consuming.
+	// Collect secret names from both the status field (old secret during rotation)
+	// and the live TransportURL CR (new secret) to avoid finalizer leaks
+	// mid-rotation.
+	transportSecrets := []string{instance.Status.NotificationBusSecret}
+	tu := &rabbitmqv1.TransportURL{}
+	if err := r.Get(ctx, types.NamespacedName{
+		Name:      fmt.Sprintf("%s-glance-transport", instance.Name),
+		Namespace: instance.Namespace,
+	}, tu); err != nil {
+		if !k8s_errors.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+	} else {
+		transportSecrets = append(transportSecrets, tu.Status.SecretName)
+	}
+	for _, secretName := range transportSecrets {
+		if err := object.RemoveSecretConsumerFinalizer(ctx, helper, instance.Namespace,
+			secretName, glance.TransportConsumerFinalizer); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Service is deleted so remove the finalizer.
 	controllerutil.RemoveFinalizer(instance, helper.GetFinalizer())
 	Log.Info(fmt.Sprintf("Reconciled Service '%s' delete successfully", instance.Name))
@@ -580,10 +605,14 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// create RabbitMQ transportURL CR and get the actual URL from the associated secret that is created
 	//
-	if instance.Spec.NotificationBusInstance != nil && *instance.Spec.NotificationBusInstance != "" {
+	currentNotificationSecret := ""
+	if (instance.Spec.NotificationBusInstance != nil && *instance.Spec.NotificationBusInstance != "") ||
+		(instance.Spec.NotificationsBus != nil && instance.Spec.NotificationsBus.Cluster != "") {
 		notificationsRabbitMqConfig := rabbitmqv1.RabbitMqConfig{}
 		if instance.Spec.NotificationsBus != nil {
 			notificationsRabbitMqConfig = *instance.Spec.NotificationsBus
+		} else if instance.Spec.NotificationBusInstance != nil {
+			notificationsRabbitMqConfig.Cluster = *instance.Spec.NotificationBusInstance
 		}
 		notificationTransportURL, op, err := r.transportURLCreateOrUpdate(ctx, instance, serviceLabels, notificationsRabbitMqConfig)
 		if err != nil {
@@ -600,9 +629,9 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 			Log.Info(fmt.Sprintf("TransportURL %s successfully reconciled - operation: %s", notificationTransportURL.Name, string(op)))
 		}
 
-		instance.Status.NotificationBusSecret = notificationTransportURL.Status.SecretName
+		currentNotificationSecret = notificationTransportURL.Status.SecretName
 
-		if instance.Status.NotificationBusSecret == "" {
+		if currentNotificationSecret == "" {
 			Log.Info(fmt.Sprintf("Waiting for notification TransportURL %s secret to be created", notificationTransportURL.Name))
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.NotificationBusInstanceReadyCondition,
@@ -611,11 +640,31 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 				condition.NotificationBusInstanceReadyRunningMessage))
 			return glance.ResultRequeue, nil
 		}
+
+		// Set status early for first-time setup so PatchInstance persists it
+		// even on early returns. During rotation (old != current), the status
+		// is only updated by FinalizeSecretRotation at end of reconcile.
+		if instance.Status.NotificationBusSecret == "" ||
+			instance.Status.NotificationBusSecret == currentNotificationSecret {
+			instance.Status.NotificationBusSecret = currentNotificationSecret
+		}
+
+		if err := object.ManageSecretConsumerFinalizer(ctx, helper, instance.Namespace,
+			currentNotificationSecret, glance.TransportConsumerFinalizer); err != nil {
+			return ctrl.Result{}, err
+		}
+		// if we reach this point the condition can be marked as true
+		instance.Status.Conditions.MarkTrue(condition.NotificationBusInstanceReadyCondition, condition.NotificationBusInstanceReadyMessage)
 	} else {
-		instance.Status.NotificationBusSecret = ""
+		// Notifications bus disabled. Config regenerated below no longer
+		// references the notifications transport URL, so its input hash
+		// changes and the Deployment rolls. Defer teardown of the
+		// TransportURL and its consumer finalizer until that rollout is
+		// complete (allServicesReady at end of reconcile), otherwise the
+		// RabbitMQ user backing the secret would be revoked while pods still
+		// use it.
+		instance.Status.Conditions.Remove(condition.NotificationBusInstanceReadyCondition)
 	}
-	// if we reach this point the condition can be marked as true by default
-	instance.Status.Conditions.MarkTrue(condition.NotificationBusInstanceReadyCondition, condition.NotificationBusInstanceReadyMessage)
 	// end transportURL
 
 	//
@@ -734,6 +783,15 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	//
 	// Reconcile the GlanceAPI deployment
 	//
+	expectedInputHash := ""
+	if currentNotificationSecret != "" {
+		secretNames := []string{currentNotificationSecret}
+		expectedInputHash, err = util.ObjectHash(secretNames)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	locationAPI, err := instance.GetLocationAPI()
 	if err != nil {
 		// Failed to get LocationAPI annotation
@@ -744,8 +802,9 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 			glancev1.GlanceAPIReadyErrorMessage,
 			err.Error()))
 	}
+	allServicesReady := true
 	for _, name := range slices.Sorted(maps.Keys(instance.Spec.GlanceAPIs)) {
-		err = r.apiDeployment(ctx, instance, name, instance.Spec.GlanceAPIs[name], helper, serviceLabels, locationAPI)
+		err = r.apiDeployment(ctx, instance, name, instance.Spec.GlanceAPIs[name], helper, serviceLabels, locationAPI, currentNotificationSecret, expectedInputHash, &allServicesReady)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -779,13 +838,57 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	instance.Status.Conditions.MarkTrue(condition.CronJobReadyCondition, condition.CronJobReadyMessage)
 	// create CronJob - end
 
+	if currentNotificationSecret != "" {
+		secretName, err := object.FinalizeSecretRotation(
+			ctx, helper, instance.Namespace,
+			instance.Status.NotificationBusSecret,
+			currentNotificationSecret,
+			glance.TransportConsumerFinalizer,
+			allServicesReady,
+		)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		instance.Status.NotificationBusSecret = secretName
+	} else if instance.Status.NotificationBusSecret != "" && allServicesReady {
+		// Notifications bus disabled and the Deployment has rolled out a
+		// config that no longer references it: now it is safe to release the
+		// consumer finalizer and delete the notifications TransportURL.
+		if err := object.RemoveSecretConsumerFinalizer(ctx, helper, instance.Namespace,
+			instance.Status.NotificationBusSecret, glance.TransportConsumerFinalizer); err != nil {
+			return ctrl.Result{}, err
+		}
+		notificationTransportURL := &rabbitmqv1.TransportURL{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-glance-transport", instance.Name),
+				Namespace: instance.Namespace,
+			},
+		}
+		if err := r.Delete(ctx, notificationTransportURL); err != nil && !k8s_errors.IsNotFound(err) {
+			Log.Error(err, fmt.Sprintf("Could not delete notification TransportURL %s", notificationTransportURL.Name))
+			return ctrl.Result{}, err
+		}
+		instance.Status.NotificationBusSecret = ""
+	}
+
+	// Self-heal consumer finalizers stranded on secrets superseded during
+	// rapid rotation (A -> B -> C before the workload became ready):
+	// FinalizeSecretRotation only ever releases the single tracked "old"
+	// secret, so any intermediate secret's finalizer would otherwise leak.
+	// keep enumerates every secret that legitimately still holds the
+	// finalizer; all others in the namespace are pruned. Glance's only
+	// transport URL is the notifications bus, so the keep set is the status
+	// (old) and current notifications secrets.
+	if err := object.PruneSecretConsumerFinalizers(
+		ctx, helper, instance.Namespace, glance.TransportConsumerFinalizer,
+		instance.Status.NotificationBusSecret, currentNotificationSecret,
+	); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// We reached the end of the Reconcile, update the Ready condition based on
 	// the sub conditions
-	subGen, err := r.checkGlanceAPIsGeneration(ctx, instance)
-	if err != nil {
-		return ctrlResult, err
-	}
-	if instance.Status.Conditions.AllSubConditionIsTrue() && subGen {
+	if instance.Status.Conditions.AllSubConditionIsTrue() {
 		instance.Status.Conditions.MarkTrue(
 			condition.ReadyCondition, condition.ReadyMessage)
 	}
@@ -804,6 +907,9 @@ func (r *GlanceReconciler) apiDeployment(
 	helper *helper.Helper,
 	serviceLabels map[string]string,
 	locationAPI bool,
+	notificationBusSecret string,
+	expectedInputHash string,
+	allServicesReady *bool,
 ) error {
 	Log := r.GetLogger(ctx)
 
@@ -876,6 +982,8 @@ func (r *GlanceReconciler) apiDeployment(
 		helper,
 		serviceLabels,
 		wsgi,
+		notificationBusSecret,
+		expectedInputHash,
 	)
 	if err != nil {
 		instance.Status.Conditions.Set(condition.FalseCondition(
@@ -892,25 +1000,35 @@ func (r *GlanceReconciler) apiDeployment(
 	if instance.Status.GlanceAPIReadyCounts == nil {
 		instance.Status.GlanceAPIReadyCounts = map[string]int32{}
 	}
-	instance.Status.GlanceAPIReadyCounts[instanceName] = glanceAPI.Status.ReadyCount
 
 	apiPubEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointPublic))
 	apiIntEndpoint := fmt.Sprintf("%s-%s", instanceName, string(endpoint.EndpointInternal))
-	// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
-	if glanceAPI.Status.APIEndpoints != nil {
-		// Do not register a public endpoint for Edge instances
-		if current.Type != glancev1.APIEdge {
-			instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
-		}
-		// if we don't split, both apiEndpoints (public and internal) should be
-		// reflected to the main Glance CR
-		if current.Type == glancev1.APISingle || current.Type == glancev1.APIEdge {
-			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
-		}
-	}
 
-	// Get external GlanceAPI's condition status and compare it against priority of internal GlanceAPI's condition
-	apiCondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
+	var apiCondition *condition.Condition
+	if glanceAPI.Generation == glanceAPI.Status.ObservedGeneration &&
+		glanceAPI.Status.AppliedInputSecretHash == expectedInputHash {
+		instance.Status.GlanceAPIReadyCounts[instanceName] = glanceAPI.Status.ReadyCount
+		// Mirror single/external GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
+		if glanceAPI.Status.APIEndpoints != nil {
+			// Do not register a public endpoint for Edge instances
+			if current.Type != glancev1.APIEdge {
+				instance.Status.APIEndpoints[apiPubEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointPublic)]
+			}
+			// if we don't split, both apiEndpoints (public and internal) should be
+			// reflected to the main Glance CR
+			if current.Type == glancev1.APISingle || current.Type == glancev1.APIEdge {
+				instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
+			}
+		}
+		apiCondition = glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
+	} else {
+		*allServicesReady = false
+		instance.Status.Conditions.Set(condition.UnknownCondition(
+			glancev1.GlanceAPIReadyCondition,
+			condition.RequestedReason,
+			condition.DeploymentReadyRunningMessage))
+		return nil
+	}
 
 	// split is the default use case unless type: "single" is passed to the top
 	// level CR: in this case we deploy an additional glanceAPI instance (Internal)
@@ -925,6 +1043,8 @@ func (r *GlanceReconciler) apiDeployment(
 			helper,
 			serviceLabels,
 			wsgi,
+			notificationBusSecret,
+			expectedInputHash,
 		)
 		if err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
@@ -939,21 +1059,30 @@ func (r *GlanceReconciler) apiDeployment(
 			Log.Info(fmt.Sprintf("StatefulSet %s successfully reconciled - operation: %s", instance.Name, string(op)))
 		}
 
-		// It is possible that an earlier call to update the status has also set
-		// APIEndpoints to nil (if the APIEndpoints map was not nil but was empty,
-		// saving the status unfortunately re-initializes it as nil)
-		if instance.Status.APIEndpoints == nil {
-			instance.Status.APIEndpoints = map[string]string{}
-		}
+		if glanceAPI.Generation == glanceAPI.Status.ObservedGeneration &&
+			glanceAPI.Status.AppliedInputSecretHash == expectedInputHash {
+			// It is possible that an earlier call to update the status has also set
+			// APIEndpoints to nil (if the APIEndpoints map was not nil but was empty,
+			// saving the status unfortunately re-initializes it as nil)
+			if instance.Status.APIEndpoints == nil {
+				instance.Status.APIEndpoints = map[string]string{}
+			}
 
-		// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
-		if glanceAPI.Status.APIEndpoints != nil {
-			instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
-		}
+			// Mirror internal GlanceAPI status' APIEndpoints and ReadyCount to this parent CR
+			if glanceAPI.Status.APIEndpoints != nil {
+				instance.Status.APIEndpoints[apiIntEndpoint] = glanceAPI.Status.APIEndpoints[string(endpoint.EndpointInternal)]
+			}
 
-		// Get internal GlanceAPI's condition status for comparison with external below
-		internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
-		apiCondition = condition.GetHigherPrioCondition(internalAPICondition, apiCondition).DeepCopy()
+			internalAPICondition := glanceAPI.Status.Conditions.Mirror(glancev1.GlanceAPIReadyCondition)
+			apiCondition = condition.GetHigherPrioCondition(internalAPICondition, apiCondition).DeepCopy()
+		} else {
+			*allServicesReady = false
+			instance.Status.Conditions.Set(condition.UnknownCondition(
+				glancev1.GlanceAPIReadyCondition,
+				condition.RequestedReason,
+				condition.DeploymentReadyRunningMessage))
+			return nil
+		}
 	}
 
 	if apiCondition != nil {
@@ -973,8 +1102,11 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 	helper *helper.Helper,
 	serviceLabels map[string]string,
 	wsgi bool,
+	notificationBusSecret string,
+	expectedInputHash string,
 ) (*glancev1.GlanceAPI, controllerutil.OperationResult, error) {
 	apiAnnotations := map[string]string{}
+	apiAnnotations["openstack.org/input-secret-hash"] = expectedInputHash
 	apiSpec := glancev1.GlanceAPISpec{
 		GlanceAPITemplate:     apiTemplate,
 		APIType:               apiType,
@@ -987,7 +1119,7 @@ func (r *GlanceReconciler) apiDeploymentCreateOrUpdate(
 		ServiceUser:           instance.Spec.ServiceUser,
 		ServiceAccount:        instance.RbacResourceName(),
 		Quota:                 instance.IsQuotaEnabled(),
-		NotificationBusSecret: instance.Status.NotificationBusSecret,
+		NotificationBusSecret: notificationBusSecret,
 		MemcachedInstance:     instance.Spec.MemcachedInstance,
 	}
 
@@ -1377,29 +1509,6 @@ func (r *GlanceReconciler) ensureDB(
 	return db, ctrlResult, nil
 }
 
-// checkGlanceAPIsGeneration -
-func (r *GlanceReconciler) checkGlanceAPIsGeneration(
-	ctx context.Context,
-	instance *glancev1.Glance,
-) (bool, error) {
-	Log := r.GetLogger(ctx)
-	// get all GlanceAPI CRs
-	glances := &glancev1.GlanceAPIList{}
-	listOpts := []client.ListOption{
-		client.InNamespace(instance.Namespace),
-	}
-	if err := r.List(ctx, glances, listOpts...); err != nil {
-		Log.Error(err, "Unable to retrieve Glance CRs %w")
-		return false, err
-	}
-	for _, item := range glances.Items {
-		if item.Generation != item.Status.ObservedGeneration {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
 // transportURLCreateOrUpdate -
 func (r *GlanceReconciler) transportURLCreateOrUpdate(
 	ctx context.Context,
@@ -1416,11 +1525,7 @@ func (r *GlanceReconciler) transportURLCreateOrUpdate(
 	}
 
 	op, err := controllerutil.CreateOrUpdate(ctx, r.Client, transportURL, func() error {
-		transportURL.Spec.RabbitmqClusterName = *instance.Spec.NotificationBusInstance
-		// Always set Username and Vhost to allow clearing/resetting them
-		// The infra-operator TransportURL controller handles empty values:
-		// - Empty Username: uses default cluster admin credentials
-		// - Empty Vhost: defaults to "/" vhost
+		transportURL.Spec.RabbitmqClusterName = rabbitMqConfig.Cluster
 		transportURL.Spec.Username = rabbitMqConfig.User
 		transportURL.Spec.Vhost = rabbitMqConfig.Vhost
 		return controllerutil.SetControllerReference(instance, transportURL, r.Scheme)

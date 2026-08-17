@@ -60,6 +60,7 @@ import (
 	"github.com/openstack-k8s-operators/lib-common/modules/common/helper"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/labels"
 	nad "github.com/openstack-k8s-operators/lib-common/modules/common/networkattachment"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/object"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/secret"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/statefulset"
@@ -74,8 +75,9 @@ import (
 // GlanceAPIReconciler reconciles a GlanceAPI object
 type GlanceAPIReconciler struct {
 	client.Client
-	Kclient kubernetes.Interface
-	Scheme  *runtime.Scheme
+	APIReader client.Reader
+	Kclient   kubernetes.Interface
+	Scheme    *runtime.Scheme
 }
 
 // GetLogger returns a logger object with a prefix of "controller.name" and additional controller context fields
@@ -503,7 +505,7 @@ func (r *GlanceAPIReconciler) reconcileDelete(ctx context.Context, instance *gla
 		instance.Status.ApplicationCredentialSecret,
 		instance.Spec.Auth.ApplicationCredentialSecret,
 	} {
-		if err := keystonev1.RemoveACSecretConsumerFinalizer(ctx, helper, instance.Namespace,
+		if err := object.RemoveSecretConsumerFinalizer(ctx, helper, instance.Namespace,
 			secretName, instance.ACConsumerFinalizerName()); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -1004,9 +1006,8 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	// The old secret's finalizer is removed later (after all services deploy)
 	// so that rapid rotations don't revoke a credential still in use by pods.
 	if instance.Spec.Auth.ApplicationCredentialSecret != "" {
-		if err := keystonev1.ManageACSecretFinalizer(ctx, helper, instance.Namespace,
+		if err := object.ManageSecretConsumerFinalizer(ctx, helper, instance.Namespace,
 			instance.Spec.Auth.ApplicationCredentialSecret,
-			"",
 			instance.ACConsumerFinalizerName()); err != nil {
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.ServiceConfigReadyCondition,
@@ -1096,8 +1097,15 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		return ctrlResult, nil
 	}
 
-	if depl.GetStatefulSet().Generation == depl.GetStatefulSet().Status.ObservedGeneration {
-		instance.Status.ReadyCount = depl.GetStatefulSet().Status.ReadyReplicas
+	// Read expected hash from annotation set by parent
+	expectedHash := ""
+	if ann := instance.GetAnnotations(); ann != nil {
+		expectedHash = ann["openstack.org/input-secret-hash"]
+	}
+
+	sts := depl.GetStatefulSet()
+	if sts.Generation == sts.Status.ObservedGeneration {
+		instance.Status.ReadyCount = sts.Status.ReadyReplicas
 		// verify if network attachment matches expectations
 		networkReady := false
 		networkAttachmentStatus := map[string][]string{}
@@ -1135,15 +1143,21 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 				err.Error()))
 			return ctrl.Result{}, err
 		}
-		// Mark the Deployment as Ready only if the number of Replicas is equals
-		// to the Deployed instances (ReadyCount), but mark it as True is Replicas
-		// is zero. In addition, make sure the controller sees the last Generation
-		// by comparing it with the ObservedGeneration set in the StateFulSet.
-		if instance.Status.ReadyCount == *instance.Spec.Replicas {
+		ready := false
+		if statefulset.IsReady(sts) {
+			ready, err = statefulset.IsReadyForInput(ctx, r.APIReader,
+				types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace},
+				inputHash)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		if ready {
 			instance.Status.Conditions.MarkTrue(
 				condition.DeploymentReadyCondition,
 				condition.DeploymentReadyMessage,
 			)
+			instance.Status.AppliedInputSecretHash = expectedHash
 		} else {
 			instance.Status.Conditions.Set(condition.FalseCondition(
 				condition.DeploymentReadyCondition,
@@ -1151,6 +1165,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 				condition.SeverityInfo,
 				condition.DeploymentReadyRunningMessage))
 		}
+	} else {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DeploymentReadyCondition,
+			condition.RequestedReason,
+			condition.SeverityInfo,
+			condition.DeploymentReadyRunningMessage))
 	}
 	// create StatefulSet - end
 
@@ -1211,23 +1231,32 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	)
 	// create ImageCache cronJobs - end
 
-	// Manage the old AC secret's finalizer and status tracking.
-	// On rotation (old != new), only remove the old secret's finalizer after
-	// all sub-services are ready with the new credentials. This prevents
-	// premature revocation during rapid rotations.
-	isRotation := instance.Status.ApplicationCredentialSecret != "" && instance.Status.ApplicationCredentialSecret != instance.Spec.Auth.ApplicationCredentialSecret
+	acGuardReady := instance.Status.Conditions.IsTrue(condition.DeploymentReadyCondition)
 
-	if isRotation {
-		allServicesReady := instance.Status.Conditions.AllSubConditionIsTrue()
-		if allServicesReady {
-			if err := keystonev1.RemoveACSecretConsumerFinalizer(ctx, helper, instance.Namespace,
-				instance.Status.ApplicationCredentialSecret, instance.ACConsumerFinalizerName()); err != nil {
-				return ctrl.Result{}, err
-			}
-			instance.Status.ApplicationCredentialSecret = instance.Spec.Auth.ApplicationCredentialSecret
-		}
-	} else {
-		instance.Status.ApplicationCredentialSecret = instance.Spec.Auth.ApplicationCredentialSecret
+	acSecretName, err := object.FinalizeSecretRotation(
+		ctx, helper, instance.Namespace,
+		instance.Status.ApplicationCredentialSecret,
+		instance.Spec.Auth.ApplicationCredentialSecret,
+		instance.ACConsumerFinalizerName(),
+		acGuardReady,
+	)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	instance.Status.ApplicationCredentialSecret = acSecretName
+
+	// Self-heal consumer finalizers stranded on secrets superseded during
+	// rapid rotation (A -> B -> C before the workload became ready):
+	// FinalizeSecretRotation only ever releases the single tracked "old"
+	// secret, so any intermediate secret's finalizer would otherwise leak.
+	// keep enumerates every secret that legitimately still holds the
+	// finalizer; all others in the namespace are pruned.
+	if err := object.PruneSecretConsumerFinalizers(
+		ctx, helper, instance.Namespace, instance.ACConsumerFinalizerName(),
+		instance.Status.ApplicationCredentialSecret,
+		instance.Spec.Auth.ApplicationCredentialSecret,
+	); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// We reached the end of the Reconcile, update the Ready condition based on
