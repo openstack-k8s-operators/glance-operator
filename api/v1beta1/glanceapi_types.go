@@ -134,6 +134,10 @@ type GlanceAPIStatus struct {
 
 	// ApplicationCredentialSecret - Secret that GlanceAPI is actively consuming (AC consumer finalizer present)
 	ApplicationCredentialSecret string `json:"applicationCredentialSecret,omitempty"`
+
+	// AppliedInputSecretHash - hash of the input secrets that the child has
+	// confirmed it is running with (set after IsReadyForInput succeeds)
+	AppliedInputSecretHash string `json:"appliedInputSecretHash,omitempty"`
 }
 
 // +kubebuilder:object:root=true

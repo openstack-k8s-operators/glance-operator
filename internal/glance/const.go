@@ -107,6 +107,8 @@ const (
 	ShortDuration = time.Duration(5) * time.Second
 	// NormalDuration -
 	NormalDuration = time.Duration(10) * time.Second
+	// TransportConsumerFinalizer is added to transport URL secrets that glance is actively consuming
+	TransportConsumerFinalizer = "openstack.org/glance-transport-consumer"
 )
 
 // DbsyncPropagation keeps track of the DBSync Service Propagation Type
