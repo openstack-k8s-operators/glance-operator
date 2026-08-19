@@ -25,10 +25,13 @@ import (
 	common "github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/affinity"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/volume"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
+	"github.com/openstack-k8s-operators/lib-common/modules/users"
 
 	"sort"
 
@@ -39,10 +42,29 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-const (
-	// GlanceServiceCommand -
-	GlanceServiceCommand = "/usr/local/bin/kolla_start"
-)
+// workerSelfReferenceScript replicates kolla_extend_start's behavior: when
+// GLANCE_DOMAIN is set (distributed image import), each replica must write
+// its own runtime-only worker_self_reference_url into glance.conf.d -- the
+// pod's own hostname isn't known until the container is actually running, so
+// this can't be pre-rendered into a static Secret.
+const workerSelfReferenceScript = `if [ -n "$GLANCE_DOMAIN" ]; then cat > /etc/glance/glance.conf.d/01-config.conf <<EOF
+[DEFAULT]
+worker_self_reference_url=${URISCHEME,,}://$(hostname).${GLANCE_DOMAIN}:${GLANCE_PORT}
+EOF
+fi
+`
+
+// privilegedAwareSecurityContext returns the SecurityContext for the httpd
+// and glance-api containers. When Cinder is configured as a backend, host
+// device access via nsenter'd multipath/iscsi tooling requires Privileged,
+// which can't be combined with RunAsNonRoot/ReadOnlyRootFilesystem; otherwise
+// use the fully restrictive context.
+func privilegedAwareSecurityContext(privileged bool) *corev1.SecurityContext {
+	if privileged {
+		return pod.PrivilegedSecurityContext(users.GlanceUID, users.GlanceGID)
+	}
+	return pod.RestrictiveSecurityContext(users.GlanceUID, users.GlanceGID)
+}
 
 // StatefulSet func
 func StatefulSet(
@@ -55,8 +77,6 @@ func StatefulSet(
 	wsgi bool,
 	memcached *memcachedv1.Memcached,
 ) (*appsv1.StatefulSet, error) {
-	userID := glance.GlanceUID
-
 	//
 	// https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 	//
@@ -88,13 +108,13 @@ func StatefulSet(
 
 	// envVars
 	envVars := map[string]env.Setter{}
-	envVars["KOLLA_CONFIG_STRATEGY"] = env.SetValue("COPY_ALWAYS")
 	envVars["CONFIG_HASH"] = env.SetValue(configHash)
 	envVars["GLANCE_DOMAIN"] = env.SetValue(instance.Status.Domain)
 	envVars["URISCHEME"] = env.SetValue(string(glanceURIScheme))
+	envVars["GLANCE_PORT"] = env.SetValue(fmt.Sprintf("%d", port))
 
 	// basic volume/volumeMounts
-	apiVolumes := glance.GetAPIVolumes(instance.Name)
+	apiVolumes := glance.GetAPIVolumes()
 	apiVolumeMounts := glance.GetAPIVolumeMount(instance.Spec.ImageCache.Size)
 	extraVolPropagation := append(glance.GlanceAPIPropagation,
 		storage.PropagationType(instance.APIName()))
@@ -107,7 +127,9 @@ func StatefulSet(
 	// add MTLS cert if defined
 	if memcached.GetMemcachedMTLSSecret() != "" {
 		apiVolumes = append(apiVolumes, memcached.CreateMTLSVolume())
-		apiVolumeMounts = append(apiVolumeMounts, memcached.CreateMTLSVolumeMounts(nil, nil)...)
+		certMountPath := memcachedv1.CertPathDst
+		keyMountPath := memcachedv1.KeyPathDst
+		apiVolumeMounts = append(apiVolumeMounts, memcached.CreateMTLSVolumeMounts(&certMountPath, &keyMountPath)...)
 	}
 
 	// TLS-e: we need to predict the order of both Volumes and VolumeMounts to
@@ -169,10 +191,9 @@ func StatefulSet(
 					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
-					SecurityContext: &corev1.PodSecurityContext{
-						FSGroup: &userID,
-					},
-					ServiceAccountName: instance.Spec.ServiceAccount,
+					SecurityContext:              pod.RestrictivePodSecurityContext(users.GlanceUID, users.GlanceGID),
+					ServiceAccountName:           instance.Spec.ServiceAccount,
+					AutomountServiceAccountToken: ptr.To(false),
 					// When using Cinder we run as privileged, but also some
 					// commands need to be run on the host using nsenter (eg:
 					// iscsi commands) so we need to share the PID namespace
@@ -192,9 +213,9 @@ func StatefulSet(
 								"/usr/bin/tail -n+1 -F " + LogFile + " 2>/dev/null",
 							},
 							Image:           instance.Spec.ContainerImage,
-							SecurityContext: glance.BaseSecurityContext(),
+							SecurityContext: pod.RestrictiveSecurityContext(users.GlanceUID, users.GlanceGID),
 							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
-							VolumeMounts:    glance.GetLogVolumeMount(),
+							VolumeMounts:    []corev1.VolumeMount{volume.WritableDirVolumeMount(glance.LogVolume, "/var/log/glance")},
 							Resources:       instance.Spec.Resources,
 						},
 						{
@@ -207,10 +228,10 @@ func StatefulSet(
 								"--",
 								"/bin/bash",
 								"-c",
-								string(GlanceServiceCommand),
+								workerSelfReferenceScript + "exec /usr/sbin/httpd -DFOREGROUND",
 							},
 							Image:           instance.Spec.ContainerImage,
-							SecurityContext: glance.HttpdSecurityContext(privileged),
+							SecurityContext: privilegedAwareSecurityContext(privileged),
 							Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 							VolumeMounts: append(glance.GetVolumeMounts(
 								instance.Spec.CustomServiceConfigSecrets,
@@ -219,6 +240,7 @@ func StatefulSet(
 								instance.Spec.ExtraMounts,
 								extraVolPropagation,
 								"httpd",
+								wsgi,
 							),
 								apiVolumeMounts...,
 							),
@@ -245,10 +267,10 @@ func StatefulSet(
 					"--",
 					"/bin/bash",
 					"-c",
-					string(GlanceServiceCommand),
+					workerSelfReferenceScript + "exec /usr/bin/glance-api --config-dir /etc/glance/glance.conf.d",
 				},
 				Image:           instance.Spec.ContainerImage,
-				SecurityContext: glance.APISecurityContext(userID, privileged),
+				SecurityContext: privilegedAwareSecurityContext(privileged),
 				Env:             env.MergeEnvs([]corev1.EnvVar{}, envVars),
 				VolumeMounts: append(glance.GetVolumeMounts(
 					instance.Spec.CustomServiceConfigSecrets,
@@ -257,6 +279,7 @@ func StatefulSet(
 					instance.Spec.ExtraMounts,
 					extraVolPropagation,
 					"api",
+					wsgi,
 				),
 					apiVolumeMounts...,
 				),

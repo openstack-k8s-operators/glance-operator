@@ -77,7 +77,13 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/local/bin/kolla_start
+        - |-
+          if [ -n "$GLANCE_DOMAIN" ]; then cat > /etc/glance/glance.conf.d/01-config.conf <<EOF
+          [DEFAULT]
+          worker_self_reference_url=${URISCHEME,,}://$(hostname).${GLANCE_DOMAIN}:${GLANCE_PORT}
+          EOF
+          fi
+          exec /usr/sbin/httpd -DFOREGROUND
         command:
         - /usr/bin/dumb-init
         name: glance-httpd
@@ -116,7 +122,13 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/local/bin/kolla_start
+        - |-
+          if [ -n "$GLANCE_DOMAIN" ]; then cat > /etc/glance/glance.conf.d/01-config.conf <<EOF
+          [DEFAULT]
+          worker_self_reference_url=${URISCHEME,,}://$(hostname).${GLANCE_DOMAIN}:${GLANCE_PORT}
+          EOF
+          fi
+          exec /usr/sbin/httpd -DFOREGROUND
         command:
         - /usr/bin/dumb-init
         name: glance-httpd

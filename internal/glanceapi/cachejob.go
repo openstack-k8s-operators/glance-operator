@@ -22,19 +22,21 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
+	"github.com/openstack-k8s-operators/lib-common/modules/users"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 )
 
+var configMode int32 = 0440
+
 // ImageCacheJob -
 func ImageCacheJob(
 	instance *glancev1.GlanceAPI,
 	cronSpec glance.CronJobSpec,
 ) *batchv1.CronJob {
-	var config0644AccessMode int32 = 0644
-
 	cronCommand := fmt.Sprintf(
 		"%s --config-dir /etc/glance/glance.conf.d",
 		cronSpec.Command,
@@ -50,7 +52,7 @@ func ImageCacheJob(
 			Name: "image-cache-config-data",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
+					DefaultMode: &configMode,
 					SecretName:  instance.Name + "-config-data",
 					Items: []corev1.KeyToPath{
 						{
@@ -101,10 +103,9 @@ func ImageCacheJob(
 					Completions: &completions,
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
-							SecurityContext: &corev1.PodSecurityContext{
-								FSGroup: ptr.To(glance.GlanceUID),
-							},
-							Affinity: ColocateWithPod(strings.TrimPrefix(*cronSpec.PvcClaim, glance.CachePVCPrefix)),
+							SecurityContext:              pod.RestrictivePodSecurityContext(users.GlanceUID, users.GlanceGID),
+							Affinity:                     ColocateWithPod(strings.TrimPrefix(*cronSpec.PvcClaim, glance.CachePVCPrefix)),
+							AutomountServiceAccountToken: ptr.To(false),
 							Containers: []corev1.Container{
 								{
 									Name:  cronSpec.Name,
@@ -114,7 +115,7 @@ func ImageCacheJob(
 									},
 									Args:            args,
 									VolumeMounts:    cronJobVolumeMounts,
-									SecurityContext: glance.BaseSecurityContext(),
+									SecurityContext: pod.RestrictiveSecurityContext(users.GlanceUID, users.GlanceGID),
 								},
 							},
 							Volumes:            cronJobVolume,

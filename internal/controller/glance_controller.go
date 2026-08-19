@@ -98,7 +98,7 @@ func (r *GlanceReconciler) GetLogger(ctx context.Context) logr.Logger {
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=roles,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=rolebindings,verbs=get;list;watch;create;update;patch
 // glance service account permissions that are needed to grant permission to the above
-// +kubebuilder:rbac:groups="security.openshift.io",resourceNames=anyuid;privileged,resources=securitycontextconstraints,verbs=use
+// +kubebuilder:rbac:groups="security.openshift.io",resourceNames=privileged;hostmount-anyuid;nonroot-v2,resources=securitycontextconstraints,verbs=use
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=rabbitmq.openstack.org,resources=transporturls,verbs=get;list;watch;create;update;patch;delete
 
@@ -558,7 +558,7 @@ func (r *GlanceReconciler) reconcileNormal(ctx context.Context, instance *glance
 	rbacRules := []rbacv1.PolicyRule{
 		{
 			APIGroups:     []string{"security.openshift.io"},
-			ResourceNames: []string{"anyuid", "privileged"},
+			ResourceNames: []string{"privileged", "hostmount-anyuid", "nonroot-v2"},
 			Resources:     []string{"securitycontextconstraints"},
 			Verbs:         []string{"use"},
 		},

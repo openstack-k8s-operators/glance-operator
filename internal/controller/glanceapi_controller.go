@@ -1056,13 +1056,9 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		instance.Status.LastAppliedTopology = nil
 	}
 
-	// This is currently required because cleaner and pruner cronJobs
-	// mount the same pvc to clean data present in /var/lib/glance/image-cache
-	// TODO (fpantano) reference a Glance spec/proposal to move to a different
-	// approach
-	if len(instance.Spec.ImageCache.Size) > 0 {
-		privileged = true
-	}
+	// Note: image-cache node colocation with its cleaner/pruner CronJobs is
+	// handled via pod affinity (ColocateWithPod), not via HostPID/Privileged --
+	// enabling image cache alone no longer elevates this GlanceAPI's SCC.
 
 	// Define a new StatefuleSet object
 	deplDef, err := glanceapi.StatefulSet(instance,

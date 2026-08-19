@@ -54,10 +54,6 @@ const (
 	GlancePublicPort int32 = 9292
 	// GlanceInternalPort -
 	GlanceInternalPort int32 = 9292
-	// GlanceUID - https://github.com/openstack/kolla/blob/master/kolla/common/users.py
-	GlanceUID int64 = 42415
-	// GlanceGID - https://github.com/openstack/kolla/blob/master/kolla/common/users.py
-	GlanceGID int64 = 42415
 	// DefaultsConfigFileName -
 	DefaultsConfigFileName = "00-config.conf"
 	// CustomConfigFileName -
@@ -83,9 +79,9 @@ const (
 	// LogVolume is the default logVolume name used to mount logs on both
 	// GlanceAPI and the sidecar container
 	LogVolume = "logs"
-	// HttpdRunVolume is the default httpd ephemeral mount where pid files are
-	// stored
-	HttpdRunVolume = "httpd-run"
+	// ConfigDirVolume is the writable EmptyDir backing /etc/glance/glance.conf.d
+	// so that the entrypoint can write runtime config (e.g. worker_self_reference_url)
+	ConfigDirVolume = "glance-config-dir"
 	// KeystoneEndpoint - indicates whether the glanceAPI should register the
 	// endpoints in keystone
 	KeystoneEndpoint = "keystoneEndpoint"
@@ -101,8 +97,6 @@ const (
 	// StatefulSets for image-cache PVCs (format: <prefix>-<sts-pod-name>)
 	CachePVCPrefix = ServiceName + "-cache-"
 
-	// GlanceDBSyncCommand -
-	GlanceDBSyncCommand = "/usr/local/bin/kolla_start"
 	// GlanceManage base command (required for DBPurge)
 	GlanceManage = "/usr/bin/glance-manage"
 	// GlanceCacheCleaner -

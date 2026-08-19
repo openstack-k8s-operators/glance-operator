@@ -4,8 +4,6 @@ import (
 	"math"
 
 	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -18,74 +16,6 @@ func GetOwningGlanceName(instance client.Object) string {
 		}
 	}
 	return ""
-}
-
-// dbSyncSecurityContext - currently used to make sure we don't run db-sync as
-// root user
-func dbSyncSecurityContext() *corev1.SecurityContext {
-
-	return &corev1.SecurityContext{
-		RunAsUser:  ptr.To(GlanceUID),
-		RunAsGroup: ptr.To(GlanceGID),
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{
-				"MKNOD",
-			},
-		},
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
-	}
-}
-
-// BaseSecurityContext - currently used to make sure we don't run cronJob and Log
-// Pods as root user, and we drop privileges and Capabilities we don't need
-func BaseSecurityContext() *corev1.SecurityContext {
-
-	return &corev1.SecurityContext{
-		RunAsUser:                ptr.To(GlanceUID),
-		RunAsGroup:               ptr.To(GlanceGID),
-		RunAsNonRoot:             ptr.To(true),
-		AllowPrivilegeEscalation: ptr.To(false),
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{
-				"ALL",
-			},
-		},
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
-	}
-}
-
-// HttpdSecurityContext -
-func HttpdSecurityContext(privileged bool) *corev1.SecurityContext {
-	return &corev1.SecurityContext{
-		Capabilities: &corev1.Capabilities{
-			Drop: []corev1.Capability{
-				"MKNOD",
-			},
-		},
-		RunAsUser:                ptr.To(GlanceUID),
-		RunAsGroup:               ptr.To(GlanceGID),
-		Privileged:               &privileged,
-		AllowPrivilegeEscalation: ptr.To(true),
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
-	}
-}
-
-// APISecurityContext -
-func APISecurityContext(userID int64, privileged bool) *corev1.SecurityContext {
-	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr.To(true),
-		RunAsUser:                ptr.To(userID),
-		Privileged:               &privileged,
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
-	}
 }
 
 // GetDefaultProbesAPI - Calculate dynamic probe configuration based on apiTimeout

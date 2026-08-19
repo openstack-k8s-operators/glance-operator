@@ -22,20 +22,19 @@
 
 CONFIG_DIR=${CONFIG_DIR:-/etc/glance/glance.conf.d}
 
-# Setup glance config
-function setup_glance {
-    echo "Generate glance.conf.d"
-    /usr/local/bin/kolla_set_configs
-    echo "Run extend_start"
-    /usr/local/bin/kolla_extend_start
-    echo "Setup httpd"
-    cp /var/lib/config-data/default/httpd.conf /etc/httpd/conf.d/
-    cp /var/lib/config-data/default/ssl.conf /etc/httpd/conf.d/
-    cp /var/lib/config-data/default/10-glance-httpd.conf /etc/httpd/conf.d/10-glance.conf
-}
+# Config files (00/02/03-config.conf, my.cnf, httpd.conf, the wsgi/proxypass
+# vhost, ssl.conf) are already mounted directly at their final locations --
+# no kolla-style copy step is needed anymore. If GLANCE_DOMAIN is set (only
+# relevant for distributed image import), write the runtime-only
+# worker_self_reference_url snippet the container command would normally
+# generate on startup:
+if [ -n "$GLANCE_DOMAIN" ]; then
+    cat > "$CONFIG_DIR/01-config.conf" <<EOF
+[DEFAULT]
+worker_self_reference_url=${URISCHEME,,}://$(hostname).${GLANCE_DOMAIN}:${GLANCE_PORT}
+EOF
+fi
 
-# copy files
-setup_glance
 # run glance-api
 glance-api --config-dir "$CONFIG_DIR" &
 /usr/sbin/httpd -DFOREGROUND &

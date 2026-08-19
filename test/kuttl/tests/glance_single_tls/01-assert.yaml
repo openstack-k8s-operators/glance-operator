@@ -66,19 +66,44 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/local/bin/kolla_start
+        - |-
+          if [ -n "$GLANCE_DOMAIN" ]; then cat > /etc/glance/glance.conf.d/01-config.conf <<EOF
+          [DEFAULT]
+          worker_self_reference_url=${URISCHEME,,}://$(hostname).${GLANCE_DOMAIN}:${GLANCE_PORT}
+          EOF
+          fi
+          exec /usr/sbin/httpd -DFOREGROUND
         volumeMounts:
-        - mountPath: /var/lib/config-data/default
+        - mountPath: /etc/glance/glance.conf.d
+          name: glance-config-dir
+        - mountPath: /etc/glance/glance.conf.d/00-config.conf
           name: config-data
           readOnly: true
+          subPath: 00-config.conf
+        - mountPath: /etc/glance/glance.conf.d/02-config.conf
+          name: config-data
+          readOnly: true
+          subPath: 02-config.conf
+        - mountPath: /etc/glance/glance.conf.d/03-config.conf
+          name: config-data
+          readOnly: true
+          subPath: 03-config.conf
         - mountPath: /etc/my.cnf
           name: config-data
           readOnly: true
           subPath: my.cnf
-        - mountPath: /var/lib/kolla/config_files/config.json
+        - mountPath: /etc/httpd/conf/httpd.conf
           name: config-data
           readOnly: true
-          subPath: glance-httpd-config.json
+          subPath: httpd.conf
+        - mountPath: /etc/httpd/conf.d/10-glance-wsgi.conf
+          name: config-data
+          readOnly: true
+          subPath: 10-glance-wsgi.conf
+        - mountPath: /etc/httpd/conf.d/ssl.conf
+          name: config-data
+          readOnly: true
+          subPath: ssl.conf
         - mountPath: /var/lib/glance
           name: glance
         - mountPath: /var/log/glance
@@ -87,7 +112,7 @@ spec:
           name: scripts
           readOnly: true
         - mountPath: /run/httpd
-          name: httpd-run
+          name: run-httpd
         - mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
           name: combined-ca-bundle
           readOnly: true
@@ -112,12 +137,10 @@ spec:
       volumes:
       - name: config-data
         secret:
-          defaultMode: 420
+          defaultMode: 288
           secretName: glance-default-single-config-data
-      - name: config-data-custom
-        secret:
-          defaultMode: 420
-          secretName: glance-default-single-config-data
+      - emptyDir: {}
+        name: glance-config-dir
       - emptyDir: {}
         name: logs
       - name: scripts
@@ -125,7 +148,7 @@ spec:
           defaultMode: 493
           secretName: glance-scripts
       - emptyDir: {}
-        name: httpd-run
+        name: run-httpd
       - name: combined-ca-bundle
         secret:
           defaultMode: 292

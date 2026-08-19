@@ -22,9 +22,13 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 
+	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
+	"github.com/openstack-k8s-operators/lib-common/modules/users"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 // CronJobSpec -
@@ -43,8 +47,6 @@ func DBPurgeJob(
 	instance *glancev1.Glance,
 	cronSpec CronJobSpec,
 ) *batchv1.CronJob {
-	var config0644AccessMode int32 = 0644
-
 	cronCommand := fmt.Sprintf(
 		"%s --config-dir /etc/glance/glance.conf.d db purge %d",
 		cronSpec.Command,
@@ -61,7 +63,7 @@ func DBPurgeJob(
 			Name: "db-purge-config-data",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
+					DefaultMode: &configMode,
 					SecretName:  instance.Name + "-config-data",
 					Items: []corev1.KeyToPath{
 						{
@@ -76,7 +78,7 @@ func DBPurgeJob(
 			Name: "config-data",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
+					DefaultMode: &configMode,
 					SecretName:  instance.Name + "-config-data",
 				},
 			},
@@ -134,12 +136,14 @@ func DBPurgeJob(
 									},
 									Args:            args,
 									VolumeMounts:    cronJobVolumeMounts,
-									SecurityContext: BaseSecurityContext(),
+									SecurityContext: pod.RestrictiveSecurityContext(users.GlanceUID, users.GlanceGID),
 								},
 							},
-							Volumes:            cronJobVolume,
-							RestartPolicy:      corev1.RestartPolicyNever,
-							ServiceAccountName: instance.RbacResourceName(),
+							Volumes:                      cronJobVolume,
+							RestartPolicy:                corev1.RestartPolicyNever,
+							ServiceAccountName:           instance.RbacResourceName(),
+							AutomountServiceAccountToken: ptr.To(false),
+							SecurityContext:              pod.RestrictivePodSecurityContext(users.GlanceUID, users.GlanceGID),
 						},
 					},
 				},

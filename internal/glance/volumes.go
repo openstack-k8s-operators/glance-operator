@@ -15,13 +15,18 @@ limitations under the License.
 package glance
 
 import (
-	"fmt"
-	"strconv"
-
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/volume"
 	"github.com/openstack-k8s-operators/lib-common/modules/storage"
 	corev1 "k8s.io/api/core/v1"
 )
+
+// configMode is the DefaultMode applied to every config Secret volume.
+// 0440 (owner-read + group-read) is the tightest mode that works with the
+// fsGroup-based access model: files carry live credentials, the Secret is
+// immutable so no write bit is needed, and the non-root service user reads
+// them via the supplemental fsGroup.
+var configMode int32 = 0440
 
 // GetVolumes - service volumes
 func GetVolumes(
@@ -32,14 +37,12 @@ func GetVolumes(
 	svc []storage.PropagationType,
 ) []corev1.Volume {
 
-	var config0644AccessMode int32 = 0644
-
 	vm := []corev1.Volume{
 		{
 			Name: "config-data",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
+					DefaultMode: &configMode,
 					SecretName:  name + "-config-data",
 				},
 			},
@@ -59,7 +62,7 @@ func GetVolumes(
 		}
 	}
 	// ConfigSecrets
-	secretConfig, _ := GetConfigSecretVolumes(secretNames)
+	secretConfig, _ := volume.ConfigSecretVolumes(secretNames)
 	vm = append(vm, secretConfig...)
 
 	if hasCinder {
@@ -137,6 +140,18 @@ func GetVolumes(
 	return vm
 }
 
+// runOnHostVolumeMount returns a VolumeMount that shims a host storage binary
+// via the "scripts" secret's run-on-host nsenter wrapper, so glance (when
+// Cinder is configured as a backend) can invoke host-installed multipath/iscsi
+// tooling from inside the container (the pod already runs with HostPID: true).
+func runOnHostVolumeMount(destPath string) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      "scripts",
+		MountPath: destPath,
+		SubPath:   "run-on-host",
+	}
+}
+
 // GetVolumeMounts - general VolumeMounts
 func GetVolumeMounts(
 	secretNames []string,
@@ -145,12 +160,29 @@ func GetVolumeMounts(
 	extraVol []glancev1.GlanceExtraVolMounts,
 	svc []storage.PropagationType,
 	apiMode string,
+	wsgi bool,
 ) []corev1.VolumeMount {
 
 	vm := []corev1.VolumeMount{
+		// Writable dir MUST be listed before the SubPath mounts so Kubernetes
+		// mounts the EmptyDir first, then overlays the read-only config files.
+		volume.WritableDirVolumeMount(ConfigDirVolume, "/etc/glance/glance.conf.d"),
 		{
 			Name:      "config-data",
-			MountPath: "/var/lib/config-data/default",
+			MountPath: "/etc/glance/glance.conf.d/" + DefaultsConfigFileName,
+			SubPath:   DefaultsConfigFileName,
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/glance/glance.conf.d/" + CustomServiceConfigFileName,
+			SubPath:   CustomServiceConfigFileName,
+			ReadOnly:  true,
+		},
+		{
+			Name:      "config-data",
+			MountPath: "/etc/glance/glance.conf.d/" + CustomServiceConfigSecretsFileName,
+			SubPath:   CustomServiceConfigSecretsFileName,
 			ReadOnly:  true,
 		},
 		{
@@ -159,12 +191,36 @@ func GetVolumeMounts(
 			SubPath:   "my.cnf",
 			ReadOnly:  true,
 		},
-		{
-			Name:      "config-data",
-			MountPath: "/var/lib/kolla/config_files/config.json",
-			SubPath:   fmt.Sprintf("glance-%s-config.json", apiMode),
-			ReadOnly:  true,
-		},
+	}
+
+	// httpd is the only container that runs Apache and needs its config
+	// files; the native glance-api container (legacy/proxypass mode) only
+	// needs the glance.conf.d files mounted above.
+	if apiMode == "httpd" {
+		vhostConf := "10-glance-proxypass.conf"
+		if wsgi {
+			vhostConf = "10-glance-wsgi.conf"
+		}
+		vm = append(vm,
+			corev1.VolumeMount{
+				Name:      "config-data",
+				MountPath: "/etc/httpd/conf/httpd.conf",
+				SubPath:   "httpd.conf",
+				ReadOnly:  true,
+			},
+			corev1.VolumeMount{
+				Name:      "config-data",
+				MountPath: "/etc/httpd/conf.d/" + vhostConf,
+				SubPath:   vhostConf,
+				ReadOnly:  true,
+			},
+			corev1.VolumeMount{
+				Name:      "config-data",
+				MountPath: "/etc/httpd/conf.d/ssl.conf",
+				SubPath:   "ssl.conf",
+				ReadOnly:  true,
+			},
+		)
 	}
 
 	localPVC := []corev1.VolumeMount{
@@ -183,7 +239,7 @@ func GetVolumeMounts(
 			vm = append(vm, vol.Mounts...)
 		}
 	}
-	_, secretConfig := GetConfigSecretVolumes(secretNames)
+	_, secretConfig := volume.ConfigSecretVolumes(secretNames)
 	vm = append(vm, secretConfig...)
 	if hasCinder {
 		storageVolumeMounts := []corev1.VolumeMount{
@@ -218,74 +274,15 @@ func GetVolumeMounts(
 				Name:      "etc-nvme",
 				MountPath: "/etc/nvme",
 			},
+			runOnHostVolumeMount("/usr/sbin/multipath"),
+			runOnHostVolumeMount("/usr/sbin/multipathd"),
+			runOnHostVolumeMount("/usr/sbin/iscsiadm"),
+			runOnHostVolumeMount("/lib/udev/scsi_id"),
+			runOnHostVolumeMount("/usr/sbin/nvme"),
 		}
 		vm = append(vm, storageVolumeMounts...)
 	}
 	return vm
-}
-
-// GetConfigSecretVolumes - Returns a list of volumes associated with a list of
-// Secret names
-func GetConfigSecretVolumes(
-	secretNames []string,
-) ([]corev1.Volume, []corev1.VolumeMount) {
-	var config0640AccessMode int32 = 0640
-	secretVolumes := []corev1.Volume{}
-	secretMounts := []corev1.VolumeMount{}
-
-	for idx, secretName := range secretNames {
-		secretVol := corev1.Volume{
-			Name: secretName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName:  secretName,
-					DefaultMode: &config0640AccessMode,
-				},
-			},
-		}
-		secretMount := corev1.VolumeMount{
-			Name: secretName,
-			// Each secret needs its own MountPath
-			MountPath: "/var/lib/config-data/secret-" + strconv.Itoa(idx),
-			ReadOnly:  true,
-		}
-		secretVolumes = append(secretVolumes, secretVol)
-		secretMounts = append(secretMounts, secretMount)
-	}
-
-	return secretVolumes, secretMounts
-}
-
-// GetLogVolumeMount - Returns the VolumeMount used for logging purposes
-func GetLogVolumeMount() []corev1.VolumeMount {
-	return []corev1.VolumeMount{
-		{
-			Name:      LogVolume,
-			MountPath: "/var/log/glance",
-			ReadOnly:  false,
-		},
-	}
-}
-
-// GetHttpdRunVolumeMount - Returns the VolumeMount used for logging purposes
-func GetHttpdRunVolumeMount() corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      HttpdRunVolume,
-		MountPath: "/run/httpd",
-		ReadOnly:  false,
-	}
-}
-
-// GetEphemeralVolume - Returns the Volume used for logging purposes
-func GetEphemeralVolume(name string) []corev1.Volume {
-	return []corev1.Volume{
-		{
-			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{Medium: ""},
-			},
-		},
-	}
 }
 
 // GetCacheVolume - Return the Volume used for image caching purposes
@@ -342,25 +339,17 @@ func GetScriptVolumeMount() []corev1.VolumeMount {
 }
 
 // GetAPIVolumes -
-func GetAPIVolumes(name string) []corev1.Volume {
-	var config0644AccessMode int32 = 0644
-	apiVolumes := []corev1.Volume{
-		{
-			Name: "config-data-custom",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &config0644AccessMode,
-					SecretName:  name + "-config-data",
-				},
-			},
-		},
-	}
+func GetAPIVolumes() []corev1.Volume {
+	apiVolumes := []corev1.Volume{}
+	// Writable config dir so the entrypoint can write runtime config
+	// (e.g. worker_self_reference_url for distributed image import)
+	apiVolumes = append(apiVolumes, volume.WritableDirVolume(ConfigDirVolume))
 	// Append LogVolume to the apiVolumes: this will be used to stream logging
-	apiVolumes = append(apiVolumes, GetEphemeralVolume(LogVolume)...)
+	apiVolumes = append(apiVolumes, volume.WritableDirVolume(LogVolume))
 	// Append scripts volumeMount
 	apiVolumes = append(apiVolumes, GetScriptVolume()...)
-	// Append httpd-run volumeMount
-	apiVolumes = append(apiVolumes, GetEphemeralVolume(HttpdRunVolume)...)
+	// Append run-httpd volume for httpd PID file
+	apiVolumes = append(apiVolumes, volume.WritableDirVolume(volume.RunHttpdVolumeName))
 	return apiVolumes
 }
 
@@ -368,11 +357,11 @@ func GetAPIVolumes(name string) []corev1.Volume {
 func GetAPIVolumeMount(cacheSize string) []corev1.VolumeMount {
 	apiVolumeMounts := []corev1.VolumeMount{}
 	// Append LogVolume to apiVolumes: this will be used to stream logging
-	apiVolumeMounts = append(apiVolumeMounts, GetLogVolumeMount()...)
+	apiVolumeMounts = append(apiVolumeMounts, volume.WritableDirVolumeMount(LogVolume, "/var/log/glance"))
 	// Append ScriptsVolume to apiVolumes
 	apiVolumeMounts = append(apiVolumeMounts, GetScriptVolumeMount()...)
-	// Append HttpdRunVolume
-	apiVolumeMounts = append(apiVolumeMounts, GetHttpdRunVolumeMount())
+	// Append run-httpd volume mount
+	apiVolumeMounts = append(apiVolumeMounts, volume.WritableDirVolumeMount(volume.RunHttpdVolumeName, volume.RunHttpdMountPath))
 	// If cache is provided, we expect the main glance_controller to request a
 	// PVC that should be used for that purpose (according to ImageCache.Size)
 	if len(cacheSize) > 0 {

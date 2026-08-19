@@ -65,7 +65,13 @@ spec:
         - --
         - /bin/bash
         - -c
-        - /usr/local/bin/kolla_start
+        - |-
+          if [ -n "$GLANCE_DOMAIN" ]; then cat > /etc/glance/glance.conf.d/01-config.conf <<EOF
+          [DEFAULT]
+          worker_self_reference_url=${URISCHEME,,}://$(hostname).${GLANCE_DOMAIN}:${GLANCE_PORT}
+          EOF
+          fi
+          exec /usr/sbin/httpd -DFOREGROUND
         command:
         - /usr/bin/dumb-init
         name: glance-httpd
@@ -167,14 +173,14 @@ spec:
           volumes:
           - name: db-purge-config-data
             secret:
-              defaultMode: 420
+              defaultMode: 288
               items:
               - key: 00-config.conf
                 path: 00-config.conf
               secretName: glance-config-data
           - name: config-data
             secret:
-              defaultMode: 420
+              defaultMode: 288
               secretName: glance-config-data
   schedule: 1 0 * * *
 ---
