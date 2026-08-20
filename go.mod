@@ -12,11 +12,11 @@ require (
 	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20260813080121-50c6dc9787ad
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
 	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20260813080757-aebcb2795c92
-	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260811190835-054aa14112d8
+	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260815111556-ad0006892c31
 	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260813151745-0d7ef88e4045
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260813160234-fdcb3ee3699d
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260818072803-e18950de3098
 	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260813160234-fdcb3ee3699d
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260813160234-fdcb3ee3699d
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260818072803-e18950de3098
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20260813160234-fdcb3ee3699d
 	github.com/openstack-k8s-operators/lib-common/modules/users v0.0.0-20260813160234-fdcb3ee3699d
 	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20260813083726-eee3e1c5aa5c
@@ -142,3 +142,5 @@ replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a
 
 // pin gnostic-models to v0.6.9 to avoid go.yaml.in/yaml/v3 vs gopkg.in/yaml.v3 type conflict with kube-openapi
 replace github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9 //allow-merging
+
+replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/lmiccini/lib-common/modules/common v0.0.0-20260819124656-03fdfe41f952 //allow-merging
