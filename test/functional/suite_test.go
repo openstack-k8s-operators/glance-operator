@@ -221,16 +221,18 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred(), "failed to create kclient")
 
 	err = (&controller.GlanceReconciler{
-		Client:  k8sManager.GetClient(),
-		Scheme:  k8sManager.GetScheme(),
-		Kclient: kclient,
+		Client:    k8sManager.GetClient(),
+		Scheme:    k8sManager.GetScheme(),
+		Kclient:   kclient,
+		APIReader: k8sManager.GetAPIReader(),
 	}).SetupWithManager(context.Background(), k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&controller.GlanceAPIReconciler{
-		Client:  k8sManager.GetClient(),
-		Scheme:  k8sManager.GetScheme(),
-		Kclient: kclient,
+		Client:    k8sManager.GetClient(),
+		Scheme:    k8sManager.GetScheme(),
+		Kclient:   kclient,
+		APIReader: k8sManager.GetAPIReader(),
 	}).SetupWithManager(context.Background(), k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
