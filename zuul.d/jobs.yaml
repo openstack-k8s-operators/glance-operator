@@ -25,6 +25,8 @@
 - job:
     name: glance-operator-antelope-tempest
     parent: podified-multinode-hci-deployment-crc-1comp-backends
+    description: |
+      Test the old antelope containers with the newer operators.
     irrelevant-files: *common-irrelevant-files
     vars:
       cifmw_ceph_daemons_layout:
@@ -86,3 +88,47 @@
           service_available.cinder False
           image_signature_verification.enforced False
           image_signature_verification.certificate_validation False
+
+- job:
+    name: glance-s2i-test-ceph
+    parent: s2i-test-base-ceph
+    description: |
+      Validate speculatively-built s2i glance images against a live
+      HCI OpenStack deployment with Ceph.
+    irrelevant-files: *common-irrelevant-files
+    vars:
+      cifmw_cephadm_min_compat_client: 'mimic'
+      cifmw_ceph_daemons_layout:
+        rgw_enabled: false
+        dashboard_enabled: false
+        cephfs_enabled: true
+        ceph_nfs_enabled: false
+      cifmw_test_operator_tempest_concurrency: 3
+      cifmw_test_operator_tempest_include_list: |
+        ^tempest.api.image..*
+        ^tempest.scenario.test_snapshot_pattern..*
+        ^glance_tempest_plugin..*
+        ^barbican_tempest_plugin.tests.scenario.test_certificate_validation..*
+        ^barbican_tempest_plugin.tests.scenario.test_image_signing.ImageSigningTest..*
+        ^tempest.api.image.v2.admin.test_image_caching.ImageCachingTest.test_image_caching_cycle
+      cifmw_test_operator_tempest_tempestconf_config:
+        overrides: |
+          service_available.cinder True
+          image_signature_verification.enforced False
+          image_signature_verification.certificate_validation False
+          image.image_caching_enabled True
+
+- job:
+    name: glance-s2i-test-ceph-nomimic
+    parent: glance-s2i-test-ceph
+    description: |
+      Variant of glance-s2i-test-ceph which tests against ceph
+      without setting min-compact-client to mimic
+    vars:
+      cifmw_cephadm_min_compat_client: ''
+      cifmw_test_operator_tempest_tempestconf_config:
+        overrides: |
+          service_available.cinder True
+          image_signature_verification.enforced False
+          image_signature_verification.certificate_validation False
+          volume-feature-enabled.enable_volume_image_dep_tests False
