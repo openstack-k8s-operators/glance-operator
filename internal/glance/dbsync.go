@@ -31,7 +31,7 @@ import (
 
 // DBSyncCommand - direct glance-manage command without kolla wrapper
 const DBSyncCommand = "glance-manage --config-dir /etc/glance/glance.conf.d db sync glance && " +
-	"glance-manage db_load_metadefs"
+	"glance-manage --config-dir /etc/glance/glance.conf.d db_load_metadefs"
 
 // DbSyncJob func
 func DbSyncJob(
