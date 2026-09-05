@@ -12,3 +12,10 @@
         - glance-operator-tempest:
             dependencies:
               - openstack-k8s-operators-content-provider
+        - glance-s2i-content-provider:
+            voting: false
+        - glance-s2i-tempest-swift:
+            voting: false
+            dependencies:
+              - openstack-k8s-operators-content-provider
+              - glance-s2i-content-provider
