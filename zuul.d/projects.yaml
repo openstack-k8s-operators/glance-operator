@@ -9,6 +9,11 @@
         - glance-operator-kuttl:
             dependencies:
               - openstack-k8s-operators-content-provider
-        - glance-operator-tempest:
+        - glance-operator-antelope-tempest:
             dependencies:
               - openstack-k8s-operators-content-provider
+        - glance-s2i-content-provider
+        - glance-s2i-tempest-ceph:
+            dependencies:
+              - openstack-k8s-operators-content-provider
+              - glance-s2i-content-provider
