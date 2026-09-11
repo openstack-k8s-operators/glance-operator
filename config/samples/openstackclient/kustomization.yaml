@@ -8,7 +8,7 @@ patches:
 - patch: |-
     - op: replace
       path: /spec/containers/0/image
-      value: quay.io/podified-antelope-centos9/openstack-openstackclient:current-podified
+      value: quay.io/openstack-k8s-operators/openstack-openstackclient:master-latest
     - op: add
       path: /spec/volumes/0
       value:

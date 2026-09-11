@@ -99,7 +99,7 @@ The first step is to create an image to be cached at later step.
 
 ```bash
   glance --verbose image-create \
-   --disk-format qcow2 \
+   --disk-format raw \
    --container-format bare \
    --name $IMAGE_NAME
    --file myimage

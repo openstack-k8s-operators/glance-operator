@@ -335,7 +335,7 @@ uploaded through the import command.
 
 ```bash
   glance --verbose image-create \
-   --disk-format qcow2 \
+   --disk-format raw \
    --container-format bare \
    --name $IMAGE_NAME
 ```
@@ -399,7 +399,7 @@ sh-5.1# ./import-image.sh
 | checksum         | None                                 |
 | container_format | bare                                 |
 | created_at       | 2024-02-16T22:03:06Z                 |
-| disk_format      | qcow2                                |
+| disk_format      | raw                                  |
 | id               | 6cc0be2c-82f9-423c-aae6-9baad4110c72 |
 | locations        | []                                   |
 | min_disk         | 0                                    |
@@ -436,7 +436,7 @@ glance --os-auth-url http://keystone-public.openstack.svc:5000/v3 \
 | checksum              | None                                 |
 | container_format      | bare                                 |
 | created_at            | 2024-02-16T22:03:06Z                 |
-| disk_format           | qcow2                                |
+| disk_format           | raw                                  |
 | id                    | 6cc0be2c-82f9-423c-aae6-9baad4110c72 |
 | locations             | []                                   |
 | min_disk              | 0                                    |

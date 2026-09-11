@@ -36,7 +36,7 @@ const (
 	// Container image fall-back defaults
 
 	// GlanceAPIContainerImage is the fall-back container image for GlanceAPI
-	GlanceAPIContainerImage = "quay.io/podified-antelope-centos9/openstack-glance-api:current-podified"
+	GlanceAPIContainerImage = "quay.io/openstack-k8s-operators/openstack-glance-api:master-latest"
 	//DBPurgeDefaultAge indicates the number of days of purging DB records
 	DBPurgeDefaultAge = 30
 	//DBPurgeDefaultSchedule is in crontab format, and the default runs the job once every day

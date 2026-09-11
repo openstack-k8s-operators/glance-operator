@@ -24,7 +24,7 @@ uploaded through the import command.
 
 ```bash
   glance --verbose image-create \
-   --disk-format qcow2 \
+   --disk-format raw \
    --container-format bare \
    --name $IMAGE_NAME
 ```

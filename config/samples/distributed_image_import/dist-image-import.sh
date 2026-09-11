@@ -18,6 +18,7 @@
 #    oc get cm openstack-config -o json | jq -r '.data["clouds.yaml"]'
 #
 TIME=3
+IMAGE_STATUS_TIMEOUT=120
 DOMAIN=${DOMAIN:-"glance-default-single.openstack.svc"}
 REPLICA="glance-default-single-"
 IMAGE_NAME="myimage"
@@ -25,6 +26,30 @@ KEYSTONE=$(awk '/auth_url/ {print $2}' "/etc/openstack/clouds.yaml")
 ADMIN_PWD=${1:-$(awk '/password/ {gsub(/"/, "", $2); print $2}' "/etc/openstack/secure.yaml")}
 ADMIN_USER=${ADMIN_USER:-"admin"}
 DEBUG=0
+
+wait_for_image_status() {
+    local id="$1"
+    local expected="$2"
+    local status=""
+    local retries
+
+    retries=$((IMAGE_STATUS_TIMEOUT / TIME))
+
+    while [[ $retries -gt 0 ]]; do
+        status=$($glance image-show "$id" | awk '/status/{print $4}')
+        printf "Image Status: %s\n" "$status"
+        if [[ $status == "$expected" ]]; then
+            return 0
+        fi
+        if [[ $status == "killed" || $status == "deleted" ]]; then
+            return 1
+        fi
+        retries=$((retries - 1))
+        sleep "$TIME"
+    done
+
+    return 1
+}
 
 # this method uses distributed image import and relies on the glance cli
 glance="glance --os-auth-url ${KEYSTONE} \
@@ -40,11 +65,11 @@ exec 0<&-
 echo This is a dodgy image > "${IMAGE_NAME}"
 
 # Stage 0 - Delete any pre-existing image
-openstack image list -c ID -f value | xargs -n 1 openstack image delete
+openstack image list -c ID -f value | xargs -r -n 1 openstack image delete
 
 # Stage 1 - Create an empty box
 $glance --verbose image-create \
-    --disk-format qcow2 \
+    --disk-format raw \
     --container-format bare \
     --name "${IMAGE_NAME}"
 ID=$($glance image-list | awk -v img=$IMAGE_NAME '$0 ~ img {print $2}')
@@ -82,13 +107,13 @@ $glance --os-image-url "http://${REPLICA}""1.$DOMAIN:9292" image-import --import
 
 # Stage 4 - Check the image is active
 $glance image-list
-status=$($glance image-show "$ID" | awk '/status/{print $4}')
-printf "Image Status: %s\n" "$status"
+wait_for_image_status "$ID" "active"
+status=$?
 
 # Stage 5 - Clean up images
-openstack image list -c ID -f value | xargs -n 1 openstack image delete
+openstack image list -c ID -f value | xargs -r -n 1 openstack image delete
 
-if [[ $status == "active" ]]; then
+if [[ $status -eq 0 ]]; then
     exit 0
 fi
 exit 1

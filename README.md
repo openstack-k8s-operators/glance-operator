@@ -245,7 +245,7 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
-  containerImage: quay.io/podified-antelope-centos9/openstack-glance-api:current-podified
+  containerImage: quay.io/openstack-k8s-operators/openstack-glance-api:master-latest
   customServiceConfig: |
     [DEFAULT]
     enabled_backends = default_backend:rbd
