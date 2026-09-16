@@ -9,6 +9,11 @@
         - glance-operator-kuttl:
             dependencies:
               - openstack-k8s-operators-content-provider
-        - glance-operator-tempest:
+        - glance-operator-antelope-tempest:
             dependencies:
               - openstack-k8s-operators-content-provider
+        - glance-s2i-content-provider
+        - glance-s2i-test-swift:
+            dependencies:
+              - openstack-k8s-operators-content-provider
+              - glance-s2i-content-provider
