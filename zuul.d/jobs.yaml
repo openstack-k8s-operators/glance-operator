@@ -50,6 +50,7 @@
     vars:
       s2i_ci_images:
         - glance/glance-api
+        - tempest/tempest
 
 - job:
     name: glance-s2i-test-swift
@@ -103,6 +104,10 @@
         dashboard_enabled: false
         cephfs_enabled: true
         ceph_nfs_enabled: false
+      cifmw_test_operator_tempest_container: openstack-tempest
+      cifmw_test_operator_tempest_registry: "{{ s2i_ci_content.registry }}"
+      cifmw_test_operator_tempest_namespace: "{{ s2i_ci_content.namespace}}"
+      cifmw_test_operator_tempest_image_tag: "{{ s2i_ci_content.tag }}"
       cifmw_test_operator_tempest_concurrency: 3
       cifmw_test_operator_tempest_include_list: |
         ^tempest.api.image..*
