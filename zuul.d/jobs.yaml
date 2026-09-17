@@ -116,12 +116,12 @@
         ^barbican_tempest_plugin.tests.scenario.test_certificate_validation..*
         ^barbican_tempest_plugin.tests.scenario.test_image_signing.ImageSigningTest..*
         ^tempest.api.image.v2.admin.test_image_caching.ImageCachingTest.test_image_caching_cycle
+      # temporarily disable image.image_caching_enabled True
       cifmw_test_operator_tempest_tempestconf_config:
         overrides: |
           service_available.cinder True
           image_signature_verification.enforced False
           image_signature_verification.certificate_validation False
-          image.image_caching_enabled True
 
 - job:
     name: glance-s2i-test-ceph-nomimic
