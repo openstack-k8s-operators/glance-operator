@@ -73,6 +73,7 @@ require (
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
+	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
@@ -142,3 +143,5 @@ replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a
 
 // pin gnostic-models to v0.6.9 to avoid go.yaml.in/yaml/v3 vs gopkg.in/yaml.v3 type conflict with kube-openapi
 replace github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9 //allow-merging
+
+replace github.com/openstack-k8s-operators/lib-common/modules/common => github.com/fmount/lib-common/modules/common v0.0.0-20260917093800-6fc827f086cb

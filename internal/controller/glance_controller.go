@@ -87,6 +87,7 @@ func (r *GlanceReconciler) GetLogger(ctx context.Context) logr.Logger {
 // +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=glance.openstack.org,resources=glanceapis/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;create;update;delete;watch;patch
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbdatabases,verbs=get;list;watch;create;update;patch;delete;
 // +kubebuilder:rbac:groups=mariadb.openstack.org,resources=mariadbaccounts,verbs=get;list;watch;create;update;patch;delete
@@ -328,6 +329,11 @@ func (r *GlanceReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manage
 		).
 		Watches(&memcachedv1.Memcached{},
 			handler.EnqueueRequestsFromMapFunc(memcachedFn)).
+		// Reconcile when the well-known TLS profile ConfigMap maintained by
+		// the openstack-operator is updated or deleted, so rendered service
+		// configs pick up new cluster-wide TLS defaults.
+		Watches(&corev1.ConfigMap{},
+			util.WatchDefaultTemplateConfigMap(r.Client, &glancev1.Glance{})).
 		Complete(r)
 }
 

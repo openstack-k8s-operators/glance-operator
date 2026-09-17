@@ -422,6 +422,8 @@ func (r *GlanceAPIReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		Watches(&horizonv1.Horizon{},
 			handler.EnqueueRequestsFromMapFunc(r.findObjectForSrc),
 			builder.WithPredicates(horizonv1.HorizonEndpointChangedPredicate)).
+		Watches(&corev1.ConfigMap{},
+			util.WatchDefaultTemplateConfigMap(r.Client, &glancev1.GlanceAPI{})).
 		Complete(r)
 }
 
