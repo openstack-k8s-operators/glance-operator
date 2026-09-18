@@ -245,7 +245,7 @@ metadata:
   name: glance
 spec:
   serviceUser: glance
-  containerImage: quay.io/openstack-k8s-operators/openstack-glance-api:master-latest
+  containerImage: quay.io/openstack-s2i-containers/openstack-glance-api:master-latest
   customServiceConfig: |
     [DEFAULT]
     enabled_backends = default_backend:rbd
