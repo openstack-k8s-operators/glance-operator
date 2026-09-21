@@ -50,6 +50,12 @@
     vars:
       s2i_ci_images:
         - glance/glance-api
+        - nova/nova-api
+        - nova/nova-compute
+        - nova/nova-conductor
+        - nova/nova-novncproxy
+        - nova/nova-scheduler
+        - placement/placement-api
         - tempest/tempest
 
 - job:
