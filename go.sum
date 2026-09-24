@@ -25,6 +25,8 @@ github.com/evanphx/json-patch/v5 v5.9.11 h1:/8HVnzMq13/3x9TPvjG08wUGqBTmZBsCWzjT
 github.com/evanphx/json-patch/v5 v5.9.11/go.mod h1:3j+LviiESTElxA4p3EMKAB9HXj3/XEtnUf6OZxqIQTM=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
+github.com/fmount/lib-common/modules/common v0.0.0-20260917093800-6fc827f086cb h1:pW6fGJNMsh3pCPtnnWBzkynhHYjL1ymmV0NG4WkIYWU=
+github.com/fmount/lib-common/modules/common v0.0.0-20260917093800-6fc827f086cb/go.mod h1:HqF1PQbKmgDVsmSk+c9TGmusD4TrlV049qft+SLVTcI=
 github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
 github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
 github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sapM=
@@ -124,8 +126,6 @@ github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260917133014-a
 github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20260917133014-aa9523bc1a12/go.mod h1:pOLcpxsrw4yLJQDEpB/O3iKQezxFdBtRkG3Vonvl/W8=
 github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260915132739-c1207a97b9a2 h1:LMPbaKvRJOgWbxtJ8uPn9gxQ0krk4+cOSZs4QvlSUKA=
 github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20260915132739-c1207a97b9a2/go.mod h1:DYxV55bTFejdACDB+l8uZPqrplJo0xRi9mQqTc9/tmo=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260911152322-92cbe8cb7d0a h1:P7xK+4r9slqJuHGpcRSswnd6JA2/ecwiu4QKi2UyhFQ=
-github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20260911152322-92cbe8cb7d0a/go.mod h1:HqF1PQbKmgDVsmSk+c9TGmusD4TrlV049qft+SLVTcI=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260911152322-92cbe8cb7d0a h1:/yZkTvqovOcn6Ofp6E5FEQdhAXpEF8HRWgdH0ajo3qk=
 github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20260911152322-92cbe8cb7d0a/go.mod h1:SIe+Z2sT90koldAkQnY7eLnHrg6EutLBsq3BZ2Iha8Y=
 github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20260911152322-92cbe8cb7d0a h1:LCFOtwEh4gXpO1r0UHXNQFaxPKjGMpIx95X+38trRP8=
@@ -160,8 +160,9 @@ github.com/stoewer/go-strcase v1.3.0/go.mod h1:fAH5hQ5pehh+j3nZfvwdk2RgEgQjAoM8w
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
-github.com/stretchr/objx v0.5.2 h1:xuMeJ0Sdp5ZMRXx/aWO6RZxdr3beISkG5/G/aIRr3pY=
 github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/8L+MA=
+github.com/stretchr/objx v0.5.3 h1:jmXUvGomnU1o3W/V5h2VEradbpJDwGrzugQQvL0POH4=
+github.com/stretchr/objx v0.5.3/go.mod h1:rDQraq+vQZU7Fde9LOZLr8Tax6zZvy4kuNKF+QYS+U0=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
