@@ -107,7 +107,7 @@ spec:
   jobTemplate:
     metadata:
       labels:
-        component: glance-api
+        component: glance-image-cache
         glanceAPI: glance-default-external
         owner: glance-default-external
         service: glance
@@ -154,7 +154,7 @@ spec:
   jobTemplate:
     metadata:
       labels:
-        component: glance-api
+        component: glance-image-cache
         glanceAPI: glance-default-external
         owner: glance-default-external
         service: glance

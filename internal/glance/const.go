@@ -41,6 +41,12 @@ const (
 	DatabaseName = "glance"
 	// Component -
 	Component = "glance-api"
+	// ComponentDBSync - component label for the db-sync job pods
+	ComponentDBSync = "glance-db-sync"
+	// ComponentDBPurge - component label for the db-purge cronjob pods
+	ComponentDBPurge = "glance-db-purge"
+	// ComponentImageCache - component label for the image-cache cronjob pods
+	ComponentImageCache = "glance-image-cache"
 	// GlanceAPIName -
 	GlanceAPIName = "glanceAPI"
 	// PvcLocal for a generic glanceAPI instance

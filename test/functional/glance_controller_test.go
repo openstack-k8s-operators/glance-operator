@@ -30,6 +30,7 @@ import (
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
@@ -324,6 +325,14 @@ var _ = Describe("Glance controller", func() {
 				glance := GetGlance(glanceTest.Instance)
 				cron := GetCronJob(glanceTest.DBPurgeCronJob)
 				g.Expect(cron.Spec.Schedule).To(Equal(glance.Spec.DBPurge.Schedule))
+			}, timeout, interval).Should(Succeed())
+		})
+		It("labels the DB Purge cronjob with the db-purge component", func() {
+			Eventually(func(g Gomega) {
+				cron := GetCronJob(glanceTest.DBPurgeCronJob)
+				g.Expect(cron.Labels[common.ComponentSelector]).To(Equal(glance.ComponentDBPurge))
+				g.Expect(cron.Spec.JobTemplate.Labels[common.ComponentSelector]).To(Equal(glance.ComponentDBPurge))
+				g.Expect(cron.Spec.JobTemplate.Spec.Template.Labels[common.ComponentSelector]).To(Equal(glance.ComponentDBPurge))
 			}, timeout, interval).Should(Succeed())
 		})
 		It("update DB Purge job", func() {

@@ -20,6 +20,7 @@ import (
 	"slices"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/env"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
 	"github.com/openstack-k8s-operators/lib-common/modules/users"
@@ -39,6 +40,9 @@ func DbSyncJob(
 	labels map[string]string,
 	annotations map[string]string,
 ) *batchv1.Job {
+	podLabels := maps.Clone(labels)
+	podLabels[common.ComponentSelector] = ComponentDBSync
+
 	// Unlike the individual glanceAPI services, the DbSyncJob doesn't need a
 	// secret that contains all of the config snippets required by every
 	// service, The two snippet files that it does need (DefaultsConfigFileName
@@ -107,12 +111,13 @@ func DbSyncJob(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ServiceName + "-db-sync",
 			Namespace: instance.Namespace,
-			Labels:    labels,
+			Labels:    podLabels,
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: annotations,
+					Labels:      podLabels,
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                corev1.RestartPolicyOnFailure,

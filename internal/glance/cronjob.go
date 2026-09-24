@@ -22,6 +22,7 @@ import (
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 
+	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
 	"github.com/openstack-k8s-operators/lib-common/modules/users"
 
@@ -57,6 +58,9 @@ func DBPurgeJob(
 
 	parallelism := int32(1)
 	completions := int32(1)
+
+	podLabels := maps.Clone(cronSpec.Labels)
+	podLabels[common.ComponentSelector] = ComponentDBPurge
 
 	cronJobVolume := []corev1.Volume{
 		{
@@ -113,6 +117,7 @@ func DBPurgeJob(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cronSpec.Name,
 			Namespace: instance.Namespace,
+			Labels:    podLabels,
 		},
 		Spec: batchv1.CronJobSpec{
 			Schedule:          cronSpec.Schedule,
@@ -120,12 +125,15 @@ func DBPurgeJob(
 			JobTemplate: batchv1.JobTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: cronSpec.Annotations,
-					Labels:      cronSpec.Labels,
+					Labels:      podLabels,
 				},
 				Spec: batchv1.JobSpec{
 					Parallelism: &parallelism,
 					Completions: &completions,
 					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: podLabels,
+						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
 								{
