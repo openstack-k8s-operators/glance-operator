@@ -2,10 +2,12 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
+    component: glance-api
     service: glance
 ---
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
+    component: glance-api
     service: glance

@@ -18,10 +18,12 @@ package glanceapi
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/glance-operator/internal/glance"
+	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
 	"github.com/openstack-k8s-operators/lib-common/modules/users"
 	batchv1 "k8s.io/api/batch/v1"
@@ -46,6 +48,9 @@ func ImageCacheJob(
 
 	parallelism := int32(1)
 	completions := int32(1)
+
+	podLabels := maps.Clone(cronSpec.Labels)
+	podLabels[common.ComponentSelector] = glance.ComponentImageCache
 
 	cronJobVolume := []corev1.Volume{
 		{
@@ -89,6 +94,7 @@ func ImageCacheJob(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cronSpec.Name,
 			Namespace: instance.Namespace,
+			Labels:    podLabels,
 		},
 		Spec: batchv1.CronJobSpec{
 			Schedule:          cronSpec.Schedule,
@@ -96,12 +102,15 @@ func ImageCacheJob(
 			JobTemplate: batchv1.JobTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: cronSpec.Annotations,
-					Labels:      cronSpec.Labels,
+					Labels:      podLabels,
 				},
 				Spec: batchv1.JobSpec{
 					Parallelism: &parallelism,
 					Completions: &completions,
 					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: podLabels,
+						},
 						Spec: corev1.PodSpec{
 							SecurityContext:              pod.RestrictivePodSecurityContext(users.GlanceUID, users.GlanceGID),
 							Affinity:                     ColocateWithPod(strings.TrimPrefix(*cronSpec.PvcClaim, glance.CachePVCPrefix)),
