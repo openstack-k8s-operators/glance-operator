@@ -37,6 +37,3 @@
         - glance-operator-kuttl:
             dependencies:
               - openstack-k8s-operators-content-provider
-        - glance-operator-antelope-tempest:
-            dependencies:
-              - openstack-k8s-operators-content-provider
