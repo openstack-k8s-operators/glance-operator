@@ -50,21 +50,6 @@
         ^barbican_tempest_plugin.tests.scenario.test_certificate_validation..*
         ^barbican_tempest_plugin.tests.scenario.test_image_signing.ImageSigningTest..*
         ^tempest.scenario.test_unified_limits.ImageQuotaTest..*
-      # Reenable when a newer tempest (current main, definitely > 2023.1-last) is available
-      cifmw_test_operator_tempest_expected_failures_list: |
-        tempest.api.image.v2.admin.test_image_task.ImageTaskCreate.test_task_create_fake_image_location
-        tempest.api.image.v2.test_images.ListSharedImagesTest.test_list_images_param_member_status
-        tempest.api.image.v2.test_images.BasicOperationsImagesTest.test_register_upload_get_image_file
-        setUpClass (tempest.api.image.v2.test_images.ListUserImagesTest)
-        tempest.api.image.v2.test_images_negative.ImportImagesNegativeTest.test_image_web_download_import_with_bad_url
-        glance_tempest_plugin.tests.rbac.v2.test_project_admin_tests.ImageProjectAdminTests.test_deactivate_image
-        glance_tempest_plugin.tests.rbac.v2.test_project_admin_tests.ImageProjectAdminTests.test_reactivate_image
-        glance_tempest_plugin.tests.rbac.v2.test_project_admin_tests.ImageProjectAdminTests.test_upload_image
-        glance_tempest_plugin.tests.rbac.v2.test_project_members_tests.ImagesProjectMemberTests.test_deactivate_image
-        glance_tempest_plugin.tests.rbac.v2.test_project_members_tests.ImagesProjectMemberTests.test_reactivate_image
-        glance_tempest_plugin.tests.rbac.v2.test_project_members_tests.ImagesProjectMemberTests.test_upload_image
-        glance_tempest_plugin.tests.rbac.v2.test_project_reader_tests.ImagesProjectReaderTests.test_deactivate_image
-        glance_tempest_plugin.tests.rbac.v2.test_project_reader_tests.ImagesProjectReaderTests.test_reactivate_image
       cifmw_test_operator_tempest_tempestconf_config:
         overrides: |
           image_feature_enabled.import_image True
