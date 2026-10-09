@@ -32,9 +32,6 @@ const (
 	// ACConsumerFinalizerPrefix is the base prefix for the per-GlanceAPI AC consumer finalizer.
 	// Each GlanceAPI instance gets its own finalizer: <prefix><apiName>-<apiType>-ac-consumer
 	ACConsumerFinalizerPrefix = "openstack.org/glance-"
-
-	// Container image fall-back defaults
-
 	// GlanceAPIContainerImage is the fall-back container image for GlanceAPI
 	GlanceAPIContainerImage = "quay.io/openstack-s2i-containers/openstack-glance-api:master-latest"
 	//DBPurgeDefaultAge indicates the number of days of purging DB records
@@ -47,6 +44,11 @@ const (
 	PrunerDefaultSchedule = "1 0 * * *"
 	// APIDefaultTimeout indicates the default APITimeout for HAProxy and Apache, defaults to 60 seconds
 	APIDefaultTimeout = 60
+	// DefaultFilesystemStoreDatadir - the path where glance writes image data by
+	// default when a file backend is configured and no overrides are passed
+	// https://github.com/openstack/glance_store/blob/master/glance_store/_drivers/filesystem.py#L48
+	DefaultFilesystemStoreDatadir = "/var/lib/glance/images"
+
 )
 
 // GlanceAPITemplate defines the desired state of GlanceAPI
@@ -214,6 +216,29 @@ func GetEnabledBackends(customServiceConfig string) []string {
 		}
 	}
 	return availableBackends
+}
+
+// GetFilesystemStoreDatadir - Given a instance.Spec.CustomServiceConfig object,
+// return the directory a file backend writes image data to. The option lives in
+// the per-backend section, so the first occurrence wins and
+// DefaultFilesystemStoreDatadir is returned when it is not set at all.
+func GetFilesystemStoreDatadir(customServiceConfig string) string {
+	svcConfigLines := strings.Split(customServiceConfig, "\n")
+	for _, line := range svcConfigLines {
+		tokenLine := strings.SplitN(strings.TrimSpace(line), "=", 2)
+		token := strings.ReplaceAll(tokenLine[0], " ", "")
+
+		if token == "" || strings.HasPrefix(token, "#") {
+			// Skip blank lines and comments
+			continue
+		}
+		if token == "filesystem_store_datadir" && len(tokenLine) == 2 {
+			if datadir := strings.TrimSpace(tokenLine[1]); datadir != "" {
+				return datadir
+			}
+		}
+	}
+	return DefaultFilesystemStoreDatadir
 }
 
 // ValidateTopology -

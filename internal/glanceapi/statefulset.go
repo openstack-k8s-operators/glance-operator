@@ -73,6 +73,7 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
+	fileBackend bool,
 	topology *topologyv1.Topology,
 	wsgi bool,
 	memcached *memcachedv1.Memcached,
@@ -297,6 +298,27 @@ func StatefulSet(
 			return statefulset, err
 		}
 		statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
+	}
+
+	// A file backend needs its image store directory to exist and be writable
+	// by the glance user before glance-api starts. Run that as init containers
+	// so the checks happen in this pod, against the mounts this pod will use,
+	// after the kubelet has set them up and before any API container starts.
+	// They get the glance-api container's own mounts so the datadir resolves
+	// identically in both.
+	if fileBackend {
+		statefulset.Spec.Template.Spec.InitContainers = DatadirInitContainers(
+			instance,
+			glance.GetVolumeMounts(
+				instance.Spec.CustomServiceConfigSecrets,
+				privileged,
+				instance.Spec.Storage.External,
+				instance.Spec.ExtraMounts,
+				extraVolPropagation,
+				"api",
+				wsgi,
+			),
+		)
 	}
 	// Staging and Cache are realized through separate interfaces
 	// (TODO) Allow to externally manage image-cache

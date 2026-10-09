@@ -88,6 +88,9 @@ const (
 	// ConfigDirVolume is the writable EmptyDir backing /etc/glance/glance.conf.d
 	// so that the entrypoint can write runtime config (e.g. worker_self_reference_url)
 	ConfigDirVolume = "glance-config-dir"
+	// ScriptMountPath is where the "glance-scripts" Secret is mounted in the
+	// GlanceAPI pods
+	ScriptMountPath = "/usr/local/bin/container-scripts"
 	// KeystoneEndpoint - indicates whether the glanceAPI should register the
 	// endpoints in keystone
 	KeystoneEndpoint = "keystoneEndpoint"

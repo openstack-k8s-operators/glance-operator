@@ -19,6 +19,7 @@ package functional
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -30,6 +31,7 @@ import (
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	"github.com/openstack-k8s-operators/lib-common/modules/users"
 	"gopkg.in/ini.v1"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -38,6 +40,7 @@ import (
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("Glanceapi controller", func() {
@@ -657,6 +660,8 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(5))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
+			// No file backend in this config: no datadir-setup init container
+			Expect(ss.Spec.Template.Spec.InitContainers).To(BeEmpty())
 
 			container := ss.Spec.Template.Spec.Containers[1]
 			Expect(container.VolumeMounts).To(HaveLen(12))
@@ -690,6 +695,103 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check headlessSvc Name matches with the statefulSet name
 			headlessSvc := th.GetService(glanceTest.GlanceExternalStatefulSet)
 			Expect(headlessSvc.Name).To(Equal(glanceTest.GlanceExternalStatefulSet.Name))
+		})
+	})
+	When("a GlanceAPI with a file backend is created", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec(), annotations))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+
+			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
+			spec["customServiceConfig"] = GlanceFileBackend
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			spec = CreateGlanceAPISpec(GlanceAPITypeExternal)
+			spec["customServiceConfig"] = GlanceFileBackendCustomDatadir
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, spec))
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+			th.ExpectCondition(
+				glanceTest.GlanceExternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+		It("adds the datadir-setup init container to the StatefulSet", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+
+			ss := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
+			Expect(ss.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+			init := ss.Spec.Template.Spec.InitContainers[0]
+			Expect(init.Name).To(Equal("glance-datadir-setup"))
+			Expect(init.Image).To(Equal(glanceTest.ContainerImage))
+			// the script is executed from the "glance-scripts" Secret volume
+			Expect(init.Command).To(Equal([]string{fmt.Sprintf("%s/datadir-setup.sh", glance.ScriptMountPath)}))
+			// datadir and glance uid/gid are passed to the script
+			Expect(init.Args).To(Equal([]string{
+				glancev1.DefaultFilesystemStoreDatadir,
+				strconv.FormatInt(users.GlanceUID, 10),
+				strconv.FormatInt(users.GlanceGID, 10),
+			}))
+			Expect(init.VolumeMounts).To(ContainElement(corev1.VolumeMount{
+				Name:      "scripts",
+				MountPath: glance.ScriptMountPath,
+				ReadOnly:  true,
+			}))
+			// the init container runs as root to be able to chown the datadir
+			Expect(init.SecurityContext.RunAsUser).To(Equal(ptr.To(int64(0))))
+			Expect(init.SecurityContext.RunAsNonRoot).To(Equal(ptr.To(false)))
+		})
+		It("passes the configured filesystem_store_datadir to the init container", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+
+			ss := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+			Expect(ss.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+			Expect(ss.Spec.Template.Spec.InitContainers[0].Args).To(Equal([]string{
+				"/mnt/glance/images",
+				strconv.FormatInt(users.GlanceUID, 10),
+				strconv.FormatInt(users.GlanceGID, 10),
+			}))
+		})
+		It("renders the datadir-setup.sh script into the glance-scripts Secret", func() {
+			// Unblock the top-level Glance reconcile (which generates the
+			// scripts Secret) by providing the inputs it is waiting for
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.ExpectCondition(
+				glanceTest.Instance,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+
+			scriptsSecret := th.GetSecret(types.NamespacedName{
+				Namespace: glanceTest.Instance.Namespace,
+				Name:      "glance-scripts",
+			})
+			Expect(scriptsSecret.Data).To(HaveKey("datadir-setup.sh"))
 		})
 	})
 	When("GlanceAPI is generated by the top-level CR (edge-api)", func() {

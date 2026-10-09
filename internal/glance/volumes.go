@@ -332,7 +332,7 @@ func GetScriptVolumeMount() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
 			Name:      "scripts",
-			MountPath: "/usr/local/bin/container-scripts",
+			MountPath: ScriptMountPath,
 			ReadOnly:  true,
 		},
 	}
