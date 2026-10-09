@@ -720,6 +720,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 	configVars := make(map[string]env.Setter)
 	privileged := false
 	imageConv := false
+	fileBackend := false
 	extConfigOptions := []util.IniOption{}
 
 	//
@@ -844,6 +845,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 			// We see at least a Cinder CR in the namespace, unblock glance
 			// deployment
 			privileged = true
+		case "file":
+			// The image store directory has to be writable by the glance user
+			// before the API starts. This triggers an initContainer that runs
+			// as the glance user and stops the pod when the datadir is not
+			// usable, reporting the server side fix the admin has to apply.
+			fileBackend = true
 		case "rbd":
 			// enable image conversion by default
 			Log.Info("Ceph config detected: enable image conversion by default")
@@ -1067,6 +1074,7 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		GetServiceLabels(instance),
 		serviceAnnotations,
 		privileged,
+		fileBackend,
 		topology,
 		wsgi,
 		memcached,
