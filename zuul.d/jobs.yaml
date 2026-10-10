@@ -106,3 +106,40 @@
           image_signature_verification.enforced False
           image_signature_verification.certificate_validation False
           volume-feature-enabled.enable_volume_image_dep_tests False
+
+- job:
+    name: glance-s2i-test-nfs
+    parent: s2i-test-base
+    description: |
+      Validate speculatively-built s2i glance images against a live
+      OpenStack deployment with the file backend backed by an NFS share.
+    required-projects:
+      - name: github.com/openstack-k8s-operators/glance-operator
+        override-checkout: main
+    irrelevant-files: *common-irrelevant-files
+    vars:
+      cifmw_edpm_deploy_nfs: True
+      cifmw_nfs_shares:
+       - glance
+      pre_deploy_80_setup_glance_with_fileNFS_based_backend_using_kustomize:
+        type: playbook
+        source: control_plane_glance_nfs_setup.yml
+      post_deploy_81_kustomize_openstack_CR_to_enable_fileNFS_glance_backend:
+        type: playbook
+        source: control_plane_glance_nfs_enable.yml
+      post_deploy_82_kustomize_and_update_Control_Plane:
+        type: playbook
+        source: control_plane_kustomize_deploy.yml
+      cifmw_test_operator_tempest_concurrency: 3
+      cifmw_test_operator_tempest_include_list: |
+        ^tempest.api.image..*
+        ^tempest.scenario.test_snapshot_pattern..*
+        ^glance_tempest_plugin..*
+        ^barbican_tempest_plugin.tests.scenario.test_certificate_validation..*
+        ^barbican_tempest_plugin.tests.scenario.test_image_signing.ImageSigningTest..*
+        ^tempest.api.image.v2.admin.test_image_caching.ImageCachingTest.test_image_caching_cycle
+      cifmw_test_operator_tempest_tempestconf_config:
+        overrides: |
+          service_available.cinder False
+          image_signature_verification.enforced False
+          image_signature_verification.certificate_validation False
