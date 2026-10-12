@@ -9,6 +9,8 @@
             dependencies: &glance_s2i_operator_test_dependencies
               - openstack-k8s-operators-content-provider
               - glance-s2i-content-provider
+        - glance-s2i-test-s3: 
+            dependencies: *glance_s2i_operator_test_dependencies
     github-experimental-trigger:
       jobs:
         - glance-s2i-test-swift:
@@ -30,6 +32,7 @@
               - s2i-openstack-container-consumer-smoke
         - glance-s2i-test-ceph: *glance_s2i_component_overrides
         - glance-s2i-test-ceph-nomimic: *glance_s2i_component_overrides
+        - glance-s2i-test-s3: *glance_s2i_component_overrides
 
 - project:
     name: openstack-k8s-operators/glance-operator
