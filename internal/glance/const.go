@@ -102,6 +102,10 @@ const (
 	CachePruner CronJobType = "pruner"
 	//ImageCacheDir -
 	ImageCacheDir = "/var/lib/glance/image-cache"
+	// DefaultFilesystemStoreDatadir - the path where glance writes image data by
+	// default when a file backend is configured and no overrides are passed
+	// https://github.com/openstack/glance_store/blob/master/glance_store/_drivers/filesystem.py#L48
+	DefaultFilesystemStoreDatadir = "/var/lib/glance/images"
 	// CachePVCPrefix is the VolumeClaimTemplate name prefix used by
 	// StatefulSets for image-cache PVCs (format: <prefix>-<sts-pod-name>)
 	CachePVCPrefix = ServiceName + "-cache-"

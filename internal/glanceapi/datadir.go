@@ -38,7 +38,7 @@ func DatadirInitContainers(
 	instance *glancev1.GlanceAPI,
 	volumeMounts []corev1.VolumeMount,
 ) []corev1.Container {
-	datadir := glancev1.GetFilesystemStoreDatadir(instance.Spec.CustomServiceConfig)
+	datadir := glance.GetFilesystemStoreDatadir(instance.Spec.CustomServiceConfig)
 
 	return []corev1.Container{
 		{

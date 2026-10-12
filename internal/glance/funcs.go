@@ -3,6 +3,7 @@ package glance
 import (
 	"math"
 
+	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -59,4 +60,14 @@ func GetDefaultProbesAPI(apiTimeout int) probes.OverrideSpec {
 			FailureThreshold:    12,
 		},
 	}
+}
+
+// GetFilesystemStoreDatadir - return the directory a file backend writes image
+// data to: the filesystem_store_datadir option of the custom service config,
+// or DefaultFilesystemStoreDatadir when it is not set
+func GetFilesystemStoreDatadir(customServiceConfig string) string {
+	if datadir, ok := glancev1.GetCustomServiceConfigValue(customServiceConfig, "filesystem_store_datadir"); ok {
+		return datadir
+	}
+	return DefaultFilesystemStoreDatadir
 }

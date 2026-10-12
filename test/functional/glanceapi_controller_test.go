@@ -750,7 +750,7 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(init.Command).To(Equal([]string{fmt.Sprintf("%s/datadir-setup.sh", glance.ScriptMountPath)}))
 			// datadir and glance uid/gid are passed to the script
 			Expect(init.Args).To(Equal([]string{
-				glancev1.DefaultFilesystemStoreDatadir,
+				glance.DefaultFilesystemStoreDatadir,
 				strconv.FormatInt(users.GlanceUID, 10),
 				strconv.FormatInt(users.GlanceGID, 10),
 			}))
