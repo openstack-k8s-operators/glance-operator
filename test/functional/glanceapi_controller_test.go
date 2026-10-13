@@ -157,6 +157,31 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(myCnf).To(
 				ContainSubstring("[client]\nssl=0"))
 		})
+		It("configures keystone_authtoken memcached without TLS", func() {
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+			secretDataMap := th.GetSecret(glanceTest.GlanceSingleConfigMapData)
+			Expect(secretDataMap).ShouldNot(BeNil())
+			Expect(secretDataMap.Data).Should(HaveKey("00-config.conf"))
+			configData := string(secretDataMap.Data["00-config.conf"])
+			cfg, err := ini.Load([]byte(configData))
+			Expect(err).ShouldNot(HaveOccurred(), "Should be able to parse config as INI")
+
+			// Without base TLS, keystone_authtoken must use the inet-prefixed
+			// (plain listener) server list and must not enable memcache TLS.
+			memcachedInstance := infra.GetMemcached(glanceTest.GlanceMemcached)
+			section := cfg.Section("keystone_authtoken")
+			Expect(section.Key("memcached_servers").String()).Should(
+				Equal(memcachedInstance.GetMemcachedServerListWithInetString()))
+			Expect(section.HasKey("memcache_tls_enabled")).Should(BeFalse())
+			Expect(section.HasKey("memcache_tls_certfile")).Should(BeFalse())
+			Expect(section.HasKey("memcache_tls_keyfile")).Should(BeFalse())
+			Expect(section.HasKey("memcache_tls_cafile")).Should(BeFalse())
+		})
 		It("stored the input hash in the Status", func() {
 			Eventually(func(g Gomega) {
 				glanceAPI := GetGlanceAPI(glanceTest.GlanceSingle)
@@ -223,6 +248,55 @@ var _ = Describe("Glanceapi controller", func() {
 			section = cfg.Section("barbican")
 			Expect(section).ShouldNot(BeNil(), "Should find [barbican] section")
 			Expect(section.Key("barbican_region_name").String()).Should(Equal(testRegion))
+		})
+	})
+	When("the Secret is created with MTLS memcached", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMTLSMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMTLSMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(th.DeleteInstance, CreateDefaultGlance(glanceTest.Instance))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+
+			spec := GetDefaultGlanceAPISpec(GlanceAPITypeSingle)
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceSingle, spec))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+		})
+		It("configures keystone_authtoken memcached with TLS and MTLS certs", func() {
+			th.ExpectCondition(
+				glanceTest.GlanceSingle,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+			secretDataMap := th.GetSecret(glanceTest.GlanceSingleConfigMapData)
+			Expect(secretDataMap).ShouldNot(BeNil())
+			Expect(secretDataMap.Data).Should(HaveKey("00-config.conf"))
+			configData := string(secretDataMap.Data["00-config.conf"])
+			cfg, err := ini.Load([]byte(configData))
+			Expect(err).ShouldNot(HaveOccurred(), "Should be able to parse config as INI")
+
+			// With base TLS, keystone_authtoken must use the TLS listener server
+			// list, enable memcache TLS, and include the MTLS cert files.
+			memcachedInstance := infra.GetMemcached(glanceTest.GlanceMemcached)
+			section := cfg.Section("keystone_authtoken")
+			Expect(section.Key("memcached_servers").String()).Should(
+				Equal(memcachedInstance.GetMemcachedServerListString()))
+			Expect(section.Key("memcache_tls_enabled").String()).Should(Equal("true"))
+			Expect(section.Key("memcache_tls_certfile").String()).ShouldNot(BeEmpty())
+			Expect(section.Key("memcache_tls_keyfile").String()).ShouldNot(BeEmpty())
+			Expect(section.Key("memcache_tls_cafile").String()).ShouldNot(BeEmpty())
 		})
 	})
 	When("the Secret is created with quorum queues enabled", func() {
