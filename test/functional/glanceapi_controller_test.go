@@ -29,8 +29,11 @@ import (
 	memcachedv1 "github.com/openstack-k8s-operators/infra-operator/apis/memcached/v1beta1"
 	topologyv1 "github.com/openstack-k8s-operators/infra-operator/apis/topology/v1beta1"
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/clusterdns"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	commonservice "github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	"gopkg.in/ini.v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	//revive:disable-next-line:dot-imports
@@ -833,7 +836,10 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 		It("exposes the service", func() {
 			apiInstance := th.GetService(glanceTest.GlancePublicSvc)
+			Expect(apiInstance.Name).To(Equal(glanceTest.GlancePublicSvc.Name))
 			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
+			Expect(apiInstance.Spec.Ports).To(HaveLen(1))
+			Expect(apiInstance.Spec.Ports[0].Name).To(Equal("public"))
 		})
 		It("creates KeystoneEndpoint", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceExternal)
@@ -886,7 +892,10 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 		It("exposes the service - Internal", func() {
 			apiInstance := th.GetService(glanceTest.GlanceInternalSvc)
+			Expect(apiInstance.Name).To(Equal(glanceTest.GlanceInternalSvc.Name))
 			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
+			Expect(apiInstance.Spec.Ports).To(HaveLen(1))
+			Expect(apiInstance.Spec.Ports[0].Name).To(Equal("internal"))
 		})
 		It("creates KeystoneEndpoint - Internal", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceInternal)
@@ -939,7 +948,10 @@ var _ = Describe("Glanceapi controller", func() {
 		})
 		It("exposes the service", func() {
 			apiInstance := th.GetService(glanceTest.GlanceInternalSvc)
+			Expect(apiInstance.Name).To(Equal(glanceTest.GlanceInternalSvc.Name))
 			Expect(apiInstance.Labels["service"]).To(Equal("glance"))
+			Expect(apiInstance.Spec.Ports).To(HaveLen(1))
+			Expect(apiInstance.Spec.Ports[0].Name).To(Equal("internal"))
 		})
 		It("creates KeystoneEndpoint", func() {
 			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceSingle)
@@ -979,10 +991,9 @@ var _ = Describe("Glanceapi controller", func() {
 				"endpoint": "internal",
 				"metadata": map[string]map[string]string{
 					"annotations": {
-						"dnsmasq.network.openstack.org/hostname": "glance-internal.openstack.svc",
-						"metallb.universe.tf/address-pool":       "osp-internalapi",
-						"metallb.universe.tf/allow-shared-ip":    "osp-internalapi",
-						"metallb.universe.tf/loadBalancerIPs":    "internal-lb-ip-1,internal-lb-ip-2",
+						"metallb.universe.tf/address-pool":    "osp-internalapi",
+						"metallb.universe.tf/allow-shared-ip": "osp-internalapi",
+						"metallb.universe.tf/loadBalancerIPs": "internal-lb-ip-1,internal-lb-ip-2",
 					},
 					"labels": {
 						"internal": "true",
@@ -1019,8 +1030,11 @@ var _ = Describe("Glanceapi controller", func() {
 			// As the internal endpoint is configured in service overrides it
 			// gets a LoadBalancer Service with annotations
 			service := th.GetService(glanceTest.GlanceInternalSvc)
+			Expect(service.Name).To(Equal(glanceTest.GlanceInternalSvc.Name))
+			Expect(service.Spec.Ports).To(HaveLen(1))
+			Expect(service.Spec.Ports[0].Name).To(Equal("internal"))
 			Expect(service.Annotations).To(
-				HaveKeyWithValue("dnsmasq.network.openstack.org/hostname", "glance-internal.openstack.svc"))
+				HaveKeyWithValue(commonservice.AnnotationHostnameKey, fmt.Sprintf("%s.%s.svc", service.Name, service.Namespace)))
 			Expect(service.Annotations).To(
 				HaveKeyWithValue("metallb.universe.tf/address-pool", "osp-internalapi"))
 			Expect(service.Annotations).To(
@@ -1034,6 +1048,51 @@ var _ = Describe("Glanceapi controller", func() {
 				condition.CreateServiceReadyCondition,
 				corev1.ConditionTrue,
 			)
+		})
+		It("uses an internal endpointURL for the vhost while keeping the in-cluster LoadBalancer DNS hostname annotation", func() {
+			endpointURL := "http://glance-internal.example.test:9292"
+			Eventually(func(g Gomega) {
+				api := GetGlanceAPI(glanceTest.GlanceInternal)
+				override := api.Spec.Override.Service[commonservice.EndpointInternal]
+				override.EndpointURL = &endpointURL
+				api.Spec.Override.Service[commonservice.EndpointInternal] = override
+				g.Expect(k8sClient.Update(ctx, api)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				svc := th.GetService(glanceTest.GlanceInternalSvc)
+				g.Expect(svc.Annotations).To(HaveKeyWithValue(commonservice.AnnotationHostnameKey,
+					fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace)))
+				g.Expect(keystone.GetKeystoneEndpoint(glanceTest.GlanceInternal).Spec.Endpoints).To(
+					HaveKeyWithValue("internal", endpointURL))
+				config := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				configData := string(config.Data["10-glance-wsgi.conf"])
+				g.Expect(configData).To(ContainSubstring("ServerName glance-internal.example.test"))
+				g.Expect(configData).To(ContainSubstring(
+					"ServerAlias glance-internal." + glanceTest.GlanceInternal.Namespace + ".svc"))
+				g.Expect(configData).To(ContainSubstring(fmt.Sprintf(
+					"ServerAlias glance-internal.%s.svc.%s",
+					glanceTest.GlanceInternal.Namespace, clusterdns.GetDNSClusterDomain())))
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				api := GetGlanceAPI(glanceTest.GlanceInternal)
+				override := api.Spec.Override.Service[commonservice.EndpointInternal]
+				override.EndpointURL = nil
+				api.Spec.Override.Service[commonservice.EndpointInternal] = override
+				g.Expect(k8sClient.Update(ctx, api)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				svc := th.GetService(glanceTest.GlanceInternalSvc)
+				g.Expect(svc.Annotations).To(HaveKeyWithValue(commonservice.AnnotationHostnameKey,
+					fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace)))
+				g.Expect(keystone.GetKeystoneEndpoint(glanceTest.GlanceInternal).Spec.Endpoints).To(
+					HaveKeyWithValue("internal", fmt.Sprintf("http://%s.%s.svc:9292", svc.Name, svc.Namespace)))
+				config := th.GetSecret(glanceTest.GlanceInternalConfigMapData)
+				g.Expect(string(config.Data["10-glance-wsgi.conf"])).To(ContainSubstring(
+					"ServerName glance-internal." + glanceTest.GlanceInternal.Namespace + ".svc"))
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 	When("A GlanceAPI is created with service override endpointURL set", func() {
@@ -1056,32 +1115,128 @@ var _ = Describe("Glanceapi controller", func() {
 			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
 			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
 
-			spec := CreateGlanceAPISpec(GlanceAPITypeExternal)
+			spec := CreateGlanceAPISpec(GlanceAPITypeSingle)
 			serviceOverride := map[string]any{}
 			serviceOverride["public"] = map[string]any{
 				"endpoint":    "public",
 				"endpointURL": "http://glance-openstack.apps-crc.testing",
+				"spec": map[string]any{
+					"type": "LoadBalancer",
+				},
 			}
 			spec["override"] = map[string]any{
 				"service": serviceOverride,
 			}
-			glance := CreateGlanceAPI(glanceTest.GlanceExternal, spec)
-			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceExternal.Namespace))
-			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
-			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceExternal)
+			glance := CreateGlanceAPI(glanceTest.GlanceSingle, spec)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.GlanceSingle.Namespace))
+			th.SimulateLoadBalancerServiceIP(glanceTest.GlancePublicSvc)
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceSingle)
+			keystone.SimulateKeystoneEndpointReady(glanceTest.GlanceSingle)
 			DeferCleanup(th.DeleteInstance, glance)
 		})
 		It("creates KeystoneEndpoint", func() {
-			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceExternal)
+			keystoneEndpoint := keystone.GetKeystoneEndpoint(glanceTest.GlanceSingle)
 			endpoints := keystoneEndpoint.Spec.Endpoints
 			Expect(endpoints).To(HaveKeyWithValue("public", "http://glance-openstack.apps-crc.testing"))
+			Expect(endpoints).To(HaveKeyWithValue(
+				"internal",
+				"http://glance-default-internal."+glanceTest.Instance.Namespace+".svc:9292",
+			))
 
 			th.ExpectCondition(
-				glanceTest.GlanceExternal,
+				glanceTest.GlanceSingle,
 				ConditionGetterFunc(GlanceAPIConditionGetter),
 				condition.KeystoneEndpointReadyCondition,
 				corev1.ConditionTrue,
 			)
+		})
+		It("renders the custom public vhost and cluster FQDN aliases for both endpoints", func() {
+			Eventually(func(g Gomega) {
+				configSecret := th.GetSecret(glanceTest.GlanceSingleConfigMapData)
+				g.Expect(configSecret).NotTo(BeNil())
+				g.Expect(configSecret.Data).To(HaveKey("10-glance-wsgi.conf"))
+				configData := string(configSecret.Data["10-glance-wsgi.conf"])
+				g.Expect(configData).To(ContainSubstring("ServerName glance-openstack.apps-crc.testing"))
+				g.Expect(configData).To(ContainSubstring(
+					"ServerAlias " + glanceTest.GlancePublicSvc.Name + "." + glanceTest.GlancePublicSvc.Namespace + ".svc"))
+				g.Expect(configData).To(ContainSubstring("ServerName glance-internal." + glanceTest.Instance.Namespace + ".svc"))
+				g.Expect(configData).To(ContainSubstring(
+					"ServerAlias glance-public." + glanceTest.Instance.Namespace + ".svc"))
+				g.Expect(configData).To(ContainSubstring(fmt.Sprintf(
+					"ServerAlias glance-public.%s.svc.%s",
+					glanceTest.Instance.Namespace, clusterdns.GetDNSClusterDomain())))
+				g.Expect(configData).To(ContainSubstring(fmt.Sprintf(
+					"ServerAlias glance-internal.%s.svc.%s",
+					glanceTest.Instance.Namespace, clusterdns.GetDNSClusterDomain())))
+				g.Expect(configData).To(ContainSubstring(
+					"ServerAlias " + glanceTest.GlanceSingle.Name + "." + glanceTest.GlanceSingle.Namespace + ".svc"))
+			}, timeout, interval).Should(Succeed())
+		})
+		It("does not set the dnsmasq hostname annotation on the public LoadBalancer Service and keeps its object name", func() {
+			publicService := th.GetService(glanceTest.GlancePublicSvc)
+			Expect(publicService.Name).To(Equal(glanceTest.GlancePublicSvc.Name))
+			Expect(publicService.Spec.Ports).To(HaveLen(1))
+			Expect(publicService.Spec.Ports[0].Name).To(Equal("public"))
+			Expect(publicService.Annotations).NotTo(HaveKey(commonservice.AnnotationHostnameKey))
+		})
+
+		It("drops a stale dnsmasq hostname annotation when the public Service becomes ClusterIP", func() {
+			// simulate a registration left on the public LoadBalancer by a previous release
+			Eventually(func(g Gomega) {
+				svc := th.GetService(glanceTest.GlancePublicSvc)
+				svc.Annotations[commonservice.AnnotationHostnameKey] = "glance-public.stale.svc"
+				g.Expect(k8sClient.Update(ctx, svc)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				api := GetGlanceAPI(glanceTest.GlanceSingle)
+				override := api.Spec.Override.Service[commonservice.EndpointPublic]
+				override.Spec = nil
+				api.Spec.Override.Service[commonservice.EndpointPublic] = override
+				g.Expect(k8sClient.Update(ctx, api)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				svc := th.GetService(glanceTest.GlancePublicSvc)
+				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
+				g.Expect(svc.Annotations).NotTo(HaveKey(commonservice.AnnotationHostnameKey))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("does not set the dnsmasq hostname annotation on a public LoadBalancer without endpointURL", func() {
+			apiName := "no-url"
+			noURLSpec := CreateGlanceAPISpec(GlanceAPITypeSingle)
+			noURLSpec["name"] = apiName
+			noURLSpec["override"] = map[string]any{
+				"service": map[string]any{
+					"public": map[string]any{
+						"endpoint": "public",
+						"spec":     map[string]any{"type": "LoadBalancer"},
+					},
+				},
+			}
+			noURLAPI := &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "glance.openstack.org/v1beta1",
+				"kind":       "GlanceAPI",
+				"metadata": map[string]any{
+					"name":      "glance-" + apiName,
+					"namespace": glanceTest.GlanceSingle.Namespace,
+					"labels":    map[string]any{"api-name": apiName},
+				},
+				"spec": noURLSpec,
+			}}
+			Expect(k8sClient.Create(ctx, noURLAPI)).To(Succeed())
+			DeferCleanup(k8sClient.Delete, ctx, noURLAPI)
+
+			serviceName := types.NamespacedName{
+				Name:      fmt.Sprintf("%s-%s-public", glance.ServiceName, apiName),
+				Namespace: glanceTest.GlanceSingle.Namespace,
+			}
+			Eventually(func(g Gomega) {
+				publicService := &corev1.Service{}
+				g.Expect(k8sClient.Get(ctx, serviceName, publicService)).To(Succeed())
+				g.Expect(publicService.Annotations).NotTo(HaveKey(commonservice.AnnotationHostnameKey))
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 	When("A split GlanceAPI with TLS is generated by the top-level CR", func() {
@@ -1459,6 +1614,14 @@ var _ = Describe("Glanceapi controller", func() {
 				condition.KeystoneEndpointReadyCondition,
 				corev1.ConditionTrue,
 			)
+		})
+		It("keeps the default vhost ServerName when the public endpointURL is set without a LoadBalancer (Route)", func() {
+			Eventually(func(g Gomega) {
+				configData := string(th.GetSecret(glanceTest.GlanceSingleConfigMapData).Data["10-glance-wsgi.conf"])
+				// the router sends no SNI, so the route host must not be a ServerName
+				g.Expect(configData).NotTo(ContainSubstring("glance-openstack.apps-crc.testing"))
+				g.Expect(configData).To(ContainSubstring("ServerName glance-public." + glanceTest.Instance.Namespace + ".svc"))
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 	When("GlanceAPI instance overrides a topology", func() {

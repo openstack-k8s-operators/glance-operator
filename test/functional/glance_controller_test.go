@@ -32,6 +32,7 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	commonservice "github.com/openstack-k8s-operators/lib-common/modules/common/service"
 	util "github.com/openstack-k8s-operators/lib-common/modules/common/util"
 	mariadb_test "github.com/openstack-k8s-operators/mariadb-operator/api/test/helpers"
 	mariadbv1 "github.com/openstack-k8s-operators/mariadb-operator/api/v1beta1"
@@ -625,6 +626,80 @@ var _ = Describe("Glance controller", func() {
 				Expect(internalAPI.Spec.NetworkAttachments).To(Equal(glanceAPI.NetworkAttachments))
 				Expect(externalAPI.Spec.NetworkAttachments).To(Equal(glanceAPI.NetworkAttachments))
 			}
+		})
+	})
+	When("Glance internal endpoint is a LoadBalancer that is then switched to ClusterIP", func() {
+		BeforeEach(func() {
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			rawSpec := map[string]any{
+				"storage": map[string]any{
+					"storageRequest": glanceTest.GlancePVCSize,
+				},
+				"storageRequest":      glanceTest.GlancePVCSize,
+				"secret":              SecretName,
+				"databaseInstance":    "openstack",
+				"databaseAccount":     glanceTest.GlanceDatabaseAccount.Name,
+				"keystoneEndpoint":    "default",
+				"customServiceConfig": GlanceDummyBackend,
+				"glanceAPIs": map[string]any{
+					"default": map[string]any{
+						"type":           "split",
+						"containerImage": glancev1.GlanceAPIContainerImage,
+						"override": map[string]any{
+							"service": map[string]any{
+								"internal": map[string]any{
+									"spec": map[string]any{"type": "LoadBalancer"},
+								},
+							},
+						},
+					},
+				},
+			}
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, rawSpec, annotations))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceTest.Instance.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 3306}}},
+				),
+			)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.SimulateJobSuccess(glanceTest.GlanceDBSync)
+			keystoneAPI := keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace)
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystoneAPI)
+			keystoneAPIName := keystone.GetKeystoneAPI(keystoneAPI)
+			keystoneAPIName.Status.APIEndpoints["internal"] = "http://keystone-internal-openstack.testing"
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Status().Update(ctx, keystoneAPIName.DeepCopy())).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
+			keystone.SimulateKeystoneServiceReady(glanceTest.KeystoneService)
+			th.SimulateLoadBalancerServiceIP(glanceTest.GlanceInternalSvc)
+		})
+
+		It("drops the dnsmasq hostname annotation", func() {
+			Eventually(func(g Gomega) {
+				g.Expect(th.GetService(glanceTest.GlanceInternalSvc).Annotations).To(HaveKey(commonservice.AnnotationHostnameKey))
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				instance := GetGlance(glanceTest.Instance)
+				api := instance.Spec.GlanceAPIs["default"]
+				override := api.Override.Service[commonservice.EndpointInternal]
+				override.Spec = nil
+				api.Override.Service[commonservice.EndpointInternal] = override
+				instance.Spec.GlanceAPIs["default"] = api
+				g.Expect(k8sClient.Update(ctx, instance)).To(Succeed())
+			}, timeout, interval).Should(Succeed())
+
+			Eventually(func(g Gomega) {
+				svc := th.GetService(glanceTest.GlanceInternalSvc)
+				g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
+				g.Expect(svc.Annotations).NotTo(HaveKey(commonservice.AnnotationHostnameKey))
+			}, timeout, interval).Should(Succeed())
 		})
 	})
 	When("Glance CR instance is built with location-api: false", func() {
