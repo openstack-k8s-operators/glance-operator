@@ -163,7 +163,7 @@ metadata:
     service: glance
 spec:
   ports:
-  - name: glance-default-internal
+  - name: internal
     port: 9292
     protocol: TCP
     targetPort: 9292
@@ -179,7 +179,7 @@ metadata:
     service: glance
 spec:
   ports:
-  - name: glance-default-public
+  - name: public
     port: 9292
     protocol: TCP
     targetPort: 9292
