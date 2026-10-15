@@ -1453,6 +1453,7 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	}
 	templateParameters["MemcachedServersWithInet"] = memcached.GetMemcachedServerListWithInetString()
 	templateParameters["MemcachedServers"] = memcached.GetMemcachedServerListString()
+	templateParameters["MemcachedTLS"] = memcached.GetMemcachedTLSSupport()
 
 	// MTLS
 	if memcached.GetMemcachedMTLSSecret() != "" {
