@@ -31,6 +31,12 @@ repos:
       entry: make
       args: ['crd-schema-check']
       pass_filenames: false
+    - id: make-style-check
+      name: make-style-check
+      language: system
+      entry: make
+      args: ['style-check']
+      pass_filenames: false
 
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.4.0
