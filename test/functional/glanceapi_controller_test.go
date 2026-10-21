@@ -719,10 +719,28 @@ var _ = Describe("Glanceapi controller", func() {
 
 			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
 			spec["customServiceConfig"] = GlanceFileBackend
+			spec["extraMounts"] = GetExtraMounts()
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
 
 			spec = CreateGlanceAPISpec(GlanceAPITypeExternal)
 			spec["customServiceConfig"] = GlanceFileBackendCustomDatadir
+			spec["extraMounts"] = []map[string]any{{
+				"name": "file-backend",
+				"extraVol": []map[string]any{{
+					"propagation": []string{"GlanceAPI"},
+					"volumes": []map[string]any{{
+						"name": "images",
+						"persistentVolumeClaim": map[string]any{
+							"claimName": "image-store",
+						},
+					}},
+					"mounts": []map[string]any{{
+						"name":      "images",
+						"mountPath": GlanceFileBackendMountPath,
+						"subPath":   "backend",
+					}},
+				}},
+			}}
 			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, spec))
 
 			th.ExpectCondition(
@@ -754,11 +772,14 @@ var _ = Describe("Glanceapi controller", func() {
 				strconv.FormatInt(users.GlanceUID, 10),
 				strconv.FormatInt(users.GlanceGID, 10),
 			}))
-			Expect(init.VolumeMounts).To(ContainElement(corev1.VolumeMount{
-				Name:      "scripts",
-				MountPath: glance.ScriptMountPath,
-				ReadOnly:  true,
-			}))
+			Expect(init.VolumeMounts).To(ConsistOf(
+				corev1.VolumeMount{Name: glance.ServiceName, MountPath: "/var/lib/glance"},
+				corev1.VolumeMount{Name: "scripts", MountPath: glance.ScriptMountPath, ReadOnly: true},
+			))
+			// The API keeps its configuration/credential mounts; root setup does not.
+			Expect(ss.Spec.Template.Spec.Containers[1].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{Name: GlanceCephExtraMountsSecretName, MountPath: GlanceCephExtraMountsPath, ReadOnly: true},
+			))
 			// the init container runs as root to be able to chown the datadir
 			Expect(init.SecurityContext.RunAsUser).To(Equal(ptr.To(int64(0))))
 			Expect(init.SecurityContext.RunAsNonRoot).To(Equal(ptr.To(false)))
@@ -769,10 +790,14 @@ var _ = Describe("Glanceapi controller", func() {
 			ss := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
 			Expect(ss.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 			Expect(ss.Spec.Template.Spec.InitContainers[0].Args).To(Equal([]string{
-				"/mnt/glance/images",
+				GlanceFileBackendMountPath + "/images",
 				strconv.FormatInt(users.GlanceUID, 10),
 				strconv.FormatInt(users.GlanceGID, 10),
 			}))
+			Expect(ss.Spec.Template.Spec.InitContainers[0].VolumeMounts).To(ConsistOf(
+				corev1.VolumeMount{Name: "images", MountPath: GlanceFileBackendMountPath, SubPath: "backend"},
+				corev1.VolumeMount{Name: "scripts", MountPath: glance.ScriptMountPath, ReadOnly: true},
+			))
 		})
 		It("renders the datadir-setup.sh script into the glance-scripts Secret", func() {
 			// Unblock the top-level Glance reconcile (which generates the

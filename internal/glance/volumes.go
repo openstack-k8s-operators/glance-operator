@@ -223,22 +223,7 @@ func GetVolumeMounts(
 		)
 	}
 
-	localPVC := []corev1.VolumeMount{
-		{
-			Name:      ServiceName,
-			MountPath: "/var/lib/glance",
-			ReadOnly:  false,
-		},
-	}
-	// a PVC is mounted only if external is not set
-	if !external {
-		vm = append(vm, localPVC...)
-	}
-	for _, exv := range extraVol {
-		for _, vol := range exv.Propagate(svc) {
-			vm = append(vm, vol.Mounts...)
-		}
-	}
+	vm = append(vm, GetDataVolumeMounts(external, extraVol, svc)...)
 	_, secretConfig := volume.ConfigSecretVolumes(secretNames)
 	vm = append(vm, secretConfig...)
 	if hasCinder {
@@ -281,6 +266,32 @@ func GetVolumeMounts(
 			runOnHostVolumeMount("/usr/sbin/nvme"),
 		}
 		vm = append(vm, storageVolumeMounts...)
+	}
+	return vm
+}
+
+// GetDataVolumeMounts - the subset of GetVolumeMounts that can hold image
+// data: the local PVC (mounted only when the storage is not externally
+// managed) and the extraMounts propagated to this service. Everything else a
+// Glance pod mounts (config, logs, scripts, os-brick host paths) is off limits
+// for image data.
+func GetDataVolumeMounts(
+	external bool,
+	extraVol []glancev1.GlanceExtraVolMounts,
+	svc []storage.PropagationType,
+) []corev1.VolumeMount {
+	vm := []corev1.VolumeMount{}
+	if !external {
+		vm = append(vm, corev1.VolumeMount{
+			Name:      ServiceName,
+			MountPath: "/var/lib/glance",
+			ReadOnly:  false,
+		})
+	}
+	for _, exv := range extraVol {
+		for _, vol := range exv.Propagate(svc) {
+			vm = append(vm, vol.Mounts...)
+		}
 	}
 	return vm
 }

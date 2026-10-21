@@ -55,7 +55,9 @@ const (
 	GlanceFileBackend = "enabled_backends=default_backend:file"
 	//GlanceFileBackendCustomDatadir - file backend overriding
 	//filesystem_store_datadir
-	GlanceFileBackendCustomDatadir = "enabled_backends=default_backend:file\nfilesystem_store_datadir=/mnt/glance/images"
+	GlanceFileBackendCustomDatadir = "enabled_backends=default_backend:file\nfilesystem_store_datadir=" + GlanceFileBackendMountPath + "/images"
+	// GlanceFileBackendMountPath - parent mount for the custom file datadir
+	GlanceFileBackendMountPath = "/mnt/glance"
 	// MemcachedInstance - name of the memcached instance
 	MemcachedInstance = "memcached"
 	// AccountName - name of the MariaDBAccount CR

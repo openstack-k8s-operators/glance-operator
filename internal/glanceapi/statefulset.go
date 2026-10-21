@@ -300,26 +300,6 @@ func StatefulSet(
 		statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
 	}
 
-	// A file backend needs its image store directory to exist and be writable
-	// by the glance user before glance-api starts. Run that as init containers
-	// so the checks happen in this pod, against the mounts this pod will use,
-	// after the kubelet has set them up and before any API container starts.
-	// They get the glance-api container's own mounts so the datadir resolves
-	// identically in both.
-	if fileBackend {
-		statefulset.Spec.Template.Spec.InitContainers = DatadirInitContainers(
-			instance,
-			glance.GetVolumeMounts(
-				instance.Spec.CustomServiceConfigSecrets,
-				privileged,
-				instance.Spec.Storage.External,
-				instance.Spec.ExtraMounts,
-				extraVolPropagation,
-				"api",
-				wsgi,
-			),
-		)
-	}
 	// Staging and Cache are realized through separate interfaces
 	// (TODO) Allow to externally manage image-cache
 	if len(instance.Spec.ImageCache.Size) > 0 {
@@ -337,6 +317,23 @@ func StatefulSet(
 		instance.Spec.ExtraMounts,
 		extraVolPropagation),
 		apiVolumes...)
+
+	// Prepare the file backend before Glance starts. Give the root init container
+	// only the data mount containing the datadir and the setup script.
+	if fileBackend {
+		initContainers, err := DatadirInitContainers(
+			instance,
+			glance.GetDataVolumeMounts(
+				instance.Spec.Storage.External,
+				instance.Spec.ExtraMounts,
+				extraVolPropagation,
+			),
+		)
+		if err != nil {
+			return statefulset, err
+		}
+		statefulset.Spec.Template.Spec.InitContainers = initContainers
+	}
 
 	if instance.Spec.NodeSelector != nil {
 		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector

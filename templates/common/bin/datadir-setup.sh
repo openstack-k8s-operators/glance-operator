@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Ensure the existing file-backend datadir is writable before Glance starts.
+# Ensure the file-backend datadir exists and is writable before Glance starts.
 # Runs as root in the datadir-setup init container.
 #
 # Usage: datadir-setup.sh <datadir> <want-uid> <want-gid>
@@ -28,11 +28,11 @@ glance_can_write() {
     # Select one permission class; denied owner/group access cannot fall through.
     # Shift its bits down, then mask with 3 (binary 011 = w+x).
     if [ "${uid}" = "${WANT_UID}" ]; then
-        (( (mode >> 6 & 3) == 3 ))
+        [ "$(( mode >> 6 & 3 ))" -eq 3 ]
     elif [ "${gid}" = "${WANT_GID}" ]; then
-        (( (mode >> 3 & 3) == 3 ))
+        [ "$(( mode >> 3 & 3 ))" -eq 3 ]
     else
-        (( (mode & 3) == 3 ))
+        [ "$(( mode & 3 ))" -eq 3 ]
     fi
 }
 
@@ -56,8 +56,12 @@ fail() {
     exit 1
 }
 
-if [ ! -d "${DATADIR}" ]; then
-    echo "ERROR: ${DATADIR} is not an existing directory. Check the configured datadir and volume mount." >&2
+# A freshly provisioned PVC is empty or an NFS export may be mounted above
+# the datadir rather than at it, so the directory is not guaranteed to exist.
+# Creating it is what kolla used to do. Under root_squash the mkdir is refused
+# and the error below still applies.
+if [ ! -d "${DATADIR}" ] && ! mkdir -p "${DATADIR}"; then
+    echo "ERROR: ${DATADIR} does not exist and could not be created. Check the configured datadir and volume mount." >&2
     exit 1
 fi
 
