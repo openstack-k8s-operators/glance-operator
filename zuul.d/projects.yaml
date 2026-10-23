@@ -14,11 +14,18 @@
             files:
                - ^config/samples/backends/base/
                - ^config/samples/backends/nfs/
+        - glance-s2i-test-cindernfs:
+            dependencies: *glance_s2i_operator_test_dependencies
+            files:
+               - ^config/samples/backends/base/
+               - ^config/samples/backends/cinder/glance-common/
     github-experimental-trigger:
       jobs:
         - glance-s2i-test-swift:
             dependencies: *glance_s2i_operator_test_dependencies
         - glance-s2i-test-nfs:
+            dependencies: *glance_s2i_operator_test_dependencies
+        - glance-s2i-test-cindernfs:
             dependencies: *glance_s2i_operator_test_dependencies
 
 # project template to be used in the s2i repository
@@ -38,6 +45,7 @@
         - glance-s2i-test-ceph: *glance_s2i_component_overrides
         - glance-s2i-test-ceph-nomimic: *glance_s2i_component_overrides
         - glance-s2i-test-nfs: *glance_s2i_component_overrides
+        - glance-s2i-test-cindernfs: *glance_s2i_component_overrides
 
 - project:
     name: openstack-k8s-operators/glance-operator
