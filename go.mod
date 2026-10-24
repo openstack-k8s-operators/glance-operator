@@ -9,17 +9,17 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
 	github.com/onsi/ginkgo/v2 v2.33.1
 	github.com/onsi/gomega v1.44.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20261015161319-69de7cbe2698
+	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20261022172709-e1f1c09ce4bc
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
-	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20261012090240-a274cb08fde3
-	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20261012081708-7aa3021e95e4
-	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20261012061721-27c1cd2f194d
-	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20261013151427-9b94821abb9f
-	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20261013151427-9b94821abb9f
-	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20261013151427-9b94821abb9f
-	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20261013151427-9b94821abb9f
-	github.com/openstack-k8s-operators/lib-common/modules/users v0.0.0-20261013151427-9b94821abb9f
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20261013061113-26004622bba0
+	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20261021193405-e3be6e99085d
+	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20261019104913-82fa8b3c2e30
+	github.com/openstack-k8s-operators/keystone-operator/api v0.6.1-0.20261019173258-be8b225bb10c
+	github.com/openstack-k8s-operators/lib-common/modules/common v0.6.1-0.20261023124652-eebd8803b178
+	github.com/openstack-k8s-operators/lib-common/modules/openstack v0.6.1-0.20261023124652-eebd8803b178
+	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20261023124652-eebd8803b178
+	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20261023124652-eebd8803b178
+	github.com/openstack-k8s-operators/lib-common/modules/users v0.0.0-20261023124652-eebd8803b178
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20261022144157-a99fc6fde11c
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976
 	gopkg.in/ini.v1 v1.67.3
 	gopkg.in/yaml.v3 v3.0.1
