@@ -119,6 +119,7 @@
     irrelevant-files: *common-irrelevant-files
     vars:
       cifmw_edpm_deploy_nfs: True
+      cifmw_edpm_prepare_cindervolumes: ['nfs']
       cifmw_nfs_shares:
        - glance
       # Write access to the share is required
@@ -149,3 +150,55 @@
           service_available.cinder False
           image_signature_verification.enforced False
           image_signature_verification.certificate_validation False
+
+- job:
+    name: glance-s2i-test-cindernfs
+    parent: s2i-test-base
+    # Use a nodeset that provides a more powerful CRC node, because
+    # the resources of the CRC node provided by the base job are
+    # not enough when the tests executed are slightly more than basics
+    nodeset: centos-10-medium-2x-centos-10-crc-cloud-ocp-4-22-1-3xl
+    description: |
+      Validate speculatively-built s2i glance images against a live
+      OpenStack deployment, with the cinder backend (backend by NFS).
+    required-projects:
+      - name: github.com/openstack-k8s-operators/cinder-operator
+        override-checkout: main
+      - name: github.com/openstack-k8s-operators/glance-operator
+        override-checkout: main
+    irrelevant-files: *common-irrelevant-files
+    vars:
+      cifmw_edpm_deploy_nfs: true
+      cifmw_nfs_shares:
+        - cinder
+        - cinderbackup
+      pre_deploy_80_setup_glance_for_cinder_backend_using_kustomize:
+        type: playbook
+        source: control_plane_glance_cindernfs_setup.yml
+      post_deploy_81_kustomize_openstack_CR_to_enable_genericNFS_cinder_backend:
+        type: playbook
+        source: control_plane_cinder_nfs_enable.yml
+      post_deploy_82_kustomize_openstack_CR_to_enable_cinderNFS_glance_backend:
+        type: playbook
+        source: control_plane_glance_cindernfs_enable.yml
+      post_deploy_89_kustomize_and_update_Control_Plane:
+        type: playbook
+        source: control_plane_kustomize_deploy.yml
+      post_deploy_95_increase_volume_quota:
+        type: playbook
+        source: service-project-more-quota.yml
+      cifmw_test_operator_tempest_concurrency: 3
+      cifmw_test_operator_tempest_include_list: |
+        ^tempest.api.image..*
+        ^tempest.scenario.test_snapshot_pattern..*
+        ^glance_tempest_plugin..*
+        ^barbican_tempest_plugin.tests.scenario.test_certificate_validation..*
+        ^barbican_tempest_plugin.tests.scenario.test_image_signing.ImageSigningTest..*
+      cifmw_test_operator_tempest_tempestconf_config:
+        overrides: |
+          compute-feature-enabled.attach_encrypted_volume False
+          compute-feature-enabled.volume_multiattach False
+          image_signature_verification.enforced False
+          image_signature_verification.certificate_validation False
+          volume-feature-enabled.volume_revert True
+          volume.storage_protocol 'nfs'
