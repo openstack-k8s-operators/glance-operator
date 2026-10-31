@@ -1,0 +1,59 @@
+# Sample using multistore with weighted backends.
+# Two Ceph clusters (ceph-0 and ceph-1) are configured with different weights
+# so that ceph-0 is preferred when storing new images.
+# The weight option is a positive integer that influences the store selection
+# when no explicit backend is requested: higher weight means higher preference.
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack
+spec:
+  glance:
+    template:
+      customServiceConfig: |
+        [DEFAULT]
+        debug = True
+        enabled_backends = ceph-0:rbd,ceph-1:rbd
+        [glance_store]
+        default_backend = ceph-0
+        [ceph-0]
+        rbd_store_ceph_conf = /etc/ceph/ceph-0.conf
+        store_description = "Primary RBD backend"
+        rbd_store_pool = images
+        rbd_store_user = openstack
+        weight = 200
+        [ceph-1]
+        rbd_store_ceph_conf = /etc/ceph/ceph-1.conf
+        store_description = "Secondary RBD backend"
+        rbd_store_pool = images
+        rbd_store_user = openstack
+        weight = 100
+      databaseInstance: openstack
+      databaseAccount: glance
+      glanceAPIs:
+        default:
+          preserveJobs: false
+          replicas: 1
+      secret: osp-secret
+      storage:
+        storageClass: ""
+        storageRequest: 1G
+  extraMounts:
+    - name: v1
+      region: r1
+      extraVol:
+        - propagation:
+          - GlanceAPI
+          extraVolType: Ceph
+          volumes:
+          - name: ceph
+            projected:
+              sources:
+              - secret:
+                  name: ceph-client-conf-0
+              - secret:
+                  name: ceph-client-conf-1
+          mounts:
+          - name: ceph
+            mountPath: "/etc/ceph"
+            readOnly: true
