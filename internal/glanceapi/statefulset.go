@@ -73,6 +73,7 @@ func StatefulSet(
 	labels map[string]string,
 	annotations map[string]string,
 	privileged bool,
+	fileBackend bool,
 	topology *topologyv1.Topology,
 	wsgi bool,
 	memcached *memcachedv1.Memcached,
@@ -298,6 +299,7 @@ func StatefulSet(
 		}
 		statefulset.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{localPvc}
 	}
+
 	// Staging and Cache are realized through separate interfaces
 	// (TODO) Allow to externally manage image-cache
 	if len(instance.Spec.ImageCache.Size) > 0 {
@@ -315,6 +317,23 @@ func StatefulSet(
 		instance.Spec.ExtraMounts,
 		extraVolPropagation),
 		apiVolumes...)
+
+	// Prepare the file backend before Glance starts. Give the root init container
+	// only the data mount containing the datadir and the setup script.
+	if fileBackend {
+		initContainers, err := DatadirInitContainers(
+			instance,
+			glance.GetDataVolumeMounts(
+				instance.Spec.Storage.External,
+				instance.Spec.ExtraMounts,
+				extraVolPropagation,
+			),
+		)
+		if err != nil {
+			return statefulset, err
+		}
+		statefulset.Spec.Template.Spec.InitContainers = initContainers
+	}
 
 	if instance.Spec.NodeSelector != nil {
 		statefulset.Spec.Template.Spec.NodeSelector = *instance.Spec.NodeSelector
