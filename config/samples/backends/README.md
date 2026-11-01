@@ -290,7 +290,9 @@ Mounts:
 It is also possible to double check the mount point by running the following:
 
 ```
-oc rsh -c glance-api glance-default-single-0
+# Discover pod name (works with uniquePodNames true or false)
+GLANCE_POD=$(oc get pods -o name | grep -E 'glance(-[a-z0-9]+)?-default-single-[0-9]+$' | head -n1)
+oc rsh -c glance-api ${GLANCE_POD#pod/}
 sh-5.1# mount
 ...
 ...

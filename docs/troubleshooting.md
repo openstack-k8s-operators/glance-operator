@@ -11,14 +11,16 @@ against the `GlanceAPI service` (not the operator).
 Run the following command to run an existing glanceAPI `Pod` in debug mode:
 
 ```bash
-oc debug pod/glance-default-external-api-0 --keep-labels=true
+# Discover the Glance API pod (works with uniquePodNames true or false)
+GLANCE_POD=$(oc get pods -n openstack -o name | grep -E 'glance(-[a-z0-9]+)?-default-external-api-[0-9]+$' | head -n1)
+oc debug ${GLANCE_POD} --keep-labels=true
 ```
 
 It results in a duplicated pod, where the designed command is not run, and it
 returns an interactive shell that can be used to start the troubleshooting.
 
 ```bash
-Starting pod/glance-default-external-api-0-debug-fz4hz, command was: /bin/bash -c exec /usr/sbin/httpd -DFOREGROUND
+Starting pod/glance-<optional-hash>-default-external-api-0-debug-fz4hz, command was: /bin/bash -c exec /usr/sbin/httpd -DFOREGROUND
 Pod IP: --
 If you don't see a command prompt, try pressing enter.
 sh-5.1#

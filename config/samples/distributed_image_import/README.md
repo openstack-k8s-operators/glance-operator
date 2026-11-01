@@ -385,7 +385,8 @@ Copy the [`image-import.sh`](import-image.sh) script to the target container
 where the `glance` cli is available, for example one of the existing replicas:
 
 ```
-oc cp import-image.sh -c glance-api glance-default-single-0:/
+GLANCE_POD=$(oc get pods -o name | grep -E 'glance(-[a-z0-9]+)?-default-single-[0-9]+$' | head -n1)
+oc cp import-image.sh -c glance-api ${GLANCE_POD#pod/}:/
 ```
 
 Run the script from the client Pod:

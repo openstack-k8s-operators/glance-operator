@@ -53,7 +53,8 @@ After applying the configuration, verify that the notification settings have
 been properly updated by checking the configuration file:
 
 ```bash
-$ oc rsh -c glance-httpd glance-default-external-api-0 grep "oslo_messaging_notifications" /etc/glance/glance.conf.d/00-config.conf -A 2
+$ GLANCE_POD=$(oc get pods -o name | grep -E 'glance(-[a-z0-9]+)?-default-external-api-[0-9]+$' | head -n1)
+$ oc rsh -c glance-httpd ${GLANCE_POD#pod/} grep "oslo_messaging_notifications" /etc/glance/glance.conf.d/00-config.conf -A 2
 
 [oslo_messaging_notifications]
 driver=messagingv2
