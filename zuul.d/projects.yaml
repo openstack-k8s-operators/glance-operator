@@ -26,6 +26,10 @@
                - ^config/samples/backends/s3/
     github-experimental-trigger:
       jobs:
+        - glance-s2i-content-provider
+        - openstack-k8s-operators-content-provider:
+            vars:
+              cifmw_install_yamls_sdk_version: v1.41.1
         - glance-s2i-test-swift:
             dependencies: *glance_s2i_operator_test_dependencies
         - glance-s2i-test-nfs:
