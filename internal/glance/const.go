@@ -88,6 +88,9 @@ const (
 	// ConfigDirVolume is the writable EmptyDir backing /etc/glance/glance.conf.d
 	// so that the entrypoint can write runtime config (e.g. worker_self_reference_url)
 	ConfigDirVolume = "glance-config-dir"
+	// ScriptMountPath is where the "glance-scripts" Secret is mounted in the
+	// GlanceAPI pods
+	ScriptMountPath = "/usr/local/bin/container-scripts"
 	// KeystoneEndpoint - indicates whether the glanceAPI should register the
 	// endpoints in keystone
 	KeystoneEndpoint = "keystoneEndpoint"
@@ -99,6 +102,10 @@ const (
 	CachePruner CronJobType = "pruner"
 	//ImageCacheDir -
 	ImageCacheDir = "/var/lib/glance/image-cache"
+	// DefaultFilesystemStoreDatadir - the path where glance writes image data by
+	// default when a file backend is configured and no overrides are passed
+	// https://github.com/openstack/glance_store/blob/master/glance_store/_drivers/filesystem.py#L48
+	DefaultFilesystemStoreDatadir = "/var/lib/glance/images"
 	// CachePVCPrefix is the VolumeClaimTemplate name prefix used by
 	// StatefulSets for image-cache PVCs (format: <prefix>-<sts-pod-name>)
 	CachePVCPrefix = ServiceName + "-cache-"
