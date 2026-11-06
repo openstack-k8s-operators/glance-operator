@@ -32,6 +32,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+func validateServicePortNames(
+	basePath *field.Path,
+	overrides map[service.Endpoint]service.RoutedOverrideSpec,
+) field.ErrorList {
+	return common_webhook.ValidatePortNameOverrides(
+		basePath,
+		overrides,
+		common_webhook.DefaultServicePortNames(),
+	)
+}
+
 // GlanceDefaults -
 type GlanceDefaults struct {
 	ContainerImageURL string
@@ -331,8 +342,12 @@ func (r *GlanceSpecCore) ValidateCreate(basePath *field.Path, namespace string) 
 		}
 
 		// validate the service override key is valid
+		serviceOverridePath := path.Child("override").Child("service")
 		allErrs = append(allErrs, service.ValidateRoutedOverrides(
-			path.Child("override").Child("service"),
+			serviceOverridePath,
+			glanceAPI.Override.Service)...)
+		allErrs = append(allErrs, validateServicePortNames(
+			serviceOverridePath,
 			glanceAPI.Override.Service)...)
 
 		// Probes validation
@@ -427,6 +442,11 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 		}
 		// fail if a wrong topology is referenced
 		allErrs = append(allErrs, glanceAPI.ValidateTopology(path, namespace)...)
+		// Validate new API entries too; the update-only checks below skip them.
+		serviceOverridePath := path.Child("override").Child("service")
+		allErrs = append(allErrs, validateServicePortNames(
+			serviceOverridePath,
+			glanceAPI.Override.Service)...)
 
 		// When a new entry (new glanceAPI instance) is added in the main CR, it's
 		// possible that the old CR used to compare the new map had no entry with
@@ -451,7 +471,7 @@ func (r *GlanceSpecCore) ValidateUpdate(old GlanceSpecCore, basePath *field.Path
 		}
 		// validate the service override key is valid
 		allErrs = append(allErrs, service.ValidateRoutedOverrides(
-			path.Child("override").Child("service"),
+			serviceOverridePath,
 			glanceAPI.Override.Service)...)
 
 		// Probes validation
