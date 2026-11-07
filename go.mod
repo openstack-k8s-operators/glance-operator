@@ -9,7 +9,7 @@ require (
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
 	github.com/onsi/ginkgo/v2 v2.33.1
 	github.com/onsi/gomega v1.44.0
-	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20261024121108-63543e10ec48
+	github.com/openstack-k8s-operators/cinder-operator/api v0.6.1-0.20261031091008-c985a289367b
 	github.com/openstack-k8s-operators/glance-operator/api v0.0.0-00010101000000-000000000000
 	github.com/openstack-k8s-operators/horizon-operator/api v0.6.1-0.20261026075307-714d99160567
 	github.com/openstack-k8s-operators/infra-operator/apis v0.6.1-0.20261026075308-c598716245d3
@@ -19,7 +19,7 @@ require (
 	github.com/openstack-k8s-operators/lib-common/modules/storage v0.6.1-0.20261020132816-6109367117f2
 	github.com/openstack-k8s-operators/lib-common/modules/test v0.6.1-0.20261020132816-6109367117f2
 	github.com/openstack-k8s-operators/lib-common/modules/users v0.0.0-20261020132816-6109367117f2
-	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20261026075309-b2ba1013d345
+	github.com/openstack-k8s-operators/mariadb-operator/api v0.6.1-0.20261104180656-b48dbd3ab33c
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976
 	gopkg.in/ini.v1 v1.67.3
 	gopkg.in/yaml.v3 v3.0.1
