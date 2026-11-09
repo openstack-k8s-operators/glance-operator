@@ -24,6 +24,7 @@ import (
 	"strconv"
 
 	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/roles"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/tls"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -531,6 +532,22 @@ func (r *GlanceReconciler) reconcileInit(
 	}
 
 	instance.Status.ServiceID = ksSvc.GetServiceID()
+
+	// When per-tenant quotas are enabled glance authenticates to Keystone
+	// unified limits with a system-scoped token, which requires the service
+	// user to hold a role assignment on the system.
+	if instance.IsQuotaEnabled() {
+		if err := r.ensureServiceReaderRole(ctx, helper, instance); err != nil {
+			instance.Status.Conditions.Set(condition.FalseCondition(
+				condition.ReadyCondition,
+				condition.ErrorReason,
+				condition.SeverityWarning,
+				"Failed to assign the %s role to the Glance service user: %s",
+				glance.ServiceReaderRole,
+				err.Error()))
+			return ctrl.Result{}, err
+		}
+	}
 
 	if instance.Status.Hash == nil {
 		instance.Status.Hash = map[string]string{}
@@ -1318,6 +1335,67 @@ func (r *GlanceReconciler) ensureRegisteredLimits(
 		}
 	}
 	return nil
+}
+
+// ensureServiceReaderRole - grant the glance service user the "reader" role at
+// system scope. [oslo_limit] uses system_scope=all, which requires a role
+// assignment on the system, but keystone-operator only assigns roles on the
+// service project: without this, oslo_limit fails to initialize and per-tenant
+// quotas are not enforced (OSPRH-7402).
+func (r *GlanceReconciler) ensureServiceReaderRole(
+	ctx context.Context,
+	h *helper.Helper,
+	instance *glancev1.Glance,
+) error {
+	Log := r.GetLogger(ctx)
+
+	keystoneAPI, err := keystonev1.GetKeystoneAPI(ctx, h, instance.Namespace, map[string]string{})
+	if err != nil {
+		return err
+	}
+	scope := &gophercloud.AuthScope{System: true}
+	//nolint:staticcheck // SA1019: Using deprecated function until migration is complete
+	o, _, err := keystonev1.GetScopedAdminServiceClient(ctx, h, keystoneAPI, scope)
+	if err != nil {
+		return err
+	}
+
+	// keystone-operator creates the service user in the Default domain, using
+	// the literal domain ID "default", and assigns its roles on the service
+	// project only.
+	user, err := o.GetUser(ctx, Log, instance.Spec.ServiceUser, "default")
+	if err != nil {
+		return err
+	}
+
+	// CreateRole is idempotent: it returns the ID of the existing role, if any.
+	roleID, err := o.CreateRole(ctx, Log, glance.ServiceReaderRole)
+	if err != nil {
+		return err
+	}
+
+	// Skip the assignment when the user already holds the role on the system.
+	allPages, err := roles.ListAssignments(o.GetOSClient(), roles.ListAssignmentsOpts{
+		UserID:      user.ID,
+		RoleID:      roleID,
+		ScopeSystem: "all",
+	}).AllPages(ctx)
+	if err != nil {
+		return err
+	}
+	empty, err := allPages.IsEmpty()
+	if err != nil {
+		return err
+	}
+	if !empty {
+		return nil
+	}
+
+	Log.Info(fmt.Sprintf("Assigning role %s at system scope to user %s", glance.ServiceReaderRole, user.Name))
+	return roles.Assign(ctx, o.GetOSClient(), roleID, roles.AssignOpts{
+		UserID: user.ID,
+		System: true,
+	}).ExtractErr()
 }
 
 // ensureCronJobs - Create the required CronJobs to clean DB entries and image-cache
