@@ -189,14 +189,24 @@ func SetupAPIDefaults() {
 	SetupGlanceAPIDefaults(glanceAPIDefaults)
 }
 
-// GetCustomServiceConfigValue - scan a Spec.CustomServiceConfig string line by
-// line and return the first non-empty value assigned to key. Blank lines,
-// comments and section headers are skipped, so the option may live in any
-// section and the first occurrence wins. ok is false when the key is absent or
-// only ever assigned an empty value.
-func GetCustomServiceConfigValue(customServiceConfig string, key string) (string, bool) {
+// GetCustomServiceConfigValue - scan a Spec.CustomServiceConfig string and
+// return the first non-empty value assigned to key. An empty section matches
+// the key anywhere, otherwise only the given section is scanned: per store
+// options are read from the store group and not inherited from [DEFAULT].
+func GetCustomServiceConfigValue(customServiceConfig string, section string, key string) (string, bool) {
+	currentSection := ""
 	for _, line := range strings.Split(customServiceConfig, "\n") {
-		tokenLine := strings.SplitN(strings.TrimSpace(line), "=", 2)
+		trimmedLine := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmedLine, "[") && strings.HasSuffix(trimmedLine, "]") {
+			currentSection = strings.TrimSpace(trimmedLine[1 : len(trimmedLine)-1])
+			continue
+		}
+		if section != "" && currentSection != section {
+			continue
+		}
+
+		tokenLine := strings.SplitN(trimmedLine, "=", 2)
 		token := strings.ReplaceAll(tokenLine[0], " ", "")
 
 		if token == "" || strings.HasPrefix(token, "#") || len(tokenLine) != 2 {
@@ -215,7 +225,7 @@ func GetCustomServiceConfigValue(customServiceConfig string, key string) (string
 // GetEnabledBackends - Given a instance.Spec.CustomServiceConfig object, return
 // a list of available stores in form of 'store_id':'backend'
 func GetEnabledBackends(customServiceConfig string) []string {
-	backends, ok := GetCustomServiceConfigValue(customServiceConfig, "enabled_backends")
+	backends, ok := GetCustomServiceConfigValue(customServiceConfig, "", "enabled_backends")
 	if !ok {
 		return nil
 	}

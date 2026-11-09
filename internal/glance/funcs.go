@@ -2,6 +2,7 @@ package glance
 
 import (
 	"math"
+	"strings"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/probes"
@@ -62,12 +63,30 @@ func GetDefaultProbesAPI(apiTimeout int) probes.OverrideSpec {
 	}
 }
 
-// GetFilesystemStoreDatadir - return the directory a file backend writes image
-// data to: the filesystem_store_datadir option of the custom service config,
-// or DefaultFilesystemStoreDatadir when it is not set
-func GetFilesystemStoreDatadir(customServiceConfig string) string {
-	if datadir, ok := glancev1.GetCustomServiceConfigValue(customServiceConfig, "filesystem_store_datadir"); ok {
-		return datadir
+// GetFilesystemStoreDatadirs - return the filesystem_store_datadir of every
+// file store in enabled_backends, deduplicated and in enabled_backends order
+func GetFilesystemStoreDatadirs(customServiceConfig string) []string {
+	var datadirs []string
+	seen := map[string]struct{}{}
+
+	for _, backend := range glancev1.GetEnabledBackends(customServiceConfig) {
+		// a backend is expressed as 'store_id':'store_type', and the store_id
+		// is required: it is the config section the datadir is read from
+		storeID, storeType, found := strings.Cut(backend, ":")
+		if !found || storeID == "" || storeType != "file" {
+			continue
+		}
+		// each store reads the option from its own section
+		datadir, ok := glancev1.GetCustomServiceConfigValue(
+			customServiceConfig, storeID, "filesystem_store_datadir")
+		if !ok {
+			datadir = DefaultFilesystemStoreDatadir
+		}
+		if _, ok := seen[datadir]; ok {
+			continue
+		}
+		seen[datadir] = struct{}{}
+		datadirs = append(datadirs, datadir)
 	}
-	return DefaultFilesystemStoreDatadir
+	return datadirs
 }

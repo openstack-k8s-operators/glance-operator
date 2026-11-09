@@ -176,17 +176,18 @@ func IsFileBackend(customServiceConfig string, topLevel bool) bool {
 	// possible scenario to evaluate:
 	// - availableBackends is []
 	// - the topLevel CR is [] or has File has backend (topLevel is true)
-	if len(availableBackends) == 0 && topLevel {
-		return true
+	if len(availableBackends) == 0 {
+		return topLevel
 	}
 
-	if len(availableBackends) == 1 {
-		backendToken := strings.SplitN(availableBackends[0], ":", 2)
-		if len(backendToken) == 2 && backendToken[1] == "file" {
-			return true
+	// More than one file store can be enabled, e.g. to migrate images between
+	// two NFS exports, but any other store type rules the file layout out
+	for _, backend := range availableBackends {
+		if _, storeType, found := strings.Cut(backend, ":"); !found || storeType != "file" {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // Check if the File is used in combination with a wrong layout

@@ -54,8 +54,11 @@ const (
 	//GlanceFileBackend -
 	GlanceFileBackend = "enabled_backends=default_backend:file"
 	//GlanceFileBackendCustomDatadir - file backend overriding
-	//filesystem_store_datadir
-	GlanceFileBackendCustomDatadir = "enabled_backends=default_backend:file\nfilesystem_store_datadir=" + GlanceFileBackendMountPath + "/images"
+	//filesystem_store_datadir in its own store section
+	GlanceFileBackendCustomDatadir = "[DEFAULT]\nenabled_backends=default_backend:file\n[default_backend]\nfilesystem_store_datadir=" + GlanceFileBackendMountPath + "/images"
+	//GlanceMultipleFileBackends - two file stores, the first one relying on the
+	//default datadir, the second one overriding it in its own section
+	GlanceMultipleFileBackends = "[DEFAULT]\nenabled_backends=default_backend:file,second_backend:file\n[second_backend]\nfilesystem_store_datadir=" + GlanceFileBackendMountPath + "/images"
 	// GlanceFileBackendMountPath - parent mount for the custom file datadir
 	GlanceFileBackendMountPath = "/mnt/glance"
 	// MemcachedInstance - name of the memcached instance

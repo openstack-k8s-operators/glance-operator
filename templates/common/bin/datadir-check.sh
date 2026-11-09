@@ -1,22 +1,23 @@
 #!/bin/bash
 #
-# Verify the file-backend datadir is usable before Glance starts.
-# Runs as the glance user in the datadir-check init container, so the checks
-# below observe exactly the access glance-api will get at runtime.
+# Usage: datadir-check.sh <datadir> [<datadir>...]
 #
-# Usage: datadir-check.sh <datadir>
+# Verify the datadir of every enabled file store is usable before Glance
+# starts. Runs as the glance user, so it sees the access glance-api will get.
 #
-# Nothing is repaired here: the kubelet does not apply fsGroup ownership to NFS
-# volumes, and a root_squash export cannot be fixed from the client anyway.
-# Ownership and permissions are the storage administrator's responsibility.
+# Nothing is repaired: the kubelet does not apply fsGroup to NFS volumes and a
+# root_squash export can only be fixed on the server, by the administrator.
 #
-# Fail early: Glance evaluates store write access once at startup. An unwritable
-# store leaves the API healthy but rejecting every upload with StoreAddDisabled,
-# which is much harder to diagnose than a pod that refuses to start.
+# Fail early: Glance evaluates store write access once at startup, and then
+# stays healthy while rejecting every upload with StoreAddDisabled.
 
 set -u
 
-DATADIR="${1:?usage: $0 <datadir>}"
+if [ "$#" -eq 0 ]; then
+    echo "usage: $0 <datadir> [<datadir>...]" >&2
+    exit 1
+fi
+
 WANT_UID="$(id -u)"
 WANT_GID="$(id -g)"
 
@@ -29,29 +30,38 @@ hint() {
     echo "  side, on the exported directory." >&2
 }
 
-fail() {
-    echo "ERROR: ${DATADIR} is not usable by the glance user (${WANT_UID}:${WANT_GID})." >&2
-    echo "  ls -ld: $(ls -ld "${DATADIR}" 2>&1)" >&2
-    hint
-    exit 1
+check_datadir() {
+    local datadir="$1"
+
+    # A fresh PVC is empty and an export can be mounted above the datadir, so
+    # create it as kolla did: it only works where glance can already write.
+    if [ ! -d "${datadir}" ] && ! mkdir -p "${datadir}" 2>/dev/null; then
+        echo "ERROR: ${datadir} does not exist and could not be created by ${WANT_UID}:${WANT_GID}." >&2
+        echo "  Check the configured filesystem_store_datadir and the volume mounted for it." >&2
+        echo "  ls -ld (parent): $(ls -ld "$(dirname "${datadir}")" 2>&1)" >&2
+        hint
+        return 1
+    fi
+
+    # Uploads need write and search access, downloads need read access. On NFS
+    # these are resolved by an ACCESS RPC, so squashing and ro exports are covered.
+    if [ ! -r "${datadir}" ] || [ ! -w "${datadir}" ] || [ ! -x "${datadir}" ]; then
+        echo "ERROR: ${datadir} is not usable by the glance user (${WANT_UID}:${WANT_GID})." >&2
+        echo "  ls -ld: $(ls -ld "${datadir}" 2>&1)" >&2
+        hint
+        return 1
+    fi
+
+    echo "${datadir} is usable by ${WANT_UID}:${WANT_GID} ($(ls -ld "${datadir}"))"
+    # A datadir with no volume mounted on it silently lands on the local PVC,
+    # so report what backs it: the store is only shared if this says nfs.
+    echo "  backed by: $(df -PT "${datadir}" 2>&1 | tail -1)"
 }
 
-# A freshly provisioned PVC is empty, and an NFS export may be mounted above the
-# datadir rather than at it, so the directory is not guaranteed to exist.
-# Creating it is what kolla used to do, and it only succeeds when the parent is
-# already writable by glance, which is the same permission requirement.
-if [ ! -d "${DATADIR}" ] && ! mkdir -p "${DATADIR}" 2>/dev/null; then
-    echo "ERROR: ${DATADIR} does not exist and could not be created by ${WANT_UID}:${WANT_GID}." >&2
-    echo "  Check the configured filesystem_store_datadir and the volume mounted for it." >&2
-    echo "  ls -ld (parent): $(ls -ld "$(dirname "${DATADIR}")" 2>&1)" >&2
-    hint
-    exit 1
-fi
-
-# Uploads need write and search access, downloads need read access. On NFS
-# these are resolved by an ACCESS RPC, so squashing and ro exports are covered.
-if [ ! -r "${DATADIR}" ] || [ ! -w "${DATADIR}" ] || [ ! -x "${DATADIR}" ]; then
-    fail
-fi
-
-echo "${DATADIR} is usable by ${WANT_UID}:${WANT_GID} ($(ls -ld "${DATADIR}"))"
+# Check them all: a multi store deployment should not have to fix one export,
+# restart, and discover the next one is broken too.
+rc=0
+for datadir in "$@"; do
+    check_datadir "${datadir}" || rc=1
+done
+exit "${rc}"

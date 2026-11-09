@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 
 	glancev1 "github.com/openstack-k8s-operators/glance-operator/api/v1beta1"
@@ -28,42 +29,41 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// datadirCheckScriptName is the entry in the "glance-scripts" Secret that
-// holds the datadir-check script, which is rendered from
-// templates/common/bin/datadir-check.sh by the top-level Glance controller and
-// mounted into the API pods via the "scripts" volume.
+// datadirCheckScriptName is the entry in the "glance-scripts" Secret rendered
+// from templates/common/bin/datadir-check.sh and mounted via "scripts"
 const datadirCheckScriptName = "datadir-check.sh"
 
-// errDatadirNotOnDataVolume is returned when the configured datadir is not
-// covered by a writable image store mount, which means Glance would write
-// images to the container filesystem and lose them on restart.
+// errDatadirNotOnDataVolume is returned when the datadir is not covered by a
+// writable image store mount, so images would be lost on restart
 var errDatadirNotOnDataVolume = errors.New("filesystem_store_datadir is not on a writable image store volume")
 
-// DatadirCheckInitContainers returns the init container that runs when the NFS
-// (file) backend is detected. It does not repair anything: it runs as the
-// glance user and fails the pod when the datadir is not usable by that user,
-// so the required server-side fix is reported up front instead of surfacing
-// later as rejected image uploads.
+// errNoFileStoreDatadir is returned when a file store is enabled but no
+// datadir could be resolved, e.g. an enabled_backends entry with no store id
+var errNoFileStoreDatadir = errors.New("no filesystem_store_datadir resolved for the enabled file stores")
+
+// DatadirCheckInitContainers returns the init container that stops the pod
+// when the datadir of an enabled file store is not usable by the glance user
 func DatadirCheckInitContainers(
 	instance *glancev1.GlanceAPI,
 	dataMounts []corev1.VolumeMount,
 ) ([]corev1.Container, error) {
-	datadir := glance.GetFilesystemStoreDatadir(instance.Spec.CustomServiceConfig)
-	mount, err := datadirMount(datadir, dataMounts)
+	datadirs := glance.GetFilesystemStoreDatadirs(instance.Spec.CustomServiceConfig)
+	if len(datadirs) == 0 {
+		return nil, errNoFileStoreDatadir
+	}
+	mounts, err := datadirMounts(datadirs, dataMounts)
 	if err != nil {
 		return nil, err
 	}
-	mounts := append([]corev1.VolumeMount{mount}, glance.GetScriptVolumeMount()...)
 
 	return []corev1.Container{
 		{
 			Name:    glance.ServiceName + "-datadir-check",
 			Image:   instance.Spec.ContainerImage,
 			Command: []string{path.Join(glance.ScriptMountPath, datadirCheckScriptName)},
-			Args:    []string{datadir},
-			// Same identity and restrictions as the glance-api container: the
-			// check is only meaningful if it observes the access the service
-			// will actually get.
+			Args:    datadirs,
+			// Same identity as glance-api: the check is only meaningful if it
+			// observes the access the service will actually get
 			SecurityContext: pod.RestrictiveSecurityContext(users.GlanceUID, users.GlanceGID),
 			VolumeMounts:    mounts,
 			Resources:       instance.Spec.Resources,
@@ -71,37 +71,37 @@ func DatadirCheckInitContainers(
 	}, nil
 }
 
-// datadirMount returns the most specific writable data mount the datadir lives
-// on, so the init container checks the directory at the same path, and on the
-// same volume, that glance-api will later write images to. Nothing else the
-// API mounts is given to the init container.
-func datadirMount(datadir string, dataMounts []corev1.VolumeMount) (corev1.VolumeMount, error) {
-	datadirPath := path.Clean(datadir)
-	var selected corev1.VolumeMount
-	selectedPath := ""
-	for _, mount := range dataMounts {
-		mountPath := path.Clean(mount.MountPath)
-		if mount.ReadOnly || !pathContains(mountPath, datadirPath) ||
-			(selectedPath != "" && len(mountPath) <= len(selectedPath)) {
-			continue
+// datadirMounts returns the deduplicated data mounts the datadirs live on,
+// plus the scripts mount: nothing else the API mounts is exposed to the check
+func datadirMounts(datadirs []string, dataMounts []corev1.VolumeMount) ([]corev1.VolumeMount, error) {
+	mounts := []corev1.VolumeMount{}
+	for _, datadir := range datadirs {
+		// the most specific writable mount is the volume, and the path, that
+		// glance-api will later write the images of this store to
+		datadirPath := path.Clean(datadir)
+		var selected corev1.VolumeMount
+		longest := -1
+
+		for _, mount := range dataMounts {
+			mountPath := path.Clean(mount.MountPath)
+			if mount.ReadOnly || len(mountPath) <= longest || !pathContains(mountPath, datadirPath) {
+				continue
+			}
+			selected, longest = mount, len(mountPath)
 		}
-		selected, selectedPath = mount, mountPath
+		if longest < 0 {
+			return nil, fmt.Errorf("%w: %q", errDatadirNotOnDataVolume, datadir)
+		}
+		// two file stores can be backed by the same volume
+		if !slices.Contains(mounts, selected) {
+			mounts = append(mounts, selected)
+		}
 	}
-	if selectedPath == "" {
-		return selected, fmt.Errorf("%w: %q", errDatadirNotOnDataVolume, datadir)
-	}
-	return selected, nil
+	return append(mounts, glance.GetScriptVolumeMount()...), nil
 }
 
-// pathContains reports whether target is dir itself or lives below it. Both
-// paths are expected to be cleaned already.
+// pathContains reports whether the cleaned target is dir itself or lives below
+// it. TrimSuffix covers "/", the only dir path.Clean leaves a slash on.
 func pathContains(dir string, target string) bool {
-	if dir == target {
-		return true
-	}
-	if !strings.HasSuffix(dir, "/") {
-		// path.Clean only keeps a trailing slash for the root directory
-		dir += "/"
-	}
-	return strings.HasPrefix(target, dir)
+	return target == dir || strings.HasPrefix(target, strings.TrimSuffix(dir, "/")+"/")
 }
