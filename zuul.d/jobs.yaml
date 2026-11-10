@@ -42,6 +42,9 @@
       against a live OpenStack deployment.
     irrelevant-files: *common-irrelevant-files
     vars:
+      pre_deploy_80_kustomize_openstack_CR_to_enable_swift_glance_backend_with_quota:
+        type: playbook
+        source: control_plane_glance_swift_quota.yml
       cifmw_test_operator_tempest_concurrency: 3
       cifmw_test_operator_tempest_include_list: |
         ^tempest.api.image..*
