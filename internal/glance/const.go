@@ -34,6 +34,10 @@ const (
 	ServiceName = "glance"
 	// ServiceType -
 	ServiceType = "image"
+	// ServiceReaderRole - role granted to the service user at system scope so
+	// that the [oslo_limit] client can obtain a system-scoped token and query
+	// Keystone unified limits (per-tenant quotas).
+	ServiceReaderRole = "reader"
 	// DatabaseName - this is both the CR name for the MariaDBDatabase
 	// as well as the name used in MariaDB CREATE DATABASE statement.
 	// hardcoded as glanceapi_controller needs this name which originates
