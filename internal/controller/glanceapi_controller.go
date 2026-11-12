@@ -583,7 +583,7 @@ func (r *GlanceAPIReconciler) reconcileInit(
 				Labels:    exportLabels,
 				Selector:  serviceLabels,
 				Port: service.GenericServicePort{
-					Name:     endpointName,
+					Name:     endpointTypeStr,
 					Port:     data.Port,
 					Protocol: corev1.ProtocolTCP,
 				},
@@ -617,6 +617,10 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			),
 		})
 
+		// drop a registration left by a previous release or a former LoadBalancer;
+		// AddAnnotation below cancels this for the endpoints that still need it
+		svc.RemoveAnnotation(service.AnnotationHostnameKey)
+
 		// add Annotation to whether creating an ingress is required or not
 		// A route should get created for the glance-api instance which has
 		// - annotation with glance.KeystoneEndpoint -> true
@@ -632,7 +636,10 @@ func (r *GlanceAPIReconciler) reconcileInit(
 			svc.AddAnnotation(map[string]string{
 				service.AnnotationIngressCreateKey: "false",
 			})
-			if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer {
+			// The public endpoint's DNS is user-managed (its hostname is the
+			// endpointURL host, not the in-cluster Service name), so skip
+			// registering it in dnsmasq even when it is a LoadBalancer.
+			if svc.GetServiceType() == corev1.ServiceTypeLoadBalancer && endpointType != service.EndpointPublic {
 				svc.AddAnnotation(map[string]string{
 					service.AnnotationHostnameKey: svc.GetServiceHostname(), // add annotation to register service name in dnsmasq
 				})
@@ -1363,8 +1370,19 @@ func (r *GlanceAPIReconciler) generateServiceConfig(
 	httpdVhostConfig := map[string]any{}
 	for _, endpt := range slices.Sorted(maps.Keys(glanceEndpoints)) {
 		endptConfig := map[string]any{}
-		endptConfig["ServerName"] = fmt.Sprintf("glance-%s.%s.svc", endpt.String(), instance.Namespace)
+		defaultServerName := fmt.Sprintf("glance-%s.%s.svc", endpt.String(), instance.Namespace)
 		endptConfig["ServerAlias"] = fmt.Sprintf("%s.%s.svc", endptName, instance.Namespace)
+		serviceObjectName := fmt.Sprintf("%s-%s-%s", glance.ServiceName, instance.APIName(), endpt.String())
+		serverName, serverAliases, err := service.GetVHostServerName(
+			instance.Spec.Override.Service[endpt],
+			defaultServerName,
+			fmt.Sprintf("%s.%s.svc", serviceObjectName, instance.Namespace),
+		)
+		if err != nil {
+			return err
+		}
+		endptConfig["ServerName"] = serverName
+		endptConfig["ServerAliases"] = serverAliases
 		endptConfig["TLS"] = false // default TLS to false, and set it bellow to true if enabled
 		endptConfig["TimeOut"] = instance.Spec.APITimeout
 		if instance.Spec.TLS.API.Enabled(endpt) {
