@@ -51,6 +51,16 @@ const (
 	GlanceS3Backend = "[DEFAULT]\nenabled_backends=backend1:s3\n[backend1]\ns3_store_create_bucket_on_put = True"
 	//GlanceS3BackendOverride -
 	GlanceS3BackendOverride = "[DEFAULT]\nenabled_backends=backend1:s3\n[backend1]\ns3_store_cacert = \"\""
+	//GlanceFileBackend -
+	GlanceFileBackend = "enabled_backends=default_backend:file"
+	//GlanceFileBackendCustomDatadir - file backend overriding
+	//filesystem_store_datadir in its own store section
+	GlanceFileBackendCustomDatadir = "[DEFAULT]\nenabled_backends=default_backend:file\n[default_backend]\nfilesystem_store_datadir=" + GlanceFileBackendMountPath + "/images"
+	//GlanceMultipleFileBackends - two file stores, the first one relying on the
+	//default datadir, the second one overriding it in its own section
+	GlanceMultipleFileBackends = "[DEFAULT]\nenabled_backends=default_backend:file,second_backend:file\n[second_backend]\nfilesystem_store_datadir=" + GlanceFileBackendMountPath + "/images"
+	// GlanceFileBackendMountPath - parent mount for the custom file datadir
+	GlanceFileBackendMountPath = "/mnt/glance"
 	// MemcachedInstance - name of the memcached instance
 	MemcachedInstance = "memcached"
 	// AccountName - name of the MariaDBAccount CR
