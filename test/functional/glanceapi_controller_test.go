@@ -31,7 +31,9 @@ import (
 	keystonev1 "github.com/openstack-k8s-operators/keystone-operator/api/v1beta1"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/clusterdns"
 	"github.com/openstack-k8s-operators/lib-common/modules/common/condition"
+	"github.com/openstack-k8s-operators/lib-common/modules/common/pod"
 	commonservice "github.com/openstack-k8s-operators/lib-common/modules/common/service"
+	"github.com/openstack-k8s-operators/lib-common/modules/users"
 	"gopkg.in/ini.v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
@@ -660,6 +662,8 @@ var _ = Describe("Glanceapi controller", func() {
 			Expect(int(*ss.Spec.Replicas)).To(Equal(1))
 			Expect(ss.Spec.Template.Spec.Volumes).To(HaveLen(5))
 			Expect(ss.Spec.Template.Spec.Containers).To(HaveLen(2))
+			// No file backend in this config: no datadir-check init container
+			Expect(ss.Spec.Template.Spec.InitContainers).To(BeEmpty())
 
 			container := ss.Spec.Template.Spec.Containers[1]
 			Expect(container.VolumeMounts).To(HaveLen(12))
@@ -693,6 +697,193 @@ var _ = Describe("Glanceapi controller", func() {
 			// Check headlessSvc Name matches with the statefulSet name
 			headlessSvc := th.GetService(glanceTest.GlanceExternalStatefulSet)
 			Expect(headlessSvc.Name).To(Equal(glanceTest.GlanceExternalStatefulSet.Name))
+		})
+	})
+	When("a GlanceAPI with a file backend is created", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec(), annotations))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+
+			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
+			spec["customServiceConfig"] = GlanceFileBackend
+			spec["extraMounts"] = GetExtraMounts()
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			spec = CreateGlanceAPISpec(GlanceAPITypeExternal)
+			spec["customServiceConfig"] = GlanceFileBackendCustomDatadir
+			spec["extraMounts"] = []map[string]any{{
+				"name": "file-backend",
+				"extraVol": []map[string]any{{
+					"propagation": []string{"GlanceAPI"},
+					"volumes": []map[string]any{{
+						"name": "images",
+						"persistentVolumeClaim": map[string]any{
+							"claimName": "image-store",
+						},
+					}},
+					"mounts": []map[string]any{{
+						"name":      "images",
+						"mountPath": GlanceFileBackendMountPath,
+						"subPath":   "backend",
+					}},
+				}},
+			}}
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceExternal, spec))
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+			th.ExpectCondition(
+				glanceTest.GlanceExternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+		It("adds the datadir-check init container to the StatefulSet", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+
+			ss := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
+			Expect(ss.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+			init := ss.Spec.Template.Spec.InitContainers[0]
+			Expect(init.Name).To(Equal("glance-datadir-check"))
+			Expect(init.Image).To(Equal(glanceTest.ContainerImage))
+			// the script is executed from the "glance-scripts" Secret volume
+			Expect(init.Command).To(Equal([]string{fmt.Sprintf("%s/datadir-check.sh", glance.ScriptMountPath)}))
+			// the datadir to check is passed to the script
+			Expect(init.Args).To(Equal([]string{glance.DefaultFilesystemStoreDatadir}))
+			Expect(init.VolumeMounts).To(ConsistOf(
+				corev1.VolumeMount{Name: glance.ServiceName, MountPath: "/var/lib/glance"},
+				corev1.VolumeMount{Name: "scripts", MountPath: glance.ScriptMountPath, ReadOnly: true},
+			))
+			// The API keeps its configuration/credential mounts; the check does not.
+			Expect(ss.Spec.Template.Spec.Containers[1].VolumeMounts).To(ContainElement(
+				corev1.VolumeMount{Name: GlanceCephExtraMountsSecretName, MountPath: GlanceCephExtraMountsPath, ReadOnly: true},
+			))
+			// the init container only checks the datadir, so it runs unprivileged
+			// as the same user as the glance-api container
+			Expect(init.SecurityContext).To(Equal(
+				pod.RestrictiveSecurityContext(users.GlanceUID, users.GlanceGID),
+			))
+		})
+		It("passes the configured filesystem_store_datadir to the init container", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceExternalStatefulSet)
+
+			ss := th.GetStatefulSet(glanceTest.GlanceExternalStatefulSet)
+			Expect(ss.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+			Expect(ss.Spec.Template.Spec.InitContainers[0].Args).To(Equal([]string{
+				GlanceFileBackendMountPath + "/images",
+			}))
+			Expect(ss.Spec.Template.Spec.InitContainers[0].VolumeMounts).To(ConsistOf(
+				corev1.VolumeMount{Name: "images", MountPath: GlanceFileBackendMountPath, SubPath: "backend"},
+				corev1.VolumeMount{Name: "scripts", MountPath: glance.ScriptMountPath, ReadOnly: true},
+			))
+		})
+		It("renders the datadir-check.sh script into the glance-scripts Secret", func() {
+			// Unblock the top-level Glance reconcile (which generates the
+			// scripts Secret) by providing the inputs it is waiting for
+			infra.SimulateTransportURLReady(glanceTest.GlanceTransportURL)
+			mariadb.SimulateMariaDBDatabaseCompleted(glanceTest.GlanceDatabaseName)
+			mariadb.SimulateMariaDBAccountCompleted(glanceTest.GlanceDatabaseAccount)
+			th.ExpectCondition(
+				glanceTest.Instance,
+				ConditionGetterFunc(GlanceConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+
+			scriptsSecret := th.GetSecret(types.NamespacedName{
+				Namespace: glanceTest.Instance.Namespace,
+				Name:      "glance-scripts",
+			})
+			Expect(scriptsSecret.Data).To(HaveKey("datadir-check.sh"))
+		})
+	})
+	When("a GlanceAPI with more than one file backend is created", func() {
+		BeforeEach(func() {
+			DeferCleanup(infra.DeleteMemcached, infra.CreateMemcached(namespace, glanceTest.MemcachedInstance, memcachedSpec))
+			infra.SimulateMemcachedReady(glanceTest.GlanceMemcached)
+			DeferCleanup(k8sClient.Delete, ctx, CreateGlanceMessageBusSecret(glanceTest.Instance.Namespace, glanceTest.RabbitmqSecretName))
+			DeferCleanup(th.DeleteInstance, CreateGlance(glanceTest.Instance, GetGlanceDefaultSpec(), annotations))
+			DeferCleanup(
+				mariadb.DeleteDBService,
+				mariadb.CreateDBService(
+					glanceName.Namespace,
+					GetGlance(glanceTest.Instance).Spec.DatabaseInstance,
+					corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{{Port: 3306}},
+					},
+				),
+			)
+			mariadb.CreateMariaDBDatabase(glanceTest.GlanceDatabaseName.Namespace, glanceTest.GlanceDatabaseName.Name, mariadbv1.MariaDBDatabaseSpec{})
+			DeferCleanup(k8sClient.Delete, ctx, mariadb.GetMariaDBDatabase(glanceTest.GlanceDatabaseName))
+			DeferCleanup(keystone.DeleteKeystoneAPI, keystone.CreateKeystoneAPI(glanceTest.Instance.Namespace))
+
+			// default_backend writes to the default datadir, which lives on the
+			// glance volume, second_backend writes to an extraMount
+			spec := CreateGlanceAPISpec(GlanceAPITypeInternal)
+			spec["customServiceConfig"] = GlanceMultipleFileBackends
+			spec["extraMounts"] = []map[string]any{{
+				"name": "file-backend",
+				"extraVol": []map[string]any{{
+					"propagation": []string{"GlanceAPI"},
+					"volumes": []map[string]any{{
+						"name": "images",
+						"persistentVolumeClaim": map[string]any{
+							"claimName": "image-store",
+						},
+					}},
+					"mounts": []map[string]any{{
+						"name":      "images",
+						"mountPath": GlanceFileBackendMountPath,
+					}},
+				}},
+			}}
+			DeferCleanup(th.DeleteInstance, CreateGlanceAPI(glanceTest.GlanceInternal, spec))
+
+			th.ExpectCondition(
+				glanceTest.GlanceInternal,
+				ConditionGetterFunc(GlanceAPIConditionGetter),
+				condition.ServiceConfigReadyCondition,
+				corev1.ConditionTrue,
+			)
+		})
+		It("checks the datadir of every file backend", func() {
+			th.SimulateStatefulSetReplicaReady(glanceTest.GlanceInternalStatefulSet)
+
+			ss := th.GetStatefulSet(glanceTest.GlanceInternalStatefulSet)
+			// a single init container receives all the datadirs, in
+			// enabled_backends order
+			Expect(ss.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+			init := ss.Spec.Template.Spec.InitContainers[0]
+			Expect(init.Args).To(Equal([]string{
+				glance.DefaultFilesystemStoreDatadir,
+				GlanceFileBackendMountPath + "/images",
+			}))
+			// both the volumes backing them are mounted
+			Expect(init.VolumeMounts).To(ConsistOf(
+				corev1.VolumeMount{Name: glance.ServiceName, MountPath: "/var/lib/glance"},
+				corev1.VolumeMount{Name: "images", MountPath: GlanceFileBackendMountPath},
+				corev1.VolumeMount{Name: "scripts", MountPath: glance.ScriptMountPath, ReadOnly: true},
+			))
 		})
 	})
 	When("GlanceAPI is generated by the top-level CR (edge-api)", func() {

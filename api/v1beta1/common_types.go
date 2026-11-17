@@ -32,9 +32,6 @@ const (
 	// ACConsumerFinalizerPrefix is the base prefix for the per-GlanceAPI AC consumer finalizer.
 	// Each GlanceAPI instance gets its own finalizer: <prefix><apiName>-<apiType>-ac-consumer
 	ACConsumerFinalizerPrefix = "openstack.org/glance-"
-
-	// Container image fall-back defaults
-
 	// GlanceAPIContainerImage is the fall-back container image for GlanceAPI
 	GlanceAPIContainerImage = "quay.io/openstack-s2i-containers/openstack-glance-api:master-latest"
 	//DBPurgeDefaultAge indicates the number of days of purging DB records
@@ -192,26 +189,49 @@ func SetupAPIDefaults() {
 	SetupGlanceAPIDefaults(glanceAPIDefaults)
 }
 
+// GetCustomServiceConfigValue - scan a Spec.CustomServiceConfig string and
+// return the first non-empty value assigned to key. An empty section matches
+// the key anywhere, otherwise only the given section is scanned: per store
+// options are read from the store group and not inherited from [DEFAULT].
+func GetCustomServiceConfigValue(customServiceConfig string, section string, key string) (string, bool) {
+	currentSection := ""
+	for _, line := range strings.Split(customServiceConfig, "\n") {
+		trimmedLine := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmedLine, "[") && strings.HasSuffix(trimmedLine, "]") {
+			currentSection = strings.TrimSpace(trimmedLine[1 : len(trimmedLine)-1])
+			continue
+		}
+		if section != "" && currentSection != section {
+			continue
+		}
+
+		tokenLine := strings.SplitN(trimmedLine, "=", 2)
+		token := strings.ReplaceAll(tokenLine[0], " ", "")
+
+		if token == "" || strings.HasPrefix(token, "#") || len(tokenLine) != 2 {
+			// Skip blank lines, comments and lines without a value
+			continue
+		}
+		if token == key {
+			if value := strings.TrimSpace(tokenLine[1]); value != "" {
+				return value, true
+			}
+		}
+	}
+	return "", false
+}
+
 // GetEnabledBackends - Given a instance.Spec.CustomServiceConfig object, return
 // a list of available stores in form of 'store_id':'backend'
 func GetEnabledBackends(customServiceConfig string) []string {
+	backends, ok := GetCustomServiceConfigValue(customServiceConfig, "", "enabled_backends")
+	if !ok {
+		return nil
+	}
 	var availableBackends []string
-	svcConfigLines := strings.Split(customServiceConfig, "\n")
-	for _, line := range svcConfigLines {
-		tokenLine := strings.SplitN(strings.TrimSpace(line), "=", 2)
-		token := strings.ReplaceAll(tokenLine[0], " ", "")
-
-		if token == "" || strings.HasPrefix(token, "#") {
-			// Skip blank lines and comments
-			continue
-		}
-		if token == "enabled_backends" {
-			backendToken := strings.SplitN(strings.TrimSpace(tokenLine[1]), ",", -1)
-			for i := 0; i < len(backendToken); i++ {
-				availableBackends = append(availableBackends, strings.TrimSpace(backendToken[i]))
-			}
-			break
-		}
+	for _, backend := range strings.Split(backends, ",") {
+		availableBackends = append(availableBackends, strings.TrimSpace(backend))
 	}
 	return availableBackends
 }
