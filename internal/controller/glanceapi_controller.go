@@ -1087,6 +1087,12 @@ func (r *GlanceAPIReconciler) reconcileNormal(
 		memcached,
 	)
 	if err != nil {
+		instance.Status.Conditions.Set(condition.FalseCondition(
+			condition.DeploymentReadyCondition,
+			condition.ErrorReason,
+			condition.SeverityWarning,
+			condition.DeploymentReadyErrorMessage,
+			err.Error()))
 		return ctrlResult, err
 	}
 	depl := statefulset.NewStatefulSet(
