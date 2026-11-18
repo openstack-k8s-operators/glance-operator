@@ -9,6 +9,11 @@
             dependencies: &glance_s2i_operator_test_dependencies
               - openstack-k8s-operators-content-provider
               - glance-s2i-content-provider
+        - glance-s2i-test-swift:
+            dependencies: *glance_s2i_operator_test_dependencies
+            files:
+               - ^config/samples/backends/base/
+               - ^config/samples/quotas/
         - glance-s2i-test-nfs:
             dependencies: *glance_s2i_operator_test_dependencies
             files:
