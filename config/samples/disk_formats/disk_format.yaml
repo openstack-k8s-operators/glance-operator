@@ -21,6 +21,8 @@ spec:
         swift_store_region = {{ .Region }}
         [image_format]
         disk_formats=raw,iso
+        # Optionally restrict legacy upload (PUT /v2/images/{id}/file) to raw:
+        # allowed_upload_formats=raw
       glanceAPIs:
         default:
           replicas: 1

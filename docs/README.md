@@ -22,7 +22,8 @@ detailed guides and examples, refer to the provided
   backends examples
 - [Copy Image](../config/samples/copy_image): Enable copy-image import method
 - [Disk format](../config/samples/disk_formats): Configure Glance to allow or
-  deny specific disk formats (qcow2, raw, vmdk, etc.)
+  deny specific disk formats (qcow2, raw, vmdk, etc.), and restrict the legacy
+  upload endpoint to an allow-list with `allowed_upload_formats`
 - [Distributed Image import](../config/samples/distributed_image_import):
   Enable image import with local staging area
 - [Image Cache](../config/samples/image_cache): Enable/Disable image cache for
