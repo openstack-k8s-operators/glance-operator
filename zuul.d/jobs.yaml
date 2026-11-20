@@ -40,6 +40,9 @@
     description: |
       Validate speculatively-built s2i glance images with swift
       against a live OpenStack deployment.
+    required-projects:
+      - name: github.com/openstack-k8s-operators/glance-operator
+        override-checkout: main
     irrelevant-files: *common-irrelevant-files
     vars:
       pre_deploy_80_kustomize_openstack_CR_to_enable_swift_glance_backend_with_quota:
