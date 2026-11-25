@@ -159,7 +159,7 @@
 
 - job:
     name: glance-s2i-test-cindernfs
-    parent: s2i-test-base
+    parent: s2i-test-base-2comp
     # Use a nodeset that provides a more powerful CRC node, because
     # the resources of the CRC node provided by the base job are
     # not enough when the tests executed are slightly more than basics
