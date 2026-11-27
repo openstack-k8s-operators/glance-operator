@@ -159,11 +159,11 @@
 
 - job:
     name: glance-s2i-test-cindernfs
-    parent: s2i-test-base-2comp
+    parent: s2i-test-base
     # Use a nodeset that provides a more powerful CRC node, because
     # the resources of the CRC node provided by the base job are
     # not enough when the tests executed are slightly more than basics
-    nodeset: centos-10-medium-2x-centos-10-crc-cloud-ocp-4-22-1-3xl
+    nodeset: centos-10-medium-centos-10-crc-cloud-ocp-4-22-1-3xl
     description: |
       Validate speculatively-built s2i glance images against a live
       OpenStack deployment, with the cinder backend (backend by NFS).
